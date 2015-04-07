@@ -198,9 +198,9 @@ typedef struct {
 } dbd_acct_coord_msg_t;
 
 typedef struct dbd_cluster_tres_msg {
-	List tres;	        /* list of tres */
 	char *cluster_nodes;	/* nodes in cluster */
 	time_t event_time;	/* time of transition */
+	List tres_list;	        /* list of tres */
 } dbd_cluster_tres_msg_t;
 
 typedef struct {
@@ -279,7 +279,6 @@ typedef struct dbd_job_start_msg {
 				 * if N/A */
 	char *   array_task_str;/* hex string of unstarted tasks */
 	uint32_t array_task_pending;/* number of tasks still pending */
-	List     tres;        /* various tres the job has */
 	uint32_t assoc_id;	/* accounting association id */
 	char *   block_id;      /* Bluegene block id */
 	uint32_t db_index;	/* index into the db for this job */
@@ -307,6 +306,7 @@ typedef struct dbd_job_start_msg {
 				 * type for the entire job on all nodes. */
 	char*    gres_used;     /* String depicting the GRES actually used by
 				 * type for the entire job on all nodes. */
+	List     tres_list;     /* various tres the job has */
 	char *   wckey;		/* wckey name */
 } dbd_job_start_msg_t;
 
@@ -345,7 +345,6 @@ typedef struct {
 #define DBD_NODE_STATE_DOWN  1
 #define DBD_NODE_STATE_UP    2
 typedef struct dbd_node_state_msg {
-	List     tres;        /* various tres the node has */
 	time_t event_time;	/* time of transition */
 	char *hostlist;		/* name of hosts */
 	uint16_t new_state;	/* new state of host, see DBD_NODE_STATE_* */
@@ -354,6 +353,7 @@ typedef struct dbd_node_state_msg {
 				 * no reason is set. */
 	uint32_t state;         /* current state of node.  Used to get
 				   flags on the state (i.e. maintenance) */
+	List     tres_list;     /* various tres the node has */
 } dbd_node_state_msg_t;
 
 typedef struct dbd_rc_msg {

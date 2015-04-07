@@ -493,7 +493,7 @@ extern int sacctmgr_list_cluster(int argc, char *argv[])
 				break;
 			case PRINT_TRES:
 				tmp_char = slurmdb_make_tres_string(
-					cluster->tres);
+					cluster->tres_list);
 				field->print_routine(field,
 						     tmp_char,
 						     (curr_inx == field_count));

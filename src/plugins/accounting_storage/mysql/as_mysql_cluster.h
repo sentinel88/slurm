@@ -73,11 +73,11 @@ extern int as_mysql_fini_ctld(mysql_conn_t *mysql_conn,
 			      slurmdb_cluster_rec_t *cluster_rec);
 
 extern int as_mysql_cluster_tres(mysql_conn_t *mysql_conn,
-				   char *cluster_nodes, List *tres,
-				   time_t event_time);
+				 char *cluster_nodes, List *tres_list_in,
+				 time_t event_time);
 
 extern int as_mysql_cluster_get_tres(mysql_conn_t *mysql_conn,
-				       slurmdb_cluster_rec_t *cluster_rec);
+				     slurmdb_cluster_rec_t *cluster_rec);
 
 
 #endif

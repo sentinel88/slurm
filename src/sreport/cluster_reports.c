@@ -667,14 +667,14 @@ extern int cluster_account_by_user(int argc, char *argv[])
 		uint64_t cluster_cpu_alloc_secs = 0,
 			cluster_energy_alloc_secs = 0;
 		if ((tres_rec = list_find_first(
-			     slurmdb_report_cluster->tres,
+			     slurmdb_report_cluster->tres_list,
 			     slurmdb_find_tres_in_list,
 			     &tres_id)))
 			cluster_cpu_alloc_secs = tres_rec->alloc_secs;
 
 		tres_id = TRES_ENERGY;
 		if ((tres_rec = list_find_first(
-			     slurmdb_report_cluster->tres,
+			     slurmdb_report_cluster->tres_list,
 			     slurmdb_find_tres_in_list,
 			     &tres_id)))
 			cluster_energy_alloc_secs = tres_rec->alloc_secs;
@@ -693,7 +693,7 @@ extern int cluster_account_by_user(int argc, char *argv[])
 
 			tres_id = TRES_CPU;
 			if ((tres_rec = list_find_first(
-				     slurmdb_report_assoc->tres,
+				     slurmdb_report_assoc->tres_list,
 				     slurmdb_find_tres_in_list,
 				     &tres_id)))
 				cpu_alloc_secs = tres_rec->alloc_secs;
@@ -705,7 +705,7 @@ extern int cluster_account_by_user(int argc, char *argv[])
 
 			tres_id = TRES_ENERGY;
 			if ((tres_rec = list_find_first(
-				     slurmdb_report_assoc->tres,
+				     slurmdb_report_assoc->tres_list,
 				     slurmdb_find_tres_in_list,
 				     &tres_id)))
 				energy_alloc_secs = tres_rec->alloc_secs;
@@ -894,14 +894,14 @@ extern int cluster_user_by_account(int argc, char *argv[])
 		uint64_t cluster_cpu_alloc_secs = 0,
 			cluster_energy_alloc_secs = 0;
 		if ((tres_rec = list_find_first(
-			     slurmdb_report_cluster->tres,
+			     slurmdb_report_cluster->tres_list,
 			     slurmdb_find_tres_in_list,
 			     &tres_id)))
 			cluster_cpu_alloc_secs = tres_rec->alloc_secs;
 
 		tres_id = TRES_ENERGY;
 		if ((tres_rec = list_find_first(
-			     slurmdb_report_cluster->tres,
+			     slurmdb_report_cluster->tres_list,
 			     slurmdb_find_tres_in_list,
 			     &tres_id)))
 			cluster_energy_alloc_secs = tres_rec->alloc_secs;
@@ -916,7 +916,7 @@ extern int cluster_user_by_account(int argc, char *argv[])
 
 			tres_id = TRES_CPU;
 			if ((tres_rec = list_find_first(
-				     slurmdb_report_user->tres,
+				     slurmdb_report_user->tres_list,
 				     slurmdb_find_tres_in_list,
 				     &tres_id)))
 				cpu_alloc_secs = tres_rec->alloc_secs;
@@ -928,7 +928,7 @@ extern int cluster_user_by_account(int argc, char *argv[])
 
 			tres_id = TRES_ENERGY;
 			if ((tres_rec = list_find_first(
-				     slurmdb_report_user->tres,
+				     slurmdb_report_user->tres_list,
 				     slurmdb_find_tres_in_list,
 				     &tres_id)))
 				energy_alloc_secs = tres_rec->alloc_secs;
@@ -1089,14 +1089,14 @@ extern int cluster_user_by_wckey(int argc, char *argv[])
 		uint64_t cluster_cpu_alloc_secs = 0,
 			cluster_energy_alloc_secs = 0;
 		if ((tres_rec = list_find_first(
-			     slurmdb_report_cluster->tres,
+			     slurmdb_report_cluster->tres_list,
 			     slurmdb_find_tres_in_list,
 			     &tres_id)))
 			cluster_cpu_alloc_secs = tres_rec->alloc_secs;
 
 		tres_id = TRES_ENERGY;
 		if ((tres_rec = list_find_first(
-			     slurmdb_report_cluster->tres,
+			     slurmdb_report_cluster->tres_list,
 			     slurmdb_find_tres_in_list,
 			     &tres_id)))
 			cluster_energy_alloc_secs = tres_rec->alloc_secs;
@@ -1111,7 +1111,7 @@ extern int cluster_user_by_wckey(int argc, char *argv[])
 
 			tres_id = TRES_CPU;
 			if ((tres_rec = list_find_first(
-				     slurmdb_report_user->tres,
+				     slurmdb_report_user->tres_list,
 				     slurmdb_find_tres_in_list,
 				     &tres_id)))
 				cpu_alloc_secs = tres_rec->alloc_secs;
@@ -1123,7 +1123,7 @@ extern int cluster_user_by_wckey(int argc, char *argv[])
 
 			tres_id = TRES_ENERGY;
 			if ((tres_rec = list_find_first(
-				     slurmdb_report_user->tres,
+				     slurmdb_report_user->tres_list,
 				     slurmdb_find_tres_in_list,
 				     &tres_id)))
 				energy_alloc_secs = tres_rec->alloc_secs;
@@ -1471,8 +1471,8 @@ extern int cluster_wckey_by_user(int argc, char *argv[])
 			tree_list = list_create(slurmdb_destroy_print_tree);
 
 		itr = list_iterator_create(slurmdb_report_cluster->assoc_list);
-		if (!slurmdb_report_cluster->tres ||
-		    !list_count(slurmdb_report_cluster->tres)) {
+		if (!slurmdb_report_cluster->tres_list ||
+		    !list_count(slurmdb_report_cluster->tres_list)) {
 			error("No tres given for cluster %s",
 			      slurmdb_report_cluster->name);
 			continue;
@@ -1480,7 +1480,7 @@ extern int cluster_wckey_by_user(int argc, char *argv[])
 
 		/* FIXME: Right now this only reports CPU tres */
 		if (!(cluster_tres_rec = list_find_first(
-			      slurmdb_report_cluster->tres,
+			      slurmdb_report_cluster->tres_list,
 			      slurmdb_find_tres_in_list,
 			      &cpu_tres))) {
 			info("error, no cpu(%d) tres!", cpu_tres);
@@ -1493,7 +1493,7 @@ extern int cluster_wckey_by_user(int argc, char *argv[])
 			cpu_tres = TRES_CPU;
 
 			if (!(cpu_tres_rec = list_find_first(
-				      slurmdb_report_assoc->tres,
+				      slurmdb_report_assoc->tres_list,
 				      slurmdb_find_tres_in_list,
 				      &cpu_tres))) {
 				info("error, no cpu(%d) tres!", cpu_tres);

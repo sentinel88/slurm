@@ -247,17 +247,17 @@ extern int sort_user_dec(void *v1, void *v2)
 	if (sort_flag == SLURMDB_REPORT_SORT_TIME) {
 		slurmdb_tres_rec_t *tres_a, *tres_b;
 
-		if (!user_a->tres || !user_b->tres)
+		if (!user_a->tres_list || !user_b->tres_list)
 			return 0;
 
-		if (!(tres_a = list_find_first(user_a->tres,
-						slurmdb_find_tres_in_list,
-						&tres_id)))
+		if (!(tres_a = list_find_first(user_a->tres_list,
+					       slurmdb_find_tres_in_list,
+					       &tres_id)))
 			return 1;
 
-		if (!(tres_b = list_find_first(user_b->tres,
-						slurmdb_find_tres_in_list,
-						&tres_id)))
+		if (!(tres_b = list_find_first(user_b->tres_list,
+					       slurmdb_find_tres_in_list,
+					       &tres_id)))
 			return -1;
 
 

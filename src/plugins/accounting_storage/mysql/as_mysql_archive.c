@@ -58,7 +58,7 @@ typedef struct {
 	char *reason;
 	char *reason_uid;
 	char *state;
-	List tres;
+	List tres_list;
 } local_event_t;
 
 typedef struct {
@@ -93,7 +93,7 @@ typedef struct {
 	char *suspended;
 	char *timelimit;
 	char *track_steps;
-	List tres;
+	List tres_list;
 	char *uid;
 	char *wckey;
 	char *wckey_id;
@@ -436,15 +436,15 @@ static void _pack_local_event(local_event_t *object,
 	packstr(object->reason_uid, buffer);
 	packstr(object->state, buffer);
 
-	if (object->tres)
-		count = list_count(object->tres);
+	if (object->tres_list)
+		count = list_count(object->tres_list);
 	else
 		count = NO_VAL;
 
 	pack32(count, buffer);
 
 	if (count && count != NO_VAL) {
-		itr = list_iterator_create(object->tres);
+		itr = list_iterator_create(object->tres_list);
 		while ((tres_rec = list_next(itr))) {
 			slurmdb_pack_tres_rec(
 				tres_rec, rpc_version, buffer);
@@ -476,21 +476,22 @@ static int _unpack_local_event(local_event_t *object,
 		safe_unpack32(&count, buffer);
 
 		if (count != NO_VAL) {
-			object->tres = list_create(slurmdb_destroy_tres_rec);
+			object->tres_list = list_create(
+				slurmdb_destroy_tres_rec);
 			for (i=0; i<count; i++) {
 				if (slurmdb_unpack_tres_rec(
 					    (void *)&tres_rec,
 					    rpc_version, buffer) == SLURM_ERROR)
 					goto unpack_error;
-				list_append(object->tres, tres_rec);
+				list_append(object->tres_list, tres_rec);
 			}
 		}
 	} else {
 		unpackstr_ptr(&object->cluster_nodes, &tmp32, buffer);
-		object->tres = list_create(slurmdb_destroy_tres_rec);
+		object->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_append(object->tres, tres_rec);
+		list_append(object->tres_list, tres_rec);
 		unpackstr_ptr(&tmp_char, &tmp32, buffer);
 		tres_rec->count = slurm_atoull(tmp_char);
 		xfree(tmp_char);
@@ -550,15 +551,15 @@ static void _pack_local_job(local_job_t *object,
 	packstr(object->wckey, buffer);
 	packstr(object->wckey_id, buffer);
 
-	if (object->tres)
-		count = list_count(object->tres);
+	if (object->tres_list)
+		count = list_count(object->tres_list);
 	else
 		count = NO_VAL;
 
 	pack32(count, buffer);
 
 	if (count && count != NO_VAL) {
-		itr = list_iterator_create(object->tres);
+		itr = list_iterator_create(object->tres_list);
 		while ((tres_rec = list_next(itr))) {
 			slurmdb_pack_tres_rec(
 				tres_rec, rpc_version, buffer);
@@ -614,13 +615,14 @@ static int _unpack_local_job(local_job_t *object,
 		safe_unpack32(&count, buffer);
 
 		if (count != NO_VAL) {
-			object->tres = list_create(slurmdb_destroy_tres_rec);
+			object->tres_list = list_create(
+				slurmdb_destroy_tres_rec);
 			for (i=0; i<count; i++) {
 				if (slurmdb_unpack_tres_rec(
 					    (void *)&tres_rec,
 					    rpc_version, buffer) == SLURM_ERROR)
 					goto unpack_error;
-				list_append(object->tres, tres_rec);
+				list_append(object->tres_list, tres_rec);
 			}
 		}
 
@@ -630,10 +632,10 @@ static int _unpack_local_job(local_job_t *object,
 	} else if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
 		unpackstr_ptr(&object->account, &tmp32, buffer);
 
-		object->tres = list_create(slurmdb_destroy_tres_rec);
+		object->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_append(object->tres, tres_rec);
+		list_append(object->tres_list, tres_rec);
 		unpackstr_ptr(&tmp_char, &tmp32, buffer);
 		tres_rec->count = slurm_atoull(tmp_char);
 		xfree(tmp_char);
@@ -674,10 +676,10 @@ static int _unpack_local_job(local_job_t *object,
 	} else if (rpc_version >= SLURMDBD_2_6_VERSION) {
 		unpackstr_ptr(&object->account, &tmp32, buffer);
 
-		object->tres = list_create(slurmdb_destroy_tres_rec);
+		object->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_append(object->tres, tres_rec);
+		list_append(object->tres_list, tres_rec);
 		unpackstr_ptr(&tmp_char, &tmp32, buffer);
 		tres_rec->count = slurm_atoull(tmp_char);
 		xfree(tmp_char);
@@ -715,10 +717,10 @@ static int _unpack_local_job(local_job_t *object,
 	} else {
 		unpackstr_ptr(&object->account, &tmp32, buffer);
 
-		object->tres = list_create(slurmdb_destroy_tres_rec);
+		object->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_append(object->tres, tres_rec);
+		list_append(object->tres_list, tres_rec);
 		unpackstr_ptr(&tmp_char, &tmp32, buffer);
 		tres_rec->count = slurm_atoull(tmp_char);
 		xfree(tmp_char);
@@ -1639,7 +1641,7 @@ static uint32_t _archive_events(mysql_conn_t *mysql_conn, char *cluster_name,
 		event.reason = row[EVENT_REQ_REASON];
 		event.reason_uid = row[EVENT_REQ_REASON_UID];
 		event.state = row[EVENT_REQ_STATE];
-		event.tres = list_create(slurmdb_destroy_tres_rec);
+		event.tres_list = list_create(slurmdb_destroy_tres_rec);
 
 		i = EVENT_REQ_COUNT-1;
 		list_iterator_reset(itr);
@@ -1653,11 +1655,11 @@ static uint32_t _archive_events(mysql_conn_t *mysql_conn, char *cluster_name,
 				continue;
 			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
 			loc_tres_rec->count = slurm_atoull(row[i]);
-			list_append(event.tres, loc_tres_rec);
+			list_append(event.tres_list, loc_tres_rec);
 		}
 
 		_pack_local_event(&event, SLURM_PROTOCOL_VERSION, buffer);
-		FREE_NULL_LIST(event.tres);
+		FREE_NULL_LIST(event.tres_list);
 	}
 	list_iterator_destroy(itr);
 	assoc_mgr_unlock(&locks);
@@ -1708,7 +1710,7 @@ _load_events(uint16_t rpc_version, Buf buffer, char *cluster_name,
 			break;
 		}
 
-		xassert(object.tres);
+		xassert(object.tres_list);
 
 		xstrfmtcat(insert, format,
 			   cluster_name, event_table, cols,
@@ -1725,7 +1727,7 @@ _load_events(uint16_t rpc_version, Buf buffer, char *cluster_name,
 		else
 			inx = "LAST_INSERT_ID()";
 
-		itr = list_iterator_create(object.tres);
+		itr = list_iterator_create(object.tres_list);
 		while ((tres_rec = list_next(itr))) {
 			if (tres_values) {
 				xstrfmtcat(tres_values,
@@ -1865,11 +1867,11 @@ static uint32_t _archive_jobs(mysql_conn_t *mysql_conn, char *cluster_name,
 				continue;
 			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
 			loc_tres_rec->count = slurm_atoull(row[i]);
-			list_append(job.tres, loc_tres_rec);
+			list_append(job.tres_list, loc_tres_rec);
 		}
 
 		_pack_local_job(&job, SLURM_PROTOCOL_VERSION, buffer);
-		FREE_NULL_LIST(job.tres);
+		FREE_NULL_LIST(job.tres_list);
 	}
 	list_iterator_destroy(itr);
 	assoc_mgr_unlock(&locks);

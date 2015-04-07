@@ -64,20 +64,20 @@ static int _sort_group_asc(void *v1, void *v2)
 }
 
 static void _transfer_job_tres_2_group(
-	slurmdb_job_rec_t *job, List *tres)
+	slurmdb_job_rec_t *job, List *tres_list)
 {
 	ListIterator itr;
 	slurmdb_tres_rec_t *tres_rec;
 
 	xassert(job);
-	xassert(tres);
+	xassert(tres_list);
 
 	/* get the amount of time this assoc used
 	   during the time we are looking at */
-	itr = list_iterator_create(job->tres);
+	itr = list_iterator_create(job->tres_list);
 	while ((tres_rec = list_next(itr)))
 		slurmdb_add_time_from_count_to_tres_list(
-			tres_rec, tres, job->elapsed);
+			tres_rec, tres_list, job->elapsed);
 	list_iterator_destroy(itr);
 }
 
@@ -232,9 +232,9 @@ static List _process_grouped_report(
 			if (!job->elapsed)
 				continue;
 
-			if (job->tres &&
+			if (job->tres_list &&
 			    (tres_rec = list_find_first(
-				    job->tres,
+				    job->tres_list,
 				    slurmdb_find_tres_in_list,
 				    &tres_id)) &&
 			    tres_rec->count)
@@ -490,9 +490,9 @@ no_objects:
 
 		local_itr = list_iterator_create(acct_group->groups);
 		while ((job_group = list_next(local_itr))) {
-			if (!job->tres ||
+			if (!job->tres_list ||
 			    !(tres_rec = list_find_first(
-				    job->tres,
+				    job->tres_list,
 				    slurmdb_find_tres_in_list,
 				    &tres_id)) ||
 			    (tres_rec->count < job_group->min_size) ||
@@ -504,11 +504,11 @@ no_objects:
 			cluster_group->count++;
 
 			_transfer_job_tres_2_group(
-				job, &job_group->tres);
+				job, &job_group->tres_list);
 			_transfer_job_tres_2_group(
-				job, &acct_group->tres);
+				job, &acct_group->tres_list);
 			_transfer_job_tres_2_group(
-				job, &cluster_group->tres);
+				job, &cluster_group->tres_list);
 		}
 		list_iterator_destroy(local_itr);
 	}

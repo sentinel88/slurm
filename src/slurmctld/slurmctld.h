@@ -550,7 +550,6 @@ struct job_record {
 	uint32_t array_task_id;		/* task_id of a job array */
 	job_array_struct_t *array_recs;	/* job array details,
 					 * only in meta-job record */
-	List     tres;                /* used for tres used by the job */
 	uint32_t assoc_id;              /* used for accounting plugins */
 	void    *assoc_ptr;		/* job's assoc record ptr, it is
 					 * void* because of interdependencies
@@ -708,6 +707,7 @@ struct job_record {
 					 * for accounting */
 	uint32_t total_nodes;		/* number of allocated nodes
 					 * for accounting */
+	List     tres_list;             /* used for tres used by the job */
 	uint32_t user_id;		/* user the job runs as */
 	uint16_t wait_all_nodes;	/* if set, wait for all nodes to boot
 					 * before starting the job */

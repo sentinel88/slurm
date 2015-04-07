@@ -1094,12 +1094,12 @@ static void _dump_job_state(struct job_record *dump_job_ptr, Buf buffer)
 		pack32(tmp_32, buffer);
 	}
 
-	if (dump_job_ptr->tres)
-		count = list_count(dump_job_ptr->tres);
+	if (dump_job_ptr->tres_list)
+		count = list_count(dump_job_ptr->tres_list);
 
 	pack32(count, buffer);
 	if (count != NO_VAL) {
-		itr = list_iterator_create(dump_job_ptr->tres);
+		itr = list_iterator_create(dump_job_ptr->tres_list);
 		while ((tres_rec = list_next(itr)))
 			slurmdb_pack_tres_rec(tres_rec,
 					       SLURM_PROTOCOL_VERSION,
@@ -1274,7 +1274,7 @@ static int _load_job_state(Buf buffer, uint16_t protocol_version)
 	slurmdb_qos_rec_t qos_rec;
 	bool job_finished = false;
 	char jbuf[JBUFSIZ];
-	List tres = NULL;
+	List tres_list = NULL;
 	uint32_t count = NO_VAL;
 	slurmdb_tres_rec_t *tres_rec;
 
@@ -1296,7 +1296,7 @@ static int _load_job_state(Buf buffer, uint16_t protocol_version)
 
 		safe_unpack32(&count, buffer);
 		if (count != NO_VAL) {
-			tres = list_create(slurmdb_destroy_tres_rec);
+			tres_list = list_create(slurmdb_destroy_tres_rec);
 			for (i=0; i<count; i++) {
 				if (slurmdb_unpack_tres_rec(
 					    (void **)&tres_rec,
@@ -1304,7 +1304,7 @@ static int _load_job_state(Buf buffer, uint16_t protocol_version)
 					    buffer)
 				    != SLURM_SUCCESS)
 					goto unpack_error;
-				list_append(tres, tres_rec);
+				list_append(tres_list, tres_rec);
 			}
 		}
 
@@ -1835,9 +1835,9 @@ static int _load_job_state(Buf buffer, uint16_t protocol_version)
 	if (job_id_sequence <= job_id)
 		job_id_sequence = job_id + 1;
 
-	FREE_NULL_LIST(job_ptr->tres);
-	job_ptr->tres = tres;
-	tres = NULL;
+	FREE_NULL_LIST(job_ptr->tres_list);
+	job_ptr->tres_list = tres_list;
+	tres_list = NULL;
 
 	xfree(job_ptr->account);
 	job_ptr->account = account;
@@ -2070,8 +2070,8 @@ static int _load_job_state(Buf buffer, uint16_t protocol_version)
 			job_ptr->qos_id = qos_rec.id;
 	}
 
-	if (!job_ptr->tres) {
-		job_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+	if (!job_ptr->tres_list) {
+		job_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
 		/* This needs to be set to something to keep memory
@@ -2098,7 +2098,7 @@ static int _load_job_state(Buf buffer, uint16_t protocol_version)
 			xfree(tres_rec);
 		}
 		if (tres_rec)
-			list_append(job_ptr->tres, tres_rec);
+			list_append(job_ptr->tres_list, tres_rec);
 	}
 
 	build_node_details(job_ptr, false);	/* set node_addr */
@@ -2108,7 +2108,6 @@ unpack_error:
 	error("Incomplete job record");
 	xfree(alloc_node);
 	xfree(account);
-	FREE_NULL_LIST(tres);
 	xfree(batch_host);
 	xfree(burst_buffer);
 	xfree(comment);
@@ -2130,7 +2129,7 @@ unpack_error:
 	xfree(spank_job_env);
 	xfree(state_desc);
 	xfree(task_id_str);
-	FREE_NULL_LIST(tres);
+	FREE_NULL_LIST(tres_list);
 	xfree(wckey);
 	select_g_select_jobinfo_free(select_jobinfo);
 	checkpoint_free_jobinfo(check_job);
@@ -3655,7 +3654,7 @@ extern struct job_record *job_array_split(struct job_record *job_ptr)
 		}
 	}
 	job_ptr_pend->state_desc = xstrdup(job_ptr->state_desc);
-	job_ptr_pend->tres = slurmdb_copy_tres_list(job_ptr->tres);
+	job_ptr_pend->tres_list = slurmdb_copy_tres_list(job_ptr->tres_list);
 	job_ptr_pend->wckey = xstrdup(job_ptr->wckey);
 
 	job_details = job_ptr->details;
@@ -7036,7 +7035,7 @@ extern int job_update_tres_cnt(struct job_record *job_ptr, int node_inx)
 		} else
 			job_ptr->total_cpus -= cpu_cnt;
 
-		itr = list_iterator_create(job_ptr->tres);
+		itr = list_iterator_create(job_ptr->tres_list);
 		while ((tres_rec = list_next(itr))) {
 			switch (tres_rec->id) {
 			case TRES_CPU:
@@ -7314,7 +7313,7 @@ static void _list_delete_job(void *job_entry)
 		xfree(job_ptr->spank_job_env[i]);
 	xfree(job_ptr->spank_job_env);
 	xfree(job_ptr->state_desc);
-	FREE_NULL_LIST(job_ptr->tres);
+	FREE_NULL_LIST(job_ptr->tres_list);
 	step_list_purge(job_ptr);
 	select_g_select_jobinfo_free(job_ptr->select_jobinfo);
 	xfree(job_ptr->wckey);
@@ -7630,12 +7629,12 @@ void pack_job(struct job_record *dump_job_ptr, uint16_t show_flags, Buf buffer,
 			pack32((uint32_t) 0, buffer);
 		}
 
-		if (dump_job_ptr->tres)
-			count = list_count(dump_job_ptr->tres);
+		if (dump_job_ptr->tres_list)
+			count = list_count(dump_job_ptr->tres_list);
 
 		pack32(count, buffer);
 		if (count != NO_VAL) {
-			itr = list_iterator_create(dump_job_ptr->tres);
+			itr = list_iterator_create(dump_job_ptr->tres_list);
 			while ((tres_rec = list_next(itr)))
 				slurmdb_pack_tres_rec(tres_rec,
 						       protocol_version,

@@ -123,7 +123,7 @@ extern int acct_storage_g_add_clusters(void *db_conn, uint32_t uid,
  * RET: SLURM_SUCCESS on success SLURM_ERROR else
  */
 extern int acct_storage_g_add_tres(void *db_conn, uint32_t uid,
-				     List tres_list);
+				   List tres_list_in);
 
 /*
  * add associations to accounting system
@@ -502,9 +502,9 @@ extern int clusteracct_storage_g_node_up(void *db_conn,
 					 time_t event_time);
 
 extern int clusteracct_storage_g_cluster_tres(void *db_conn,
-						char *cluster_nodes,
-						List tres,
-						time_t event_time);
+					      char *cluster_nodes,
+					      List tres_list_in,
+					      time_t event_time);
 
 extern int clusteracct_storage_g_register_ctld(void *db_conn, uint16_t port);
 extern int clusteracct_storage_g_register_disconn_ctld(

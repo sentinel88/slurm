@@ -729,9 +729,9 @@ static int _run_report(int type, int argc, char *argv[])
 		slurmdb_tres_rec_t *tres_rec;
 		uint64_t cluster_cpu_alloc_secs = 0;
 
-		if (cluster_group->tres &&
+		if (cluster_group->tres_list &&
 		    (tres_rec = list_find_first(
-			    cluster_group->tres,
+			    cluster_group->tres_list,
 			    slurmdb_find_tres_in_list,
 			    &tres_id)))
 			cluster_cpu_alloc_secs = tres_rec->alloc_secs;
@@ -742,9 +742,9 @@ static int _run_report(int type, int argc, char *argv[])
 		while ((acct_group = list_next(acct_itr))) {
 			uint64_t acct_cpu_alloc_secs = 0;
 
-			if (acct_group->tres &&
+			if (acct_group->tres_list &&
 			    (tres_rec = list_find_first(
-				    acct_group->tres,
+				    acct_group->tres_list,
 				    slurmdb_find_tres_in_list,
 				    &tres_id)))
 				acct_cpu_alloc_secs = tres_rec->alloc_secs;
@@ -774,9 +774,9 @@ static int _run_report(int type, int argc, char *argv[])
 			while ((job_group = list_next(local_itr))) {
 				uint64_t job_cpu_alloc_secs = 0;
 
-				if (job_group->tres &&
+				if (job_group->tres_list &&
 				    (tres_rec = list_find_first(
-					    job_group->tres,
+					    job_group->tres_list,
 					    slurmdb_find_tres_in_list,
 					    &tres_id)))
 					job_cpu_alloc_secs =

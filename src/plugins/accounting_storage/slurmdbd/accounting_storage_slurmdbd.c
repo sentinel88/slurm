@@ -139,7 +139,7 @@ static void _partial_free_dbd_job_start(void *object)
 		xfree(req->gres_alloc);
 		xfree(req->gres_req);
 		xfree(req->gres_used);
-		FREE_NULL_LIST(req->tres);
+		FREE_NULL_LIST(req->tres_list);
 	}
 }
 
@@ -165,15 +165,15 @@ static int _setup_job_start_msg(dbd_job_start_msg_t *req,
 
 	req->account       = xstrdup(job_ptr->account);
 
-	if (job_ptr->tres) {
+	if (job_ptr->tres_list) {
 		ListIterator itr;
 		slurmdb_tres_rec_t *tres_rec, *new_tres;
-		req->tres = list_create(slurmdb_destroy_tres_rec);
-		itr = list_iterator_create(job_ptr->tres);
+		req->tres_list = list_create(slurmdb_destroy_tres_rec);
+		itr = list_iterator_create(job_ptr->tres_list);
 		while ((tres_rec = list_next(itr))) {
 			if (!(new_tres = slurmdb_copy_tres_rec(tres_rec)))
 				continue;
-			list_append(req->tres, new_tres);
+			list_append(req->tres_list, new_tres);
 		}
 		list_iterator_destroy(itr);
 	}
@@ -643,18 +643,18 @@ extern int acct_storage_p_add_clusters(void *db_conn, uint32_t uid,
 }
 
 extern int acct_storage_p_add_tres(void *db_conn,
-				     uint32_t uid, List tres_list)
+				     uint32_t uid, List tres_list_in)
 {
 	slurmdbd_msg_t req;
 	dbd_list_msg_t get_msg;
 	int rc, resp_code;
 
 	/* This means we are updating views which don't apply in this plugin */
-	if (!tres_list)
+	if (!tres_list_in)
 		return SLURM_SUCCESS;
 
 	memset(&get_msg, 0, sizeof(dbd_list_msg_t));
-	get_msg.my_list = tres_list;
+	get_msg.my_list = tres_list_in;
 
 	req.msg_type = DBD_ADD_TRES;
 	req.data = &get_msg;
@@ -2203,13 +2203,14 @@ extern int clusteracct_storage_p_node_down(void *db_conn,
 		my_reason = node_ptr->reason;
 
 	memset(&req, 0, sizeof(dbd_node_state_msg_t));
-	req.tres     = node_ptr->tres;
 	req.hostlist   = node_ptr->name;
 	req.new_state  = DBD_NODE_STATE_DOWN;
 	req.event_time = event_time;
 	req.reason     = my_reason;
 	req.reason_uid = reason_uid;
 	req.state      = node_ptr->node_state;
+	req.tres_list  = node_ptr->tres_list;
+
 	msg.msg_type   = DBD_NODE_STATE;
 	msg.data       = &req;
 	info("sending a down message here");
@@ -2242,22 +2243,23 @@ extern int clusteracct_storage_p_node_up(void *db_conn,
 }
 
 extern int clusteracct_storage_p_cluster_tres(void *db_conn,
-						char *cluster_nodes,
-						List tres,
-						time_t event_time)
+					      char *cluster_nodes,
+					      List tres_list_in,
+					      time_t event_time)
 {
 	slurmdbd_msg_t msg;
 	dbd_cluster_tres_msg_t req;
 	int rc = SLURM_ERROR;
 
-	if (!tres)
+	if (!tres_list_in)
 		return rc;
 
-	debug2("Sending %d tres for cluster", list_count(tres));
+	debug2("Sending %d tres for cluster", list_count(tres_list_in));
 	memset(&req, 0, sizeof(dbd_cluster_tres_msg_t));
 	req.cluster_nodes = cluster_nodes;
-	req.tres       = tres;
 	req.event_time   = event_time;
+	req.tres_list    = tres_list_in;
+
 	msg.msg_type     = DBD_CLUSTER_TRES;
 	msg.data         = &req;
 
@@ -2765,8 +2767,8 @@ extern int acct_storage_p_flush_jobs_on_cluster(void *db_conn,
 
 	memset(&req, 0, sizeof(dbd_cluster_tres_msg_t));
 
-	req.tres       = NULL;
 	req.event_time   = event_time;
+	req.tres_list    = NULL;
 
 	msg.msg_type     = DBD_FLUSH_JOBS;
 	msg.data         = &req;

@@ -253,7 +253,7 @@ extern List slurmdb_report_user_top_usage(void *db_conn,
 					    xstrdup(assoc->acct));
 			slurmdb_transfer_acct_list_2_tres(
 				assoc->accounting_list,
-				&slurmdb_report_user->tres);
+				&slurmdb_report_user->tres_list);
 		}
 		list_iterator_destroy(itr2);
 	}

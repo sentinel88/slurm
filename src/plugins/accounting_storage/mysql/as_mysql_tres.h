@@ -45,7 +45,7 @@ extern int update_full_tres_query(void);
 extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name);
 
 extern int as_mysql_add_tres(mysql_conn_t *mysql_conn,
-			       uint32_t uid, List tres_list);
+			     uint32_t uid, List tres_list_in);
 
 extern List as_mysql_get_tres(mysql_conn_t *mysql_conn, uid_t uid,
 				slurmdb_tres_cond_t *tres_cond);

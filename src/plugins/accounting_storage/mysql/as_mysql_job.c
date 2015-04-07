@@ -635,13 +635,13 @@ no_rollup_change:
 		rc = mysql_db_query(mysql_conn, query);
 	}
 
-	if (job_ptr->db_index && job_ptr->tres) {
+	if (job_ptr->db_index && job_ptr->tres_list) {
 		ListIterator itr;
 		slurmdb_tres_rec_t *tres_rec;
 
 		xfree(query);
 
-		itr = list_iterator_create(job_ptr->tres);
+		itr = list_iterator_create(job_ptr->tres_list);
 		while ((tres_rec = list_next(itr))) {
 			if (!tres_rec->id)
 				continue;
@@ -1007,9 +1007,9 @@ extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 
 			if (step_ptr->cpu_count)
 				tasks = cpus = step_ptr->cpu_count;
-			else if (step_ptr->job_ptr->tres &&
+			else if (step_ptr->job_ptr->tres_list &&
 				 (tres_rec = list_find_first(
-					 step_ptr->job_ptr->tres,
+					 step_ptr->job_ptr->tres_list,
 					 slurmdb_find_tres_in_list,
 					 &cpu_tres)))
 				tasks = cpus = tres_rec->count;
@@ -1157,9 +1157,9 @@ extern int as_mysql_step_complete(mysql_conn_t *mysql_conn,
 
 			if (step_ptr->cpu_count)
 				tasks = step_ptr->cpu_count;
-			else if (step_ptr->job_ptr->tres &&
+			else if (step_ptr->job_ptr->tres_list &&
 				 (tres_rec = list_find_first(
-					 step_ptr->job_ptr->tres,
+					 step_ptr->job_ptr->tres_list,
 					 slurmdb_find_tres_in_list,
 					 &cpu_tres)))
 				tasks = tres_rec->count;

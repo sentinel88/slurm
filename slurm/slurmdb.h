@@ -549,7 +549,7 @@ typedef struct {
 	slurmdb_assoc_rec_t *root_assoc; /* root assoc for
 						* cluster */
 	uint16_t rpc_version; /* version of rpc this cluter is running */
-	List tres; /* list of slurmdb_tres_rec_t */
+	List tres_list; /* list of slurmdb_tres_rec_t */
 } slurmdb_cluster_rec_t;
 
 typedef struct {
@@ -601,7 +601,7 @@ typedef struct {
 	uint32_t reason_uid;    /* uid of that who set the reason */
 	uint16_t state;         /* State of node during time
 				   period (only set in a node event) */
-	List tres;            /* TRES touched by this event */
+	List tres_list;            /* TRES touched by this event */
 } slurmdb_event_rec_t;
 
 /* slurmdb_job_cond_t is defined above alphabetical */
@@ -662,7 +662,7 @@ typedef struct {
 	uint32_t tot_cpu_sec;
 	uint32_t tot_cpu_usec;
 	uint16_t track_steps;
-	List tres;
+	List tres_list;
 	uint32_t uid;
 	char 	*used_gres;
 	char    *user;
@@ -941,7 +941,7 @@ typedef struct {
 	uint16_t is_def;        /* Is this the users default wckey */
 
 	char *name;		/* wckey name */
-	List tres; 	        /* list of slurmdb_tres_rec_t *'s */
+	List tres_list; 	        /* list of slurmdb_tres_rec_t *'s */
 	uint32_t uid;		/* user ID */
 
 	char *user;		/* user associated */
@@ -967,7 +967,7 @@ typedef struct {
 	char *acct;
 	char *cluster;
 	char *parent_acct;
-	List tres; /* list of slurmdb_tres_rec_t *'s */
+	List tres_list; /* list of slurmdb_tres_rec_t *'s */
 	char *user;
 } slurmdb_report_assoc_rec_t;
 
@@ -976,7 +976,7 @@ typedef struct {
 	List acct_list; /* list of char *'s */
 	List assoc_list; /* list of slurmdb_report_assoc_rec_t's */
 	char *name;
-	List tres; /* list of slurmdb_tres_rec_t *'s */
+	List tres_list; /* list of slurmdb_tres_rec_t *'s */
 	uid_t uid;
 } slurmdb_report_user_rec_t;
 
@@ -984,7 +984,7 @@ typedef struct {
 	List accounting_list; /* list of slurmdb_accounting_rec_t *'s */
 	List assoc_list; /* list of slurmdb_report_assoc_rec_t *'s */
 	char *name;
-	List tres; /* list of slurmdb_tres_rec_t *'s */
+	List tres_list; /* list of slurmdb_tres_rec_t *'s */
 	List user_list; /* list of slurmdb_report_user_rec_t *'s */
 } slurmdb_report_cluster_rec_t;
 
@@ -996,7 +996,7 @@ typedef struct {
 	uint32_t min_size; /* smallest size of job in cpus here 0 if first */
 	uint32_t max_size; /* largest size of job in cpus here INFINITE if
 			    * last */
-	List tres; /* list of slurmdb_tres_rec_t *'s */
+	List tres_list; /* list of slurmdb_tres_rec_t *'s */
 } slurmdb_report_job_grouping_t;
 
 typedef struct {
@@ -1005,14 +1005,14 @@ typedef struct {
 	List groups; /* containing slurmdb_report_job_grouping_t's*/
 	uint32_t lft;
 	uint32_t rgt;
-	List tres; /* list of slurmdb_tres_rec_t *'s */
+	List tres_list; /* list of slurmdb_tres_rec_t *'s */
 } slurmdb_report_acct_grouping_t;
 
 typedef struct {
 	List acct_list; /* containing slurmdb_report_acct_grouping_t's */
 	char *cluster; /*cluster name */
 	uint32_t count; /* total count of jobs taken up by this cluster */
-	List tres; /* list of slurmdb_tres_rec_t *'s */
+	List tres_list; /* list of slurmdb_tres_rec_t *'s */
 } slurmdb_report_cluster_grouping_t;
 
 /* global variable for cross cluster communication */

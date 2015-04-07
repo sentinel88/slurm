@@ -683,9 +683,9 @@ empty:
 					continue;
 
 				/* FIXME: This only handles CPUS now */
-				if (job->tres &&
+				if (job->tres_list &&
 				    (tres_rec = list_find_first(
-					    job->tres,
+					    job->tres_list,
 					    slurmdb_find_tres_in_list,
 					    &tres_id)))
 					resv->alloc_secs += elapsed *

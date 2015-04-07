@@ -2540,7 +2540,7 @@ extern void slurmdbd_free_cluster_tres_msg(dbd_cluster_tres_msg_t *msg)
 {
 	if (msg) {
 		xfree(msg->cluster_nodes);
-		FREE_NULL_LIST(msg->tres);
+		FREE_NULL_LIST(msg->tres_list);
 		xfree(msg);
 	}
 }
@@ -2667,7 +2667,7 @@ extern void slurmdbd_free_job_start_msg(void *in)
 		xfree(msg->nodes);
 		xfree(msg->node_inx);
 		xfree(msg->partition);
-		FREE_NULL_LIST(msg->tres);
+		FREE_NULL_LIST(msg->tres_list);
 		xfree(msg->wckey);
 		xfree(msg);
 	}
@@ -2747,7 +2747,7 @@ extern void slurmdbd_free_node_state_msg(dbd_node_state_msg_t *msg)
 	if (msg) {
 		xfree(msg->hostlist);
 		xfree(msg->reason);
-		FREE_NULL_LIST(msg->tres);
+		FREE_NULL_LIST(msg->tres_list);
 		xfree(msg);
 	}
 }
@@ -2884,12 +2884,12 @@ slurmdbd_pack_cluster_tres_msg(dbd_cluster_tres_msg_t *msg,
 	uint32_t tres_id = TRES_CPU;
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
-		if (msg->tres)
-			count = list_count(msg->tres);
+		if (msg->tres_list)
+			count = list_count(msg->tres_list);
 
 		pack32(count, buffer);
 		if (count != NO_VAL) {
-			itr = list_iterator_create(msg->tres);
+			itr = list_iterator_create(msg->tres_list);
 			while ((tres_rec = list_next(itr)))
 				slurmdb_pack_tres_rec(tres_rec, rpc_version,
 						       buffer);
@@ -2899,8 +2899,8 @@ slurmdbd_pack_cluster_tres_msg(dbd_cluster_tres_msg_t *msg,
 		pack_time(msg->event_time, buffer);
 	} else if (rpc_version >= SLURMDBD_MIN_VERSION) {
 		packstr(msg->cluster_nodes, buffer);
-		if (msg->tres && (tres_rec = list_find_first(
-					  msg->tres,
+		if (msg->tres_list && (tres_rec = list_find_first(
+					  msg->tres_list,
 					  slurmdb_find_tres_in_list,
 					  &tres_id)))
 			count = (uint32_t)tres_rec->count;
@@ -2926,7 +2926,7 @@ slurmdbd_unpack_cluster_tres_msg(dbd_cluster_tres_msg_t **msg,
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		safe_unpack32(&count, buffer);
 		if (count != NO_VAL) {
-			msg_ptr->tres =
+			msg_ptr->tres_list =
 				list_create(slurmdb_destroy_tres_rec);
 			for (i=0; i<count; i++) {
 				if (slurmdb_unpack_tres_rec(
@@ -2934,7 +2934,7 @@ slurmdbd_unpack_cluster_tres_msg(dbd_cluster_tres_msg_t **msg,
 					    buffer)
 				    != SLURM_SUCCESS)
 					goto unpack_error;
-				list_append(msg_ptr->tres, tres_rec);
+				list_append(msg_ptr->tres_list, tres_rec);
 			}
 		}
 		safe_unpackstr_xmalloc(&msg_ptr->cluster_nodes,
@@ -2943,10 +2943,10 @@ slurmdbd_unpack_cluster_tres_msg(dbd_cluster_tres_msg_t **msg,
 	} else if (rpc_version >= SLURMDBD_MIN_VERSION) {
 		safe_unpackstr_xmalloc(&msg_ptr->cluster_nodes,
 				       &uint32_tmp, buffer);
-		msg_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+		msg_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_append(msg_ptr->tres, tres_rec);
+		list_append(msg_ptr->tres_list, tres_rec);
 		safe_unpack32((uint32_t *)&tres_rec->count, buffer);
 		safe_unpack_time(&msg_ptr->event_time, buffer);
 	}
@@ -3317,12 +3317,12 @@ slurmdbd_pack_job_start_msg(void *in,
 		packstr(msg->array_task_str, buffer);
 		pack32(msg->array_task_pending, buffer);
 
-		if (msg->tres)
-			count = list_count(msg->tres);
+		if (msg->tres_list)
+			count = list_count(msg->tres_list);
 
 		pack32(count, buffer);
 		if (count != NO_VAL) {
-			itr = list_iterator_create(msg->tres);
+			itr = list_iterator_create(msg->tres_list);
 			while ((tres_rec = list_next(itr)))
 				slurmdb_pack_tres_rec(tres_rec, rpc_version,
 						       buffer);
@@ -3355,8 +3355,8 @@ slurmdbd_pack_job_start_msg(void *in,
 		packstr(msg->wckey, buffer);
 	} else if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
 		packstr(msg->account, buffer);
-		if (msg->tres && (tres_rec = list_find_first(
-					  msg->tres,
+		if (msg->tres_list && (tres_rec = list_find_first(
+					  msg->tres_list,
 					  slurmdb_find_tres_in_list,
 					  &tres_id)))
 			count = (uint32_t)tres_rec->count;
@@ -3396,8 +3396,8 @@ slurmdbd_pack_job_start_msg(void *in,
 	} else if (rpc_version >= SLURMDBD_MIN_VERSION) {
 		packstr(msg->account, buffer);
 
-		if (msg->tres && (tres_rec = list_find_first(
-					  msg->tres,
+		if (msg->tres_list && (tres_rec = list_find_first(
+					  msg->tres_list,
 					  slurmdb_find_tres_in_list,
 					  &tres_id)))
 			count = tres_rec->count;
@@ -3458,7 +3458,7 @@ slurmdbd_unpack_job_start_msg(void **msg,
 
 		safe_unpack32(&count, buffer);
 		if (count != NO_VAL) {
-			msg_ptr->tres =
+			msg_ptr->tres_list =
 				list_create(slurmdb_destroy_tres_rec);
 			for (i=0; i<count; i++) {
 				if (slurmdb_unpack_tres_rec(
@@ -3466,7 +3466,7 @@ slurmdbd_unpack_job_start_msg(void **msg,
 					    buffer)
 				    != SLURM_SUCCESS)
 					goto unpack_error;
-				list_append(msg_ptr->tres, tres_rec);
+				list_append(msg_ptr->tres_list, tres_rec);
 			}
 		}
 
@@ -3500,10 +3500,10 @@ slurmdbd_unpack_job_start_msg(void **msg,
 		safe_unpackstr_xmalloc(&msg_ptr->wckey, &uint32_tmp, buffer);
 	} else if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
 		safe_unpackstr_xmalloc(&msg_ptr->account, &uint32_tmp, buffer);
-		msg_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+		msg_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_push(msg_ptr->tres, tres_rec);
+		list_push(msg_ptr->tres_list, tres_rec);
 		safe_unpack32((uint32_t *)&tres_rec->count, buffer);
 		safe_unpack32(&msg_ptr->alloc_nodes, buffer);
 		safe_unpack32(&msg_ptr->array_job_id, buffer);
@@ -3538,7 +3538,7 @@ slurmdbd_unpack_job_start_msg(void **msg,
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_MEM;
 		tres_rec->count = (uint64_t)msg_ptr->req_mem;
-		list_append(msg_ptr->tres, tres_rec);
+		list_append(msg_ptr->tres_list, tres_rec);
 
 		safe_unpack32(&msg_ptr->resv_id, buffer);
 		safe_unpack_time(&msg_ptr->start_time, buffer);
@@ -3548,10 +3548,10 @@ slurmdbd_unpack_job_start_msg(void **msg,
 		safe_unpackstr_xmalloc(&msg_ptr->wckey, &uint32_tmp, buffer);
 	} else if (rpc_version >= SLURMDBD_MIN_VERSION) {
 		safe_unpackstr_xmalloc(&msg_ptr->account, &uint32_tmp, buffer);
-		msg_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+		msg_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_push(msg_ptr->tres, tres_rec);
+		list_push(msg_ptr->tres_list, tres_rec);
 		safe_unpack32((uint32_t *)&tres_rec->count, buffer);
 		safe_unpack32(&msg_ptr->alloc_nodes, buffer);
 		safe_unpack32(&msg_ptr->assoc_id, buffer);
@@ -3580,7 +3580,7 @@ slurmdbd_unpack_job_start_msg(void **msg,
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_MEM;
 		tres_rec->count = (uint64_t)msg_ptr->req_mem;
-		list_append(msg_ptr->tres, tres_rec);
+		list_append(msg_ptr->tres_list, tres_rec);
 
 		safe_unpack32(&msg_ptr->resv_id, buffer);
 		safe_unpack_time(&msg_ptr->start_time, buffer);
@@ -3996,12 +3996,12 @@ slurmdbd_pack_node_state_msg(dbd_node_state_msg_t *msg,
 	uint32_t tres_id = TRES_CPU;
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
-		if (msg->tres)
-			count = list_count(msg->tres);
+		if (msg->tres_list)
+			count = list_count(msg->tres_list);
 
 		pack32(count, buffer);
 		if (count != NO_VAL) {
-			itr = list_iterator_create(msg->tres);
+			itr = list_iterator_create(msg->tres_list);
 			while ((tres_rec = list_next(itr)))
 				slurmdb_pack_tres_rec(tres_rec, rpc_version,
 						      buffer);
@@ -4015,8 +4015,8 @@ slurmdbd_pack_node_state_msg(dbd_node_state_msg_t *msg,
 		pack_time(msg->event_time, buffer);
 		pack32(msg->state, buffer);
 	} else if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
-		if (msg->tres && (tres_rec = list_find_first(
-					  msg->tres,
+		if (msg->tres_list && (tres_rec = list_find_first(
+					  msg->tres_list,
 					  slurmdb_find_tres_in_list,
 					  &tres_id)))
 			count = (uint32_t)tres_rec->count;
@@ -4030,8 +4030,8 @@ slurmdbd_pack_node_state_msg(dbd_node_state_msg_t *msg,
 		pack_time(msg->event_time, buffer);
 		pack32(msg->state, buffer);
 	} else if (rpc_version >= SLURMDBD_MIN_VERSION) {
-		if (msg->tres && (tres_rec = list_find_first(
-					  msg->tres,
+		if (msg->tres_list && (tres_rec = list_find_first(
+					  msg->tres_list,
 					  slurmdb_find_tres_in_list,
 					  &tres_id)))
 			count = (uint32_t)tres_rec->count;
@@ -4065,7 +4065,7 @@ slurmdbd_unpack_node_state_msg(dbd_node_state_msg_t **msg,
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		safe_unpack32(&count, buffer);
 		if (count != NO_VAL) {
-			msg_ptr->tres =
+			msg_ptr->tres_list =
 				list_create(slurmdb_destroy_tres_rec);
 			for (i=0; i<count; i++) {
 				if (slurmdb_unpack_tres_rec(
@@ -4073,7 +4073,7 @@ slurmdbd_unpack_node_state_msg(dbd_node_state_msg_t **msg,
 					    buffer)
 				    != SLURM_SUCCESS)
 					goto unpack_error;
-				list_append(msg_ptr->tres, tres_rec);
+				list_append(msg_ptr->tres_list, tres_rec);
 			}
 		}
 		safe_unpackstr_xmalloc(&msg_ptr->hostlist, &uint32_tmp, buffer);
@@ -4083,10 +4083,10 @@ slurmdbd_unpack_node_state_msg(dbd_node_state_msg_t **msg,
 		safe_unpack_time(&msg_ptr->event_time, buffer);
 		safe_unpack32(&msg_ptr->state, buffer);
 	} else if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
-		msg_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+		msg_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_append(msg_ptr->tres, tres_rec);
+		list_append(msg_ptr->tres_list, tres_rec);
 		safe_unpack32((uint32_t *)&tres_rec->count, buffer);
 		safe_unpackstr_xmalloc(&msg_ptr->hostlist, &uint32_tmp, buffer);
 		safe_unpackstr_xmalloc(&msg_ptr->reason,   &uint32_tmp, buffer);
@@ -4095,10 +4095,10 @@ slurmdbd_unpack_node_state_msg(dbd_node_state_msg_t **msg,
 		safe_unpack_time(&msg_ptr->event_time, buffer);
 		safe_unpack32(&msg_ptr->state, buffer);
 	} else if (rpc_version >= SLURMDBD_MIN_VERSION) {
-		msg_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+		msg_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
-		list_append(msg_ptr->tres, tres_rec);
+		list_append(msg_ptr->tres_list, tres_rec);
 		safe_unpack32((uint32_t *)&tres_rec->count, buffer);
 		safe_unpackstr_xmalloc(&msg_ptr->hostlist, &uint32_tmp, buffer);
 		safe_unpackstr_xmalloc(&msg_ptr->reason,   &uint32_tmp, buffer);

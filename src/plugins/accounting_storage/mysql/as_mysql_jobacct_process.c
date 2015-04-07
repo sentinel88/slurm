@@ -737,7 +737,7 @@ static int _cluster_get_jobs(mysql_conn_t *mysql_conn,
 				xstrcat(extra, ")");
 		}
 
-		job->tres = list_create(slurmdb_destroy_tres_rec);
+		job->tres_list = list_create(slurmdb_destroy_tres_rec);
 		i = JOB_REQ_COUNT-1;
 		list_iterator_reset(itr2);
 		while ((tres_rec = list_next(itr2))) {
@@ -749,7 +749,7 @@ static int _cluster_get_jobs(mysql_conn_t *mysql_conn,
 				continue;
 			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
 			loc_tres_rec->count = slurm_atoull(row[i]);
-			list_append(job->tres, loc_tres_rec);
+			list_append(job->tres_list, loc_tres_rec);
 		}
 
 		query =	xstrdup_printf("select %s from \"%s_%s\" as t1 "

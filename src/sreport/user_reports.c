@@ -317,7 +317,7 @@ extern int user_top(int argc, char *argv[])
 		slurmdb_tres_rec_t *cluster_cpu_tres_rec;
 
 		if (!(cluster_cpu_tres_rec = list_find_first(
-			      slurmdb_report_cluster->tres,
+			      slurmdb_report_cluster->tres_list,
 			      slurmdb_find_tres_in_list,
 			      &tres_id))) {
 			info("error, no cpu(%d) tres!", tres_id);
@@ -335,14 +335,14 @@ extern int user_top(int argc, char *argv[])
 
 			tres_id = TRES_CPU;
 			if ((tres_rec = list_find_first(
-				     slurmdb_report_user->tres,
+				     slurmdb_report_user->tres_list,
 				     slurmdb_find_tres_in_list,
 				     &tres_id)))
 				cpu_alloc_secs = tres_rec->alloc_secs;
 
 			tres_id = TRES_ENERGY;
 			if ((tres_rec = list_find_first(
-				     slurmdb_report_user->tres,
+				     slurmdb_report_user->tres_list,
 				     slurmdb_find_tres_in_list,
 				     &tres_id)))
 				energy_alloc_secs = tres_rec->alloc_secs;

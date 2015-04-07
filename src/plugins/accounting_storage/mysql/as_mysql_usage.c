@@ -553,7 +553,7 @@ static int _get_cluster_usage(mysql_conn_t *mysql_conn, uid_t uid,
 		return SLURM_ERROR;
 	}
 
-	if (!cluster_rec->tres &&
+	if (!cluster_rec->tres_list &&
 	    ((rc = as_mysql_cluster_get_tres(mysql_conn, cluster_rec))
 	     != SLURM_SUCCESS))
 		return rc;

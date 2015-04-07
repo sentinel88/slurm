@@ -136,7 +136,7 @@ extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 }
 
 extern int as_mysql_add_tres(mysql_conn_t *mysql_conn,
-			       uint32_t uid, List tres_list)
+			     uint32_t uid, List tres_list_in)
 {
 	ListIterator itr = NULL;
 	int rc = SLURM_SUCCESS;
@@ -157,11 +157,11 @@ extern int as_mysql_add_tres(mysql_conn_t *mysql_conn,
 		return ESLURM_ACCESS_DENIED;
 
 	/* means just update the views */
-	if (!tres_list)
+	if (!tres_list_in)
 		goto update_views;
 
 	user_name = uid_to_string((uid_t) uid);
-	itr = list_iterator_create(tres_list);
+	itr = list_iterator_create(tres_list_in);
 	while ((object = list_next(itr))) {
 		if (!object->type || !object->type[0]) {
 			error("We need a tres type.");
@@ -281,7 +281,7 @@ extern List as_mysql_get_tres(mysql_conn_t *mysql_conn, uid_t uid,
 	char *query = NULL;
 	char *extra = NULL;
 	char *tmp = NULL;
-	List tres_list = NULL;
+	List my_tres_list = NULL;
 	ListIterator itr = NULL;
 	char *object = NULL;
 	int set = 0;
@@ -387,12 +387,12 @@ empty:
 	}
 	xfree(query);
 
-	tres_list = list_create(slurmdb_destroy_tres_rec);
+	my_tres_list = list_create(slurmdb_destroy_tres_rec);
 
 	while ((row = mysql_fetch_row(result))) {
 		slurmdb_tres_rec_t *tres =
 			xmalloc(sizeof(slurmdb_tres_rec_t));
-		list_append(tres_list, tres);
+		list_append(my_tres_list, tres);
 
 		tres->id =  slurm_atoul(row[SLURMDB_REQ_ID]);
 		if (row[SLURMDB_REQ_TYPE] && row[SLURMDB_REQ_TYPE][0])
@@ -402,5 +402,5 @@ empty:
 	}
 	mysql_free_result(result);
 
-	return tres_list;
+	return my_tres_list;
 }

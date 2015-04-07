@@ -224,18 +224,18 @@ void print_fields(type_t type, void *object)
 			job->track_steps = 1;
 		job_comp = NULL;
 
-		if (job->tres &&
+		if (job->tres_list &&
 		    (cpu_tres_rec = list_find_first(
-			    job->tres,
+			    job->tres_list,
 			    slurmdb_find_tres_in_list,
 			    &cpu_tres)))
 			cpu_tres_rec_count = (int)cpu_tres_rec->count;
 		break;
 	case JOBSTEP:
 		job = step->job_ptr;
-		if (job->tres &&
+		if (job->tres_list &&
 		    (cpu_tres_rec = list_find_first(
-			    job->tres,
+			    job->tres_list,
 			    slurmdb_find_tres_in_list,
 			    &cpu_tres)))
 			cpu_tres_rec_count = (int)cpu_tres_rec->count;
@@ -317,11 +317,11 @@ void print_fields(type_t type, void *object)
 			switch(type) {
 			case JOB:
 				tmp_char = slurmdb_make_tres_string(
-					job->tres);
+					job->tres_list);
 				break;
 			case JOBSTEP:
 				tmp_char = slurmdb_make_tres_string(
-					step->job_ptr->tres);
+					step->job_ptr->tres_list);
 				break;
 			case JOBCOMP:
 			default:

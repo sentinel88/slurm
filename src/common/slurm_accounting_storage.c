@@ -82,8 +82,8 @@ typedef struct slurm_acct_storage_ops {
 				    List acct_list);
 	int  (*add_clusters)       (void *db_conn, uint32_t uid,
 				    List cluster_list);
-	int  (*add_tres)         (void *db_conn, uint32_t uid,
-				    List tres_list);
+	int  (*add_tres)           (void *db_conn, uint32_t uid,
+				    List tres_list_in);
 	int  (*add_assocs)         (void *db_conn, uint32_t uid,
 				    List assoc_list);
 	int  (*add_qos)            (void *db_conn, uint32_t uid,
@@ -146,7 +146,7 @@ typedef struct slurm_acct_storage_ops {
 	List (*get_clusters)       (void *db_conn, uint32_t uid,
 				    slurmdb_cluster_cond_t *cluster_cond);
 	List (*get_config)         (void *db_conn, char *config_name);
-	List (*get_tres)         (void *db_conn, uint32_t uid,
+	List (*get_tres)           (void *db_conn, uint32_t uid,
 				    slurmdb_tres_cond_t *tres_cond);
 	List (*get_assocs)         (void *db_conn, uint32_t uid,
 				    slurmdb_assoc_cond_t *assoc_cond);
@@ -178,8 +178,8 @@ typedef struct slurm_acct_storage_ops {
 	int  (*node_up)            (void *db_conn,
 				    struct node_record *node_ptr,
 				    time_t event_time);
-	int  (*cluster_tres)     (void *db_conn, char *cluster_nodes,
-				    List tres, time_t event_time);
+	int  (*cluster_tres)       (void *db_conn, char *cluster_nodes,
+				    List tres_list_in, time_t event_time);
 	int  (*register_ctld)      (void *db_conn, uint16_t port);
 	int  (*register_disconn_ctld)(void *db_conn, char *control_host);
 	int  (*fini_ctld)          (void *db_conn,
@@ -391,11 +391,11 @@ extern int acct_storage_g_add_clusters(void *db_conn, uint32_t uid,
 }
 
 extern int acct_storage_g_add_tres(void *db_conn, uint32_t uid,
-				     List tres_list)
+				   List tres_list_in)
 {
 	if (slurm_acct_storage_init(NULL) < 0)
 		return SLURM_ERROR;
-	return (*(ops.add_tres))(db_conn, uid, tres_list);
+	return (*(ops.add_tres))(db_conn, uid, tres_list_in);
 }
 
 extern int acct_storage_g_add_assocs(void *db_conn, uint32_t uid,
@@ -798,14 +798,14 @@ extern int clusteracct_storage_g_node_up(void *db_conn,
 
 
 extern int clusteracct_storage_g_cluster_tres(void *db_conn,
-						char *cluster_nodes,
-						List tres,
-						time_t event_time)
+					      char *cluster_nodes,
+					      List tres_list_in,
+					      time_t event_time)
 {
 	if (slurm_acct_storage_init(NULL) < 0)
 		return SLURM_ERROR;
 	return (*(ops.cluster_tres))(db_conn, cluster_nodes,
-				       tres, event_time);
+				     tres_list_in, event_time);
 }
 
 

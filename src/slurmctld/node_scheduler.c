@@ -1819,13 +1819,13 @@ extern int select_nodes(struct job_record *job_ptr, bool test_only,
 	job_ptr->node_bitmap = select_bitmap;
 
 
-	if (!job_ptr->tres)
-		job_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+	if (!job_ptr->tres_list)
+		job_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 
 	tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 	tres_rec->id = TRES_CPU;
 	tres_rec->count = (uint64_t)job_ptr->total_cpus;
-	list_append(job_ptr->tres, tres_rec);
+	list_append(job_ptr->tres_list, tres_rec);
 
 	tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 	tres_rec->id = TRES_MEM;
@@ -1840,7 +1840,7 @@ extern int select_nodes(struct job_record *job_ptr, bool test_only,
 					       * happen, but here just incase.
 					       */
 
-	list_append(job_ptr->tres, tres_rec);
+	list_append(job_ptr->tres_list, tres_rec);
 
 	/* we need to have these times set to know when the endtime
 	 * is for the job when we place it

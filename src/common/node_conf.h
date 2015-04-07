@@ -96,7 +96,6 @@ struct features_record {
 extern List feature_list;	/* list of features_record entries */
 
 struct node_record {
-	List tres;                    /* tres this node has */
 	uint32_t magic;			/* magic cookie for data integrity */
 	char *name;			/* name of the node. NULL==defunct */
 	char *node_hostname;		/* hostname of the node */
@@ -171,6 +170,7 @@ struct node_record {
 	uint16_t protocol_version;	/* Slurm version number */
 	char *version;			/* Slurm version */
 	bitstr_t *node_spec_bitmap;	/* node cpu specialization bitmap */
+	List tres_list;                 /* tres this node has */
 };
 extern struct node_record *node_record_table_ptr;  /* ptr to node records */
 extern int node_record_count;		/* count in node_record_table_ptr */

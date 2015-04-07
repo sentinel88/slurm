@@ -320,12 +320,12 @@ no_cond:
 	slurmdb_job->jobname = xstrdup(filetxt_job->jobname);
 	slurmdb_job->partition = xstrdup(filetxt_job->header.partition);
 	slurmdb_job->req_cpus = filetxt_job->ncpus;
-	slurmdb_job->tres = list_create(slurmdb_destroy_tres_rec);
+	slurmdb_job->tres_list = list_create(slurmdb_destroy_tres_rec);
 	tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 	tres_rec->id = TRES_CPU;
 	tres_rec->name = xstrdup("cpu");
 	tres_rec->count = filetxt_job->ncpus;
-	list_push(slurmdb_job->tres, tres_rec);
+	list_push(slurmdb_job->tres_list, tres_rec);
 
 	if (filetxt_job->nodes) {
 		hostlist_t hl = hostlist_create(filetxt_job->nodes);

@@ -1015,13 +1015,13 @@ static int _cluster_tres(slurmdbd_conn_t *slurmdbd_conn,
 	}
 	debug2("DBD_CLUSTER_TRES: called for %s(%u)",
 	       slurmdbd_conn->cluster_name,
-	       cluster_tres_msg->tres ?
-	       list_count(cluster_tres_msg->tres) : 0);
+	       cluster_tres_msg->tres_list ?
+	       list_count(cluster_tres_msg->tres_list) : 0);
 
 	rc = clusteracct_storage_g_cluster_tres(
 		slurmdbd_conn->db_conn,
 		cluster_tres_msg->cluster_nodes,
-		cluster_tres_msg->tres,
+		cluster_tres_msg->tres_list,
 		cluster_tres_msg->event_time);
 	if (rc == ESLURM_ACCESS_DENIED) {
 		comment = "This cluster hasn't been added to accounting yet";
@@ -1029,8 +1029,8 @@ static int _cluster_tres(slurmdbd_conn_t *slurmdbd_conn,
 	}
 end_it:
 	if (rc == SLURM_SUCCESS) {
-		slurmdbd_conn->tres = cluster_tres_msg->tres;
-		cluster_tres_msg->tres = NULL;
+		slurmdbd_conn->tres_list = cluster_tres_msg->tres_list;
+		cluster_tres_msg->tres_list = NULL;
 	}
 
 	if (!slurmdbd_conn->ctld_port) {
@@ -2666,7 +2666,7 @@ static int _node_state(slurmdbd_conn_t *slurmdbd_conn,
 
 	memset(&node_ptr, 0, sizeof(struct node_record));
 	node_ptr.name = node_state_msg->hostlist;
-	node_ptr.tres = node_state_msg->tres;
+	node_ptr.tres_list = node_state_msg->tres_list;
 	node_ptr.node_state = node_state_msg->state;
 	node_ptr.reason = node_state_msg->reason;
 	node_ptr.reason_time = node_state_msg->event_time;
@@ -2674,7 +2674,7 @@ static int _node_state(slurmdbd_conn_t *slurmdbd_conn,
 
 	slurmctld_conf.fast_schedule = 0;
 
-	if (!node_ptr.tres)
+	if (!node_ptr.tres_list)
 		node_state_msg->new_state = DBD_NODE_STATE_UP;
 
 	if (node_state_msg->new_state == DBD_NODE_STATE_UP) {
@@ -2735,7 +2735,7 @@ static void _process_job_start(slurmdbd_conn_t *slurmdbd_conn,
 
 	job.total_nodes = job_start_msg->alloc_nodes;
 	job.account = _replace_double_quotes(job_start_msg->account);
-	job.tres = job_start_msg->tres;
+	job.tres_list = job_start_msg->tres_list;
 	job.array_job_id = job_start_msg->array_job_id;
 	job.array_task_id = job_start_msg->array_task_id;
 	array_recs.task_id_str = job_start_msg->array_task_str;

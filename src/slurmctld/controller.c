@@ -1872,7 +1872,7 @@ static int _add_node_gres_tres(void *x, void *arg)
 	tres_rec->id = tres_rec_in->id;
 	tres_rec->count = gres_plugin_node_config_cnt(
 		node_ptr->gres_list, tres_rec_in->name);
-	list_append(node_ptr->tres, tres_rec);
+	list_append(node_ptr->tres_list, tres_rec);
 
 	return 0;
 }
@@ -1921,8 +1921,8 @@ extern void set_cluster_tres(void)
 		uint32_t cpu_count = 0, mem_count = 0;
 		if (node_ptr->name == '\0')
 			continue;
-		if (!node_ptr->tres)
-			node_ptr->tres = list_create(
+		if (!node_ptr->tres_list)
+			node_ptr->tres_list = list_create(
 				slurmdb_destroy_tres_rec);
 #ifdef SLURM_NODE_ACCT_REGISTER
 		if (slurmctld_conf.fast_schedule) {
@@ -1944,13 +1944,13 @@ extern void set_cluster_tres(void)
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = cpu_tres->id;
 		tres_rec->count = cpu_count;
-		list_append(node_ptr->tres, tres_rec);
+		list_append(node_ptr->tres_list, tres_rec);
 
 		/* add the mem tres to the node */
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = mem_tres->id;
 		tres_rec->count = mem_count / 1024; /* convert to GB */
-		list_append(node_ptr->tres, tres_rec);
+		list_append(node_ptr->tres_list, tres_rec);
 
 		list_for_each(tres_list, _add_node_gres_tres, node_ptr);
 	}

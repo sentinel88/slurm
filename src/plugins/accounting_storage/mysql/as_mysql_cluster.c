@@ -1037,7 +1037,8 @@ empty:
 				event->cluster_nodes =
 					xstrdup(row[EVENT_REQ_CNODES]);
 
-			event->tres = list_create(slurmdb_destroy_tres_rec);
+			event->tres_list =
+				list_create(slurmdb_destroy_tres_rec);
 
 			i = EVENT_REQ_COUNT-1;
 			list_iterator_reset(itr2);
@@ -1052,7 +1053,7 @@ empty:
 				loc_tres_rec = slurmdb_copy_tres_rec(
 					tres_rec);
 				loc_tres_rec->count = slurm_atoull(row[i]);
-				list_append(event->tres, loc_tres_rec);
+				list_append(event->tres_list, loc_tres_rec);
 			}
 		}
 		mysql_free_result(result);
@@ -1095,12 +1096,12 @@ extern int as_mysql_node_down(mysql_conn_t *mysql_conn,
 		return SLURM_ERROR;
 	}
 
-	if (!node_ptr->tres || !list_count(node_ptr->tres)) {
-		error("node ptr has no tres!");
+	if (!node_ptr->tres_list || !list_count(node_ptr->tres_list)) {
+		error("node ptr has no tres_list!");
 		return SLURM_ERROR;
 	}
 
-	itr = list_iterator_create(node_ptr->tres);
+	itr = list_iterator_create(node_ptr->tres_list);
 	while ((tres_rec = list_next(itr))) {
 		if (!tres_rec->id) {
 			error("tres given, but it doesn't "
@@ -1295,20 +1296,20 @@ extern int as_mysql_fini_ctld(mysql_conn_t *mysql_conn,
 	   sending NULL for the tres param in the as_mysql_cluster_tres
 	   function.
 	*/
-	if (!cluster_rec->tres) {
+	if (!cluster_rec->tres_list) {
 		as_mysql_cluster_tres(
 			mysql_conn, cluster_rec->control_host,
-			&cluster_rec->tres, now);
+			&cluster_rec->tres_list, now);
 	}
 
 	/* Since as_mysql_cluster_tres could change the
 	   last_affected_rows we can't group this with the above
 	   return.
 	*/
-	if (!cluster_rec->tres)
+	if (!cluster_rec->tres_list)
 		return rc;
 
-	itr = list_iterator_create(cluster_rec->tres);
+	itr = list_iterator_create(cluster_rec->tres_list);
 	while ((tres_rec = list_next(itr))) {
 		if (!tres_rec->id)
 			continue;
@@ -1350,8 +1351,8 @@ extern int as_mysql_fini_ctld(mysql_conn_t *mysql_conn,
 }
 
 extern int as_mysql_cluster_tres(mysql_conn_t *mysql_conn,
-				   char *cluster_nodes, List *tres,
-				   time_t event_time)
+				 char *cluster_nodes, List *tres_list_in,
+				 time_t event_time)
 {
 	char* query;
 	int rc = SLURM_SUCCESS;
@@ -1366,7 +1367,7 @@ extern int as_mysql_cluster_tres(mysql_conn_t *mysql_conn,
 	assoc_mgr_lock_t locks = { READ_LOCK, NO_LOCK, NO_LOCK,
 				   NO_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 
-	xassert(tres);
+	xassert(tres_list_in);
 
  	if (check_connection(mysql_conn) != SLURM_SUCCESS)
 		return ESLURM_DB_CONNECTION;
@@ -1395,8 +1396,8 @@ extern int as_mysql_cluster_tres(mysql_conn_t *mysql_conn,
 	}
 	xfree(query);
 
-	if (*tres) {
-		itr = list_iterator_create(*tres);
+	if (*tres_list_in) {
+		itr = list_iterator_create(*tres_list_in);
 		while ((tres_rec = list_next(itr))) {
 			if (!tres_rec->id)
 				continue;
@@ -1434,7 +1435,7 @@ extern int as_mysql_cluster_tres(mysql_conn_t *mysql_conn,
 		 * may not be up when we run this in the controller or
 		 * in the slurmdbd.
 		 */
-		if (!*tres) {
+		if (!*tres_list_in) {
 			rc = 0;
 			goto end_it;
 		}
@@ -1447,8 +1448,8 @@ extern int as_mysql_cluster_tres(mysql_conn_t *mysql_conn,
 	i = 0;
 
 	/* If tres is NULL we want to return the tres for this cluster */
-	if (!*tres) {
-		*tres = list_create(slurmdb_destroy_tres_rec);
+	if (!*tres_list_in) {
+		*tres_list_in = list_create(slurmdb_destroy_tres_rec);
 		itr = list_iterator_create(assoc_mgr_tres_list);
 		while ((tres_rec = list_next(itr))) {
 			i++;
@@ -1458,7 +1459,7 @@ extern int as_mysql_cluster_tres(mysql_conn_t *mysql_conn,
 				continue;
 			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
 			loc_tres_rec->count = slurm_atoull(row[i]);
-			list_append(*tres, loc_tres_rec);
+			list_append(*tres_list_in, loc_tres_rec);
 		}
 		list_iterator_destroy(itr);
 
@@ -1468,7 +1469,7 @@ extern int as_mysql_cluster_tres(mysql_conn_t *mysql_conn,
 		while ((tres_rec = list_next(itr))) {
 			i++;
 			loc_tres_rec = list_find_first(
-				*tres, slurmdb_find_tres_in_list,
+				*tres_list_in, slurmdb_find_tres_in_list,
 				&tres_rec->id);
 
 			if ((row[i] && !loc_tres_rec) ||
@@ -1571,7 +1572,7 @@ end_it:
 
 /* assoc_mgr_lock_t read lock needs to be locked before calling this */
 extern int as_mysql_cluster_get_tres(mysql_conn_t *mysql_conn,
-				       slurmdb_cluster_rec_t *cluster_rec)
+				     slurmdb_cluster_rec_t *cluster_rec)
 {
 	MYSQL_RES *result = NULL;
 	MYSQL_ROW row;
@@ -1606,11 +1607,11 @@ extern int as_mysql_cluster_get_tres(mysql_conn_t *mysql_conn,
 			cluster_rec->nodes = xstrdup(row[0]);
 		}
 
-		if (!cluster_rec->tres)
-			cluster_rec->tres =
+		if (!cluster_rec->tres_list)
+			cluster_rec->tres_list =
 				list_create(slurmdb_destroy_tres_rec);
 		else
-			list_flush(cluster_rec->tres);
+			list_flush(cluster_rec->tres_list);
 
 		i = 0;
 		while ((tres_rec = list_next(itr))) {
@@ -1623,7 +1624,7 @@ extern int as_mysql_cluster_get_tres(mysql_conn_t *mysql_conn,
 				continue;
 			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
 			loc_tres_rec->count = slurm_atoull(row[i]);
-			list_append(cluster_rec->tres, loc_tres_rec);
+			list_append(cluster_rec->tres_list, loc_tres_rec);
 		}
 		list_iterator_reset(itr);
 	}

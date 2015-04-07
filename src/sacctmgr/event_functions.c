@@ -661,10 +661,10 @@ extern int sacctmgr_list_event(int argc, char *argv[])
 					(curr_inx == field_count));
 				break;
 			case PRINT_CPUS:
-				if (event->tres) {
+				if (event->tres_list) {
 					slurmdb_tres_rec_t *tres_rec;
 					if ((tres_rec = list_find_first(
-						     event->tres,
+						     event->tres_list,
 						     slurmdb_find_tres_in_list,
 						     &cpu_tres)))
 						convert_num_unit(
@@ -737,7 +737,7 @@ extern int sacctmgr_list_event(int argc, char *argv[])
 				break;
 			case PRINT_TRES:
 				tmp_char = slurmdb_make_tres_string(
-					event->tres);
+					event->tres_list);
 				field->print_routine(
 					field,
 					tmp_char,

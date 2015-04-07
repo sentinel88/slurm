@@ -2468,9 +2468,9 @@ extern int acct_storage_p_add_clusters(mysql_conn_t *mysql_conn, uint32_t uid,
 }
 
 extern int acct_storage_p_add_tres(mysql_conn_t *mysql_conn,
-				     uint32_t uid, List tres_list)
+				   uint32_t uid, List tres_list_in)
 {
-	return as_mysql_add_tres(mysql_conn, uid, tres_list);
+	return as_mysql_add_tres(mysql_conn, uid, tres_list_in);
 }
 
 extern int acct_storage_p_add_assocs(mysql_conn_t *mysql_conn,
@@ -2849,12 +2849,12 @@ extern int clusteracct_storage_p_fini_ctld(mysql_conn_t *mysql_conn,
 }
 
 extern int clusteracct_storage_p_cluster_tres(mysql_conn_t *mysql_conn,
-						char *cluster_nodes,
-						List tres,
-						time_t event_time)
+					      char *cluster_nodes,
+					      List tres_list_in,
+					      time_t event_time)
 {
 	return as_mysql_cluster_tres(mysql_conn,
-				       cluster_nodes, &tres, event_time);
+				     cluster_nodes, &tres_list_in, event_time);
 }
 
 /*

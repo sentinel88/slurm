@@ -861,10 +861,10 @@ extern int licenses_2_tres_list(struct job_record *job_ptr, bool update_acct)
 	if (!job_ptr->license_list || !list_count(job_ptr->license_list))
 		return changed;
 
-	if (!job_ptr->tres)
-		job_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+	if (!job_ptr->tres_list)
+		job_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 	else {
-		itr = list_iterator_create(job_ptr->tres);
+		itr = list_iterator_create(job_ptr->tres_list);
 		while ((tres_rec = list_next(itr))) {
 			if (strcmp(tres_rec->type, "license"))
 				continue;
@@ -893,7 +893,7 @@ extern int licenses_2_tres_list(struct job_record *job_ptr, bool update_acct)
 			continue; /* not tracked */
 
 		if ((tres_loc_rec = list_find_first(
-			      job_ptr->tres, slurmdb_find_tres_in_list,
+			      job_ptr->tres_list, slurmdb_find_tres_in_list,
 			      &tres_rec->id)))
 			continue; /* already handled */
 
@@ -901,7 +901,7 @@ extern int licenses_2_tres_list(struct job_record *job_ptr, bool update_acct)
 		tres_loc_rec = slurmdb_copy_tres_rec(tres_rec);
 		tres_loc_rec->count = license_entry->total;
 
-		list_append(job_ptr->tres, tres_loc_rec);
+		list_append(job_ptr->tres_list, tres_loc_rec);
 		//info("adding %s", tres_loc_rec->name);
 		changed++;
 	}

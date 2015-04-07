@@ -44,7 +44,6 @@
 #include "src/common/slurm_protocol_defs.h"
 
 typedef struct {
-	List tres;
 	char *cluster_name;
 	uint16_t ctld_port; /* slurmctld_port */
 	void *db_conn; /* database connection */
@@ -52,6 +51,7 @@ typedef struct {
 	slurm_fd_t newsockfd; /* socket connection descriptor */
 	uint16_t orig_port;
 	uint16_t rpc_version; /* version of rpc */
+	List tres_list;
 } slurmdbd_conn_t;
 
 /* Process an incoming RPC

@@ -86,12 +86,12 @@ static void _free_cluster_rec_members(slurmdb_cluster_rec_t *cluster)
 {
 	if (cluster) {
 		FREE_NULL_LIST(cluster->accounting_list);
-		FREE_NULL_LIST(cluster->tres);
 		xfree(cluster->control_host);
 		xfree(cluster->dim_size);
 		xfree(cluster->name);
 		xfree(cluster->nodes);
 		slurmdb_destroy_assoc_rec(cluster->root_assoc);
+		FREE_NULL_LIST(cluster->tres_list);
 	}
 }
 
@@ -641,11 +641,11 @@ extern void slurmdb_destroy_event_rec(void *object)
 		(slurmdb_event_rec_t *)object;
 
 	if (slurmdb_event) {
-		FREE_NULL_LIST(slurmdb_event->tres);
 		xfree(slurmdb_event->cluster);
 		xfree(slurmdb_event->cluster_nodes);
 		xfree(slurmdb_event->node_name);
 		xfree(slurmdb_event->reason);
+		FREE_NULL_LIST(slurmdb_event->tres_list);
 
 		xfree(slurmdb_event);
 	}
@@ -656,7 +656,6 @@ extern void slurmdb_destroy_job_rec(void *object)
 	slurmdb_job_rec_t *job = (slurmdb_job_rec_t *)object;
 	if (job) {
 		xfree(job->account);
-		FREE_NULL_LIST(job->tres);
 		xfree(job->alloc_gres);
 		xfree(job->array_task_str);
 		xfree(job->blockid);
@@ -671,6 +670,7 @@ extern void slurmdb_destroy_job_rec(void *object)
 			list_destroy(job->steps);
 			job->steps = NULL;
 		}
+		FREE_NULL_LIST(job->tres_list);
 		xfree(job->user);
 		xfree(job->wckey);
 		xfree(job);
@@ -784,9 +784,9 @@ extern void slurmdb_destroy_report_assoc_rec(void *object)
 		(slurmdb_report_assoc_rec_t *)object;
 	if (slurmdb_report_assoc) {
 		xfree(slurmdb_report_assoc->acct);
-		FREE_NULL_LIST(slurmdb_report_assoc->tres);
 		xfree(slurmdb_report_assoc->cluster);
 		xfree(slurmdb_report_assoc->parent_acct);
+		FREE_NULL_LIST(slurmdb_report_assoc->tres_list);
 		xfree(slurmdb_report_assoc->user);
 		xfree(slurmdb_report_assoc);
 	}
@@ -798,12 +798,10 @@ extern void slurmdb_destroy_report_user_rec(void *object)
 		(slurmdb_report_user_rec_t *)object;
 	if (slurmdb_report_user) {
 		xfree(slurmdb_report_user->acct);
-		FREE_NULL_LIST(slurmdb_report_user->tres);
-		if (slurmdb_report_user->acct_list)
-			list_destroy(slurmdb_report_user->acct_list);
-		if (slurmdb_report_user->assoc_list)
-			list_destroy(slurmdb_report_user->assoc_list);
+		FREE_NULL_LIST(slurmdb_report_user->acct_list);
+		FREE_NULL_LIST(slurmdb_report_user->assoc_list);
 		xfree(slurmdb_report_user->name);
+		FREE_NULL_LIST(slurmdb_report_user->tres_list);
 		xfree(slurmdb_report_user);
 	}
 }
@@ -813,12 +811,10 @@ extern void slurmdb_destroy_report_cluster_rec(void *object)
 	slurmdb_report_cluster_rec_t *slurmdb_report_cluster =
 		(slurmdb_report_cluster_rec_t *)object;
 	if (slurmdb_report_cluster) {
-		FREE_NULL_LIST(slurmdb_report_cluster->tres);
-		if (slurmdb_report_cluster->assoc_list)
-			list_destroy(slurmdb_report_cluster->assoc_list);
+		FREE_NULL_LIST(slurmdb_report_cluster->assoc_list);
 		xfree(slurmdb_report_cluster->name);
-		if (slurmdb_report_cluster->user_list)
-			list_destroy(slurmdb_report_cluster->user_list);
+		FREE_NULL_LIST(slurmdb_report_cluster->tres_list);
+		FREE_NULL_LIST(slurmdb_report_cluster->user_list);
 		xfree(slurmdb_report_cluster);
 	}
 }
@@ -1170,9 +1166,8 @@ extern void slurmdb_destroy_report_job_grouping(void *object)
 	slurmdb_report_job_grouping_t *job_grouping =
 		(slurmdb_report_job_grouping_t *)object;
 	if (job_grouping) {
-		FREE_NULL_LIST(job_grouping->tres);
-		if (job_grouping->jobs)
-			list_destroy(job_grouping->jobs);
+		FREE_NULL_LIST(job_grouping->jobs);
+		FREE_NULL_LIST(job_grouping->tres_list);
 		xfree(job_grouping);
 	}
 }
@@ -1183,9 +1178,8 @@ extern void slurmdb_destroy_report_acct_grouping(void *object)
 		(slurmdb_report_acct_grouping_t *)object;
 	if (acct_grouping) {
 		xfree(acct_grouping->acct);
-		FREE_NULL_LIST(acct_grouping->tres);
-		if (acct_grouping->groups)
-			list_destroy(acct_grouping->groups);
+		FREE_NULL_LIST(acct_grouping->groups);
+		FREE_NULL_LIST(acct_grouping->tres_list);
 		xfree(acct_grouping);
 	}
 }
@@ -1195,10 +1189,9 @@ extern void slurmdb_destroy_report_cluster_grouping(void *object)
 	slurmdb_report_cluster_grouping_t *cluster_grouping =
 		(slurmdb_report_cluster_grouping_t *)object;
 	if (cluster_grouping) {
-		FREE_NULL_LIST(cluster_grouping->tres);
 		xfree(cluster_grouping->cluster);
-		if (cluster_grouping->acct_list)
-			list_destroy(cluster_grouping->acct_list);
+		FREE_NULL_LIST(cluster_grouping->acct_list);
+		FREE_NULL_LIST(cluster_grouping->tres_list);
 		xfree(cluster_grouping);
 	}
 }
@@ -2681,10 +2674,10 @@ extern slurmdb_report_cluster_rec_t *slurmdb_cluster_rec_2_report(
 	itr = list_iterator_create(cluster->accounting_list);
 	while ((accting = list_next(itr)))
 		slurmdb_add_cluster_accounting_to_tres_list(
-			accting, &slurmdb_report_cluster->tres);
+			accting, &slurmdb_report_cluster->tres_list);
 	list_iterator_destroy(itr);
 
-	itr = list_iterator_create(slurmdb_report_cluster->tres);
+	itr = list_iterator_create(slurmdb_report_cluster->tres_list);
 	while ((tres_rec = list_next(itr)))
 		tres_rec->count /= tres_rec->rec_count;
 	list_iterator_destroy(itr);
