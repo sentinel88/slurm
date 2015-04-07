@@ -204,10 +204,12 @@ void print_fields(type_t type, void *object)
 	slurmdb_step_rec_t *step = (slurmdb_step_rec_t *)object;
 	jobcomp_job_rec_t *job_comp = (jobcomp_job_rec_t *)object;
 	print_field_t *field = NULL;
-	int curr_inx = 1;
+	int curr_inx = 1, cpu_tres = TRES_CPU;
 	struct passwd *pw = NULL;
 	struct	group *gr = NULL;
 	char outbuf[FORMAT_STRING_SIZE];
+	slurmdb_tres_rec_t *cpu_tres_rec = NULL;
+	int cpu_tres_rec_count = 0;
 
 	switch(type) {
 	case JOB:
@@ -221,9 +223,22 @@ void print_fields(type_t type, void *object)
 		if (!step)
 			job->track_steps = 1;
 		job_comp = NULL;
+
+		if (job->tres &&
+		    (cpu_tres_rec = list_find_first(
+			    job->tres,
+			    slurmdb_find_tres_in_list,
+			    &cpu_tres)))
+			cpu_tres_rec_count = (int)cpu_tres_rec->count;
 		break;
 	case JOBSTEP:
 		job = step->job_ptr;
+		if (job->tres &&
+		    (cpu_tres_rec = list_find_first(
+			    job->tres,
+			    slurmdb_find_tres_in_list,
+			    &cpu_tres)))
+			cpu_tres_rec_count = (int)cpu_tres_rec->count;
 		job_comp = NULL;
 		break;
 	case JOBCOMP:
@@ -247,7 +262,8 @@ void print_fields(type_t type, void *object)
 		case PRINT_ALLOC_CPUS:
 			switch(type) {
 			case JOB:
-				tmp_int = job->alloc_cpus;
+				tmp_int = cpu_tres_rec_count;
+
 				// we want to use the step info
 				if (!step)
 					break;
@@ -574,7 +590,7 @@ void print_fields(type_t type, void *object)
 			switch(type) {
 			case JOB:
 				tmp_uint64 = (uint64_t)job->elapsed
-					* (uint64_t)job->alloc_cpus;
+					* (uint64_t)cpu_tres_rec_count;
 				break;
 			case JOBSTEP:
 				tmp_uint64 = (uint64_t)step->elapsed
@@ -593,7 +609,7 @@ void print_fields(type_t type, void *object)
 			switch(type) {
 			case JOB:
 				tmp_uint64 = (uint64_t)job->elapsed
-					* (uint64_t)job->alloc_cpus;
+					* (uint64_t)cpu_tres_rec_count;
 				break;
 			case JOBSTEP:
 				tmp_uint64 = (uint64_t)step->elapsed
@@ -1314,7 +1330,7 @@ void print_fields(type_t type, void *object)
 			switch(type) {
 			case JOB:
 				if (!job->track_steps && !step)
-					tmp_int = job->alloc_cpus;
+					tmp_int = cpu_tres_rec_count;
 				// we want to use the step info
 				if (!step)
 					break;

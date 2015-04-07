@@ -229,7 +229,6 @@ static int _setup_job_start_msg(dbd_job_start_msg_t *req,
 		req->node_inx = xstrdup(bit_fmt(temp_bit, sizeof(temp_bit),
 						job_ptr->node_bitmap));
 	}
-	req->alloc_cpus    = job_ptr->total_cpus;
 	req->partition     = xstrdup(job_ptr->partition);
 	if (job_ptr->details) {
 		req->req_cpus = job_ptr->details->min_cpus;

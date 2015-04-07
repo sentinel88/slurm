@@ -63,7 +63,6 @@ typedef struct {
 
 typedef struct {
 	char *account;
-	char *alloc_cpus;
 	char *alloc_nodes;
 	char *associd;
 	char *array_jobid;
@@ -200,7 +199,6 @@ enum {
 static char *job_req_inx[] = {
 	"account",
 	"array_max_tasks",
-	"cpus_alloc",
 	"nodes_alloc",
 	"id_assoc",
 	"id_array_job",
@@ -238,7 +236,6 @@ static char *job_req_inx[] = {
 enum {
 	JOB_REQ_ACCOUNT,
 	JOB_REQ_ARRAY_MAX,
-	JOB_REQ_ALLOC_CPUS,
 	JOB_REQ_ALLOC_NODES,
 	JOB_REQ_ASSOCID,
 	JOB_REQ_ARRAYJOBID,
@@ -519,7 +516,6 @@ static void _pack_local_job(local_job_t *object,
 	uint32_t count = NO_VAL;
 
 	packstr(object->account, buffer);
-	packstr(object->alloc_cpus, buffer);
 	packstr(object->alloc_nodes, buffer);
 	packstr(object->associd, buffer);
 	packstr(object->array_jobid, buffer);
@@ -584,7 +580,6 @@ static int _unpack_local_job(local_job_t *object,
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		unpackstr_ptr(&object->account, &tmp32, buffer);
-		unpackstr_ptr(&object->alloc_cpus, &tmp32, buffer);
 		unpackstr_ptr(&object->alloc_nodes, &tmp32, buffer);
 		unpackstr_ptr(&object->associd, &tmp32, buffer);
 		unpackstr_ptr(&object->array_jobid, &tmp32, buffer);
@@ -1824,7 +1819,6 @@ static uint32_t _archive_jobs(mysql_conn_t *mysql_conn, char *cluster_name,
 		memset(&job, 0, sizeof(local_job_t));
 
 		job.account = row[JOB_REQ_ACCOUNT];
-		job.alloc_cpus = row[JOB_REQ_ALLOC_CPUS];
 		job.alloc_nodes = row[JOB_REQ_ALLOC_NODES];
 		job.associd = row[JOB_REQ_ASSOCID];
 		job.array_jobid = row[JOB_REQ_ARRAYJOBID];
@@ -1927,7 +1921,6 @@ static char *_load_jobs(uint16_t rpc_version, Buf buffer,
 		xstrfmtcat(insert, format,
 			   object.account,
 			   object.array_max_tasks,
-			   object.alloc_cpus,
 			   object.alloc_nodes,
 			   object.associd,
 			   object.array_jobid,

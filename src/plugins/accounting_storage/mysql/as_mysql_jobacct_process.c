@@ -57,7 +57,6 @@ char *job_req_inx[] = {
 	"t1.account",
 	"t1.array_max_tasks",
 	"t1.array_task_str",
-	"t1.cpus_alloc",
 	"t1.cpus_req",
 	"t1.derived_ec",
 	"t1.derived_es",
@@ -103,7 +102,6 @@ enum {
 	JOB_REQ_ACCOUNT1,
 	JOB_REQ_ARRAY_MAX,
 	JOB_REQ_ARRAY_STR,
-	JOB_REQ_ALLOC_CPUS,
 	JOB_REQ_REQ_CPUS,
 	JOB_REQ_DERIVED_EC,
 	JOB_REQ_DERIVED_ES,
@@ -527,7 +525,6 @@ static int _cluster_get_jobs(mysql_conn_t *mysql_conn,
 			list_append(job_list, job);
 		last_id = curr_id;
 
-		job->alloc_cpus = slurm_atoul(row[JOB_REQ_ALLOC_CPUS]);
 		if (row[JOB_REQ_GRES_ALLOC])
 			job->alloc_gres = xstrdup(row[JOB_REQ_GRES_ALLOC]);
 		else
@@ -753,8 +750,6 @@ static int _cluster_get_jobs(mysql_conn_t *mysql_conn,
 			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
 			loc_tres_rec->count = slurm_atoull(row[i]);
 			list_append(job->tres, loc_tres_rec);
-			if (loc_tres_rec->id == TRES_CPU)
-				job->alloc_cpus = loc_tres_rec->count;
 		}
 
 		query =	xstrdup_printf("select %s from \"%s_%s\" as t1 "
@@ -1440,11 +1435,11 @@ extern int setup_job_cond_limits(mysql_conn_t *mysql_conn,
 			xstrcat(*extra, " where (");
 
 		if (job_cond->cpus_max) {
-			xstrfmtcat(*extra, "(t1.cpus_alloc between %u and %u))",
+			xstrfmtcat(*extra, "(t1.ext_1 between %u and %u))",
 				   job_cond->cpus_min, job_cond->cpus_max);
 
 		} else {
-			xstrfmtcat(*extra, "(t1.cpus_alloc='%u'))",
+			xstrfmtcat(*extra, "(t1.ext_1='%u'))",
 				   job_cond->cpus_min);
 
 		}

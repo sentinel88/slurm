@@ -2894,8 +2894,8 @@ extern int slurmdb_add_cluster_accounting_to_tres_list(
 		*tres = list_create(slurmdb_destroy_tres_rec);
 	else
 		tres_rec = list_find_first(*tres,
-					    slurmdb_find_tres_in_list,
-					    &accting->tres_rec.id);
+					   slurmdb_find_tres_in_list,
+					   &accting->tres_rec.id);
 
 	if (!tres_rec) {
 		tres_rec = slurmdb_copy_tres_rec(&accting->tres_rec);

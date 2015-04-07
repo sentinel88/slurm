@@ -161,6 +161,7 @@ static void _check_create_grouping(
 	}
 }
 
+/* FIXME: This only works for CPUS now */
 static List _process_grouped_report(
 	void *db_conn, slurmdb_job_cond_t *job_cond, List grouping_list,
 	bool flat_view, bool wckey_type, bool both)
@@ -187,6 +188,8 @@ static List _process_grouped_report(
 	bool destroy_job_cond = 0;
 	bool destroy_grouping_list = 0;
 	bool individual = 0;
+	slurmdb_tres_rec_t *tres_rec;
+	uint32_t tres_id = TRES_CPU;
 
 	uid_t my_uid = getuid();
 
@@ -221,13 +224,25 @@ static List _process_grouped_report(
 	/* make a group for each job size we find. */
 	if (!list_count(grouping_list)) {
 		char *group = NULL;
-		char *tmp = NULL;
+
 		individual = 1;
 		itr = list_iterator_create(job_list);
 		while ((job = list_next(itr))) {
-			if (!job->elapsed || !job->alloc_cpus)
+			char *tmp = NULL;
+			if (!job->elapsed)
 				continue;
-			tmp = xstrdup_printf("%u", job->alloc_cpus);
+
+			if (job->tres &&
+			    (tres_rec = list_find_first(
+				    job->tres,
+				    slurmdb_find_tres_in_list,
+				    &tres_id)) &&
+			    tres_rec->count)
+				tmp = xstrdup_printf("%"PRIu64,
+						     tres_rec->count);
+			else
+				continue;
+
 			while ((group = list_next(group_itr))) {
 				if (!strcmp(group, tmp)) {
 					break;
@@ -475,8 +490,13 @@ no_objects:
 
 		local_itr = list_iterator_create(acct_group->groups);
 		while ((job_group = list_next(local_itr))) {
-			if ((job->alloc_cpus < job_group->min_size)
-			   || (job->alloc_cpus > job_group->max_size))
+			if (!job->tres ||
+			    !(tres_rec = list_find_first(
+				    job->tres,
+				    slurmdb_find_tres_in_list,
+				    &tres_id)) ||
+			    (tres_rec->count < job_group->min_size) ||
+			    (tres_rec->count > job_group->max_size))
 				continue;
 			list_append(job_group->jobs, job);
 			job_group->count++;

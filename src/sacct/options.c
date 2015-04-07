@@ -599,7 +599,6 @@ int get_data(void)
 		itr_step = list_iterator_create(job->steps);
 		while((step = list_next(itr_step)) != NULL) {
 			/* now aggregate the aggregatable */
-			job->alloc_cpus = MAX(job->alloc_cpus, step->ncpus);
 
 			if (step->state < JOB_COMPLETE)
 				continue;

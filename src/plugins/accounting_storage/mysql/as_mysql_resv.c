@@ -651,6 +651,8 @@ empty:
 		ListIterator itr = NULL, itr2 = NULL;
 		slurmdb_job_rec_t *job = NULL;
 		slurmdb_reservation_rec_t *resv = NULL;
+		uint32_t tres_id = TRES_CPU;
+		slurmdb_tres_rec_t *tres_rec = NULL;
 
 		if (!job_list || !list_count(job_list))
 			goto no_jobs;
@@ -680,9 +682,14 @@ empty:
 				if ((elapsed = (end - start)) < 1)
 					continue;
 
-				if (job->alloc_cpus)
-					resv->alloc_secs +=
-						elapsed * job->alloc_cpus;
+				/* FIXME: This only handles CPUS now */
+				if (job->tres &&
+				    (tres_rec = list_find_first(
+					    job->tres,
+					    slurmdb_find_tres_in_list,
+					    &tres_id)))
+					resv->alloc_secs += elapsed *
+						(uint32_t)tres_rec->count;
 			}
 			list_iterator_reset(itr2);
 			if (!set) {

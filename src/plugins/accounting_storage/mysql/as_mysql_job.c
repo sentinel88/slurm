@@ -463,7 +463,7 @@ no_rollup_change:
 			"id_group, nodelist, id_resv, timelimit, "
 			"time_eligible, time_submit, time_start, "
 			"job_name, track_steps, state, priority, cpus_req, "
-			"cpus_alloc, nodes_alloc, mem_req",
+			"nodes_alloc, mem_req",
 			mysql_conn->cluster_name, job_table);
 
 		if (job_ptr->account)
@@ -489,7 +489,7 @@ no_rollup_change:
 		xstrfmtcat(query,
 			   ") values (%u, %u, %u, %u, %u, %u, %u, %u, "
 			   "'%s', %u, %u, %ld, %ld, %ld, "
-			   "'%s', %u, %u, %u, %u, %u, %u, %u",
+			   "'%s', %u, %u, %u, %u, %u, %u",
 			   job_ptr->job_id, job_ptr->array_job_id,
 			   job_ptr->array_task_id, job_ptr->assoc_id,
 			   job_ptr->qos_id, wckeyid,
@@ -498,7 +498,7 @@ no_rollup_change:
 			   begin_time, submit_time, start_time,
 			   jname, track_steps, job_state,
 			   job_ptr->priority, job_ptr->details->min_cpus,
-			   job_ptr->total_cpus, node_cnt,
+			   node_cnt,
 			   job_ptr->details->pn_min_memory);
 
 		if (job_ptr->account)
@@ -532,14 +532,14 @@ no_rollup_change:
 			   "time_start=%ld, "
 			   "job_name='%s', track_steps=%u, id_qos=%u, "
 			   "state=greatest(state, %u), priority=%u, "
-			   "cpus_req=%u, cpus_alloc=%u, nodes_alloc=%u, "
+			   "cpus_req=%u, nodes_alloc=%u, "
 			   "mem_req=%u, id_array_job=%u, id_array_task=%u",
 			   wckeyid, job_ptr->user_id, job_ptr->group_id, nodes,
 			   job_ptr->resv_id, job_ptr->time_limit,
 			   submit_time, begin_time, start_time,
 			   jname, track_steps, job_ptr->qos_id, job_state,
 			   job_ptr->priority, job_ptr->details->min_cpus,
-			   job_ptr->total_cpus, node_cnt,
+			   node_cnt,
 			   job_ptr->details->pn_min_memory,
 			   job_ptr->array_job_id,
 			   job_ptr->array_task_id);
@@ -616,13 +616,13 @@ no_rollup_change:
 				   "array_task_pending=0, ");
 
 		xstrfmtcat(query, "time_start=%ld, job_name='%s', state=%u, "
-			   "cpus_alloc=%u, nodes_alloc=%u, id_qos=%u, "
+			   "nodes_alloc=%u, id_qos=%u, "
 			   "id_assoc=%u, id_wckey=%u, id_resv=%u, "
 			   "timelimit=%u, mem_req=%u, "
 			   "id_array_job=%u, id_array_task=%u, "
 			   "time_eligible=%ld where job_db_inx=%d",
 			   start_time, jname, job_state,
-			   job_ptr->total_cpus, node_cnt, job_ptr->qos_id,
+			   node_cnt, job_ptr->qos_id,
 			   job_ptr->assoc_id, wckeyid,
 			   job_ptr->resv_id, job_ptr->time_limit,
 			   job_ptr->details->pn_min_memory,
@@ -1002,7 +1002,19 @@ extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 #else
 		if (!step_ptr->step_layout
 		    || !step_ptr->step_layout->task_cnt) {
-			tasks = cpus = step_ptr->job_ptr->total_cpus;
+			slurmdb_tres_rec_t *tres_rec = NULL;
+			int cpu_tres = TRES_CPU;
+
+			if (step_ptr->cpu_count)
+				tasks = cpus = step_ptr->cpu_count;
+			else if (step_ptr->job_ptr->tres &&
+				 (tres_rec = list_find_first(
+					 step_ptr->job_ptr->tres,
+					 slurmdb_find_tres_in_list,
+					 &cpu_tres)))
+				tasks = cpus = tres_rec->count;
+			else
+				tasks = cpus = step_ptr->job_ptr->total_nodes;
 			nodes = step_ptr->job_ptr->total_nodes;
 			temp_nodes = step_ptr->job_ptr->nodes;
 		} else {
@@ -1138,9 +1150,22 @@ extern int as_mysql_step_complete(mysql_conn_t *mysql_conn,
 		/* Only L and P use this code */
 		tasks = step_ptr->job_ptr->details->min_cpus;
 #else
-		if (!step_ptr->step_layout || !step_ptr->step_layout->task_cnt)
-			tasks = step_ptr->job_ptr->total_cpus;
-		else
+		if (!step_ptr->step_layout
+		    || !step_ptr->step_layout->task_cnt) {
+			slurmdb_tres_rec_t *tres_rec = NULL;
+			int cpu_tres = TRES_CPU;
+
+			if (step_ptr->cpu_count)
+				tasks = step_ptr->cpu_count;
+			else if (step_ptr->job_ptr->tres &&
+				 (tres_rec = list_find_first(
+					 step_ptr->job_ptr->tres,
+					 slurmdb_find_tres_in_list,
+					 &cpu_tres)))
+				tasks = tres_rec->count;
+			else
+				tasks = step_ptr->job_ptr->total_nodes;
+		} else
 			tasks = step_ptr->step_layout->task_cnt;
 #endif
 	}

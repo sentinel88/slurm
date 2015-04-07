@@ -2733,7 +2733,6 @@ static void _process_job_start(slurmdbd_conn_t *slurmdbd_conn,
 	memset(&array_recs, 0, sizeof(job_array_struct_t));
 	memset(id_rc_msg, 0, sizeof(dbd_id_rc_msg_t));
 
-	job.total_cpus = job_start_msg->alloc_cpus;
 	job.total_nodes = job_start_msg->alloc_nodes;
 	job.account = _replace_double_quotes(job_start_msg->account);
 	job.tres = job_start_msg->tres;

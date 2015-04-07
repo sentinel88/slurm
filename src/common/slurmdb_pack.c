@@ -615,6 +615,7 @@ extern void slurmdb_pack_cluster_rec(void *in, uint16_t rpc_version, Buf buffer)
 	ListIterator itr = NULL;
 	uint32_t count = NO_VAL;
 	slurmdb_cluster_rec_t *object = (slurmdb_cluster_rec_t *)in;
+	uint32_t tres_id = TRES_CPU;
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		if (!object) {
@@ -724,15 +725,10 @@ extern void slurmdb_pack_cluster_rec(void *in, uint16_t rpc_version, Buf buffer)
 		pack16(object->classification, buffer);
 		packstr(object->control_host, buffer);
 		pack32(object->control_port, buffer);
-		if (object->tres) {
-			itr = list_iterator_create(object->tres);
-			while ((tres_rec = list_next(itr))) {
-				if (tres_rec->id == TRES_CPU)
-					break;
-			}
-			list_iterator_destroy(itr);
-		}
-		if (tres_rec)
+		if (object->tres && (tres_rec = list_find_first(
+					     object->tres,
+					     slurmdb_find_tres_in_list,
+					     &tres_id)))
 			count = (uint32_t)tres_rec->count;
 		else
 			count = 0;
@@ -3859,10 +3855,10 @@ extern void slurmdb_pack_job_rec(void *object, uint16_t rpc_version, Buf buffer)
 	slurmdb_step_rec_t *step = NULL;
 	uint32_t count = 0;
 	slurmdb_tres_rec_t *tres_rec;
+	uint32_t tres_id = TRES_CPU;
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		packstr(job->account, buffer);
-		pack32(job->alloc_cpus, buffer);
 		packstr(job->alloc_gres, buffer);
 		pack32(job->alloc_nodes, buffer);
 		pack32(job->array_job_id, buffer);
@@ -3947,7 +3943,16 @@ extern void slurmdb_pack_job_rec(void *object, uint16_t rpc_version, Buf buffer)
 		pack32(job->wckeyid, buffer); /* added for rpc_version 4 */
 	} else if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
 		packstr(job->account, buffer);
-		pack32(job->alloc_cpus, buffer);
+
+		if (job->tres && (tres_rec = list_find_first(
+					  job->tres,
+					  slurmdb_find_tres_in_list,
+					  &tres_id)))
+			count = tres_rec->count;
+		else
+			count = 0;
+
+		pack32(count, buffer);
 		packstr(job->alloc_gres, buffer);
 		pack32(job->alloc_nodes, buffer);
 		pack32(job->array_job_id, buffer);
@@ -3986,6 +3991,8 @@ extern void slurmdb_pack_job_rec(void *object, uint16_t rpc_version, Buf buffer)
 		_pack_slurmdb_stats(&job->stats, rpc_version, buffer);
 		if (job->steps)
 			count = list_count(job->steps);
+		else
+			count = 0;
 		pack32(count, buffer);
 		if (count) {
 			itr = list_iterator_create(job->steps);
@@ -4011,7 +4018,16 @@ extern void slurmdb_pack_job_rec(void *object, uint16_t rpc_version, Buf buffer)
 		pack32(job->wckeyid, buffer); /* added for rpc_version 4 */
 	} else if (rpc_version >= SLURM_MIN_PROTOCOL_VERSION) {
 		packstr(job->account, buffer);
-		pack32(job->alloc_cpus, buffer);
+
+		if (job->tres && (tres_rec = list_find_first(
+					  job->tres,
+					  slurmdb_find_tres_in_list,
+					  &tres_id)))
+			count = tres_rec->count;
+		else
+			count = 0;
+
+		pack32(count, buffer);
 		pack32(job->alloc_nodes, buffer);
 		pack32(job->associd, buffer);
 		packstr(job->blockid, buffer);
@@ -4043,6 +4059,8 @@ extern void slurmdb_pack_job_rec(void *object, uint16_t rpc_version, Buf buffer)
 		_pack_slurmdb_stats(&job->stats, rpc_version, buffer);
 		if (job->steps)
 			count = list_count(job->steps);
+		else
+			count = 0;
 		pack32(count, buffer);
 		if (count) {
 			itr = list_iterator_create(job->steps);
@@ -4086,7 +4104,6 @@ extern int slurmdb_unpack_job_rec(void **job, uint16_t rpc_version, Buf buffer)
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		safe_unpackstr_xmalloc(&job_ptr->account, &uint32_tmp, buffer);
-		safe_unpack32(&job_ptr->alloc_cpus, buffer);
 		safe_unpackstr_xmalloc(&job_ptr->alloc_gres, &uint32_tmp,
 				       buffer);
 		safe_unpack32(&job_ptr->alloc_nodes, buffer);
@@ -4174,7 +4191,11 @@ extern int slurmdb_unpack_job_rec(void **job, uint16_t rpc_version, Buf buffer)
 		safe_unpack32(&job_ptr->wckeyid, buffer);
 	} else if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
 		safe_unpackstr_xmalloc(&job_ptr->account, &uint32_tmp, buffer);
-		safe_unpack32(&job_ptr->alloc_cpus, buffer);
+		job_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_push(job_ptr->tres, tres_rec);
+		safe_unpack32((uint32_t *)&tres_rec->count, buffer);
 		safe_unpackstr_xmalloc(&job_ptr->alloc_gres, &uint32_tmp,
 				       buffer);
 		safe_unpack32(&job_ptr->alloc_nodes, buffer);
@@ -4248,7 +4269,11 @@ extern int slurmdb_unpack_job_rec(void **job, uint16_t rpc_version, Buf buffer)
 		safe_unpack32(&job_ptr->wckeyid, buffer);
 	} else if (rpc_version >= SLURM_MIN_PROTOCOL_VERSION) {
 		safe_unpackstr_xmalloc(&job_ptr->account, &uint32_tmp, buffer);
-		safe_unpack32(&job_ptr->alloc_cpus, buffer);
+		job_ptr->tres = list_create(slurmdb_destroy_tres_rec);
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_push(job_ptr->tres, tres_rec);
+		safe_unpack32((uint32_t *)&tres_rec->count, buffer);
 		safe_unpack32(&job_ptr->alloc_nodes, buffer);
 		safe_unpack32(&job_ptr->associd, buffer);
 		safe_unpackstr_xmalloc(&job_ptr->blockid, &uint32_tmp, buffer);

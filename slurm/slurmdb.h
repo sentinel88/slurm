@@ -614,7 +614,6 @@ typedef struct {
 
 typedef struct {
 	char    *account;
-	uint32_t alloc_cpus;
 	char	*alloc_gres;
 	uint32_t alloc_nodes;
 	uint32_t array_job_id;	/* job_id of a job array or 0 if N/A */

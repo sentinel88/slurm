@@ -272,7 +272,6 @@ typedef struct dbd_job_comp_msg {
 typedef struct dbd_job_start_msg {
 	char *   account;       /* Account name for those not running
 				 * with associations */
-	uint32_t alloc_cpus;	/* count of allocated processors */
 	uint32_t alloc_nodes;   /* how many nodes used in job */
 	uint32_t array_job_id;	/* job_id of a job array or 0 if N/A */
 	uint32_t array_max_tasks;/* max number of tasks able to run at once */
