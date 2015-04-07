@@ -1992,9 +1992,17 @@ extern int assoc_mgr_fill_in_tres(void *db_conn,
 
 	if (!tres->type)
 		tres->type = found_tres->type;
+	else {
+		xfree(tres->type);
+		tres->type = xstrdup(found_tres->type);
+	}
 
 	if (!tres->name)
 		tres->name = found_tres->name;
+	else {
+		xfree(tres->name);
+		tres->name = xstrdup(found_tres->name);
+	}
 
 	tres->count        = found_tres->count;
 
