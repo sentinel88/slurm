@@ -2213,7 +2213,8 @@ extern int clusteracct_storage_p_node_down(void *db_conn,
 
 	msg.msg_type   = DBD_NODE_STATE;
 	msg.data       = &req;
-	info("sending a down message here");
+
+	//info("sending a down message here");
 	if (slurm_send_slurmdbd_msg(SLURM_PROTOCOL_VERSION, &msg) < 0)
 		return SLURM_ERROR;
 
@@ -2235,7 +2236,7 @@ extern int clusteracct_storage_p_node_up(void *db_conn,
 	msg.msg_type   = DBD_NODE_STATE;
 	msg.data       = &req;
 
-	info("sending an up message here");
+	// info("sending an up message here");
 	if (slurm_send_slurmdbd_msg(SLURM_PROTOCOL_VERSION, &msg) < 0)
 		return SLURM_ERROR;
 
