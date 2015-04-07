@@ -1570,6 +1570,7 @@ extern int select_nodes(struct job_record *job_ptr, bool test_only,
 	slurmdb_assoc_rec_t *assoc_ptr = NULL;
 	uint32_t selected_node_cnt = NO_VAL;
 	slurmdb_tres_rec_t *tres_rec;
+	int tres_id;
 
 	xassert(job_ptr);
 	xassert(job_ptr->magic == JOB_MAGIC);
@@ -1818,17 +1819,28 @@ extern int select_nodes(struct job_record *job_ptr, bool test_only,
 
 	job_ptr->node_bitmap = select_bitmap;
 
-
 	if (!job_ptr->tres_list)
 		job_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 
-	tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
-	tres_rec->id = TRES_CPU;
+	tres_id = TRES_CPU;
+	if (!(tres_rec = list_find_first(job_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &tres_id))) {
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = tres_id;
+		list_append(job_ptr->tres_list, tres_rec);
+	}
 	tres_rec->count = (uint64_t)job_ptr->total_cpus;
-	list_append(job_ptr->tres_list, tres_rec);
 
-	tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
-	tres_rec->id = TRES_MEM;
+	tres_id = TRES_MEM;
+	if (!(tres_rec = list_find_first(job_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &tres_id))) {
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = tres_id;
+		list_append(job_ptr->tres_list, tres_rec);
+	}
+
 	tres_rec->count = (uint64_t)job_ptr->details->pn_min_memory;
 	if (tres_rec->count & MEM_PER_CPU) {
 		tres_rec->count &= (~MEM_PER_CPU);
