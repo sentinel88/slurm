@@ -50,7 +50,6 @@
 #define SLURMDBD_2_5_VERSION   11	/* slurm version 2.5 */
 
 typedef struct {
-	List tres;
 	char *cluster_nodes;
 	char *inx;
 	char *node_name;
@@ -59,6 +58,7 @@ typedef struct {
 	char *reason;
 	char *reason_uid;
 	char *state;
+	List tres;
 } local_event_t;
 
 typedef struct {
@@ -429,6 +429,15 @@ static void _pack_local_event(local_event_t *object,
 	ListIterator itr = NULL;
 	uint32_t count = NO_VAL;
 
+	packstr(object->cluster_nodes, buffer);
+	packstr(object->inx, buffer);
+	packstr(object->node_name, buffer);
+	packstr(object->period_end, buffer);
+	packstr(object->period_start, buffer);
+	packstr(object->reason, buffer);
+	packstr(object->reason_uid, buffer);
+	packstr(object->state, buffer);
+
 	if (object->tres)
 		count = list_count(object->tres);
 	else
@@ -444,15 +453,6 @@ static void _pack_local_event(local_event_t *object,
 		}
 		list_iterator_destroy(itr);
 	}
-
-	packstr(object->cluster_nodes, buffer);
-	packstr(object->inx, buffer);
-	packstr(object->node_name, buffer);
-	packstr(object->period_end, buffer);
-	packstr(object->period_start, buffer);
-	packstr(object->reason, buffer);
-	packstr(object->reason_uid, buffer);
-	packstr(object->state, buffer);
 }
 
 /* this needs to be allocated before calling, and since we aren't
@@ -467,7 +467,16 @@ static int _unpack_local_event(local_event_t *object,
 	slurmdb_tres_rec_t *tres_rec;
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
+		unpackstr_ptr(&object->cluster_nodes, &tmp32, buffer);
+		unpackstr_ptr(&object->inx, &tmp32, buffer);
+		unpackstr_ptr(&object->node_name, &tmp32, buffer);
+		unpackstr_ptr(&object->period_end, &tmp32, buffer);
+		unpackstr_ptr(&object->period_start, &tmp32, buffer);
+		unpackstr_ptr(&object->reason, &tmp32, buffer);
+		unpackstr_ptr(&object->reason_uid, &tmp32, buffer);
+		unpackstr_ptr(&object->state, &tmp32, buffer);
 		safe_unpack32(&count, buffer);
+
 		if (count != NO_VAL) {
 			object->tres = list_create(slurmdb_destroy_tres_rec);
 			for (i=0; i<count; i++) {
@@ -478,14 +487,6 @@ static int _unpack_local_event(local_event_t *object,
 				list_append(object->tres, tres_rec);
 			}
 		}
-		unpackstr_ptr(&object->cluster_nodes, &tmp32, buffer);
-		unpackstr_ptr(&object->inx, &tmp32, buffer);
-		unpackstr_ptr(&object->node_name, &tmp32, buffer);
-		unpackstr_ptr(&object->period_end, &tmp32, buffer);
-		unpackstr_ptr(&object->period_start, &tmp32, buffer);
-		unpackstr_ptr(&object->reason, &tmp32, buffer);
-		unpackstr_ptr(&object->reason_uid, &tmp32, buffer);
-		unpackstr_ptr(&object->state, &tmp32, buffer);
 	} else {
 		unpackstr_ptr(&object->cluster_nodes, &tmp32, buffer);
 		object->tres = list_create(slurmdb_destroy_tres_rec);
@@ -1483,6 +1484,7 @@ static uint32_t _archive_events(mysql_conn_t *mysql_conn, char *cluster_name,
 	Buf buffer;
 	ListIterator itr;
 	int error_code = 0, i = 0;
+	slurmdb_tres_rec_t *tres_rec, *loc_tres_rec;
 	assoc_mgr_lock_t locks = { READ_LOCK, NO_LOCK, NO_LOCK,
 				   NO_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 
@@ -1527,7 +1529,6 @@ static uint32_t _archive_events(mysql_conn_t *mysql_conn, char *cluster_name,
 
 	itr = list_iterator_create(assoc_mgr_tres_list);
 	while ((row = mysql_fetch_row(result))) {
-		slurmdb_tres_rec_t *tres_rec, *loc_tres_rec;
 		if (!period_start)
 			period_start = slurm_atoul(row[EVENT_REQ_START]);
 
