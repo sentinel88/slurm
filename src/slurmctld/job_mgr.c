@@ -2074,6 +2074,13 @@ static int _load_job_state(Buf buffer, uint16_t protocol_version)
 		job_ptr->tres = list_create(slurmdb_destroy_tres_rec);
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = TRES_CPU;
+		/* This needs to be set to something to keep memory
+		   correct, they will be set correctly in
+		   fill_in_tres.
+		*/
+		tres_rec->type = xstrdup("cpu");
+		tres_rec->name = xstrdup("");
+
 		if (assoc_mgr_fill_in_tres(acct_db_conn, tres_rec, 1, NULL, 0)
 		    != SLURM_SUCCESS) {
 			debug("CPU tres not known yet.  "
