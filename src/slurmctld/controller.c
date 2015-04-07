@@ -1949,12 +1949,11 @@ extern void set_cluster_tres(void)
 		/* add the mem tres to the node */
 		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
 		tres_rec->id = mem_tres->id;
-		tres_rec->count = mem_count / 1024; /* convert to GB */
+		tres_rec->count = mem_count;
 		list_append(node_ptr->tres_list, tres_rec);
 
 		list_for_each(tres_list, _add_node_gres_tres, node_ptr);
 	}
-	mem_tres->count /= 1024; /* convert to GB */
 
 	/* FIXME: cluster_cpus probably needs to be removed and handled
 	 * differently in the spots this is used.
