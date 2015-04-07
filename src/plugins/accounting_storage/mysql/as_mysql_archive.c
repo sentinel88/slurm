@@ -94,6 +94,7 @@ typedef struct {
 	char *suspended;
 	char *timelimit;
 	char *track_steps;
+	List tres;
 	char *uid;
 	char *wckey;
 	char *wckey_id;
@@ -513,6 +514,10 @@ unpack_error:
 static void _pack_local_job(local_job_t *object,
 			    uint16_t rpc_version, Buf buffer)
 {
+	slurmdb_tres_rec_t *tres_rec;
+	ListIterator itr = NULL;
+	uint32_t count = NO_VAL;
+
 	packstr(object->account, buffer);
 	packstr(object->alloc_cpus, buffer);
 	packstr(object->alloc_nodes, buffer);
@@ -548,6 +553,22 @@ static void _pack_local_job(local_job_t *object,
 	packstr(object->uid, buffer);
 	packstr(object->wckey, buffer);
 	packstr(object->wckey_id, buffer);
+
+	if (object->tres)
+		count = list_count(object->tres);
+	else
+		count = NO_VAL;
+
+	pack32(count, buffer);
+
+	if (count && count != NO_VAL) {
+		itr = list_iterator_create(object->tres);
+		while ((tres_rec = list_next(itr))) {
+			slurmdb_pack_tres_rec(
+				tres_rec, rpc_version, buffer);
+		}
+		list_iterator_destroy(itr);
+	}
 }
 
 /* this needs to be allocated before calling, and since we aren't
@@ -556,10 +577,72 @@ static int _unpack_local_job(local_job_t *object,
 			     uint16_t rpc_version, Buf buffer)
 {
 	uint32_t tmp32;
+	uint32_t count;
+	char *tmp_char;
+	int i;
+	slurmdb_tres_rec_t *tres_rec;
 
-	if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
+	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		unpackstr_ptr(&object->account, &tmp32, buffer);
 		unpackstr_ptr(&object->alloc_cpus, &tmp32, buffer);
+		unpackstr_ptr(&object->alloc_nodes, &tmp32, buffer);
+		unpackstr_ptr(&object->associd, &tmp32, buffer);
+		unpackstr_ptr(&object->array_jobid, &tmp32, buffer);
+		unpackstr_ptr(&object->array_max_tasks, &tmp32, buffer);
+		unpackstr_ptr(&object->array_taskid, &tmp32, buffer);
+		unpackstr_ptr(&object->blockid, &tmp32, buffer);
+		unpackstr_ptr(&object->derived_ec, &tmp32, buffer);
+		unpackstr_ptr(&object->derived_es, &tmp32, buffer);
+		unpackstr_ptr(&object->exit_code, &tmp32, buffer);
+		unpackstr_ptr(&object->timelimit, &tmp32, buffer);
+		unpackstr_ptr(&object->eligible, &tmp32, buffer);
+		unpackstr_ptr(&object->end, &tmp32, buffer);
+		unpackstr_ptr(&object->gid, &tmp32, buffer);
+		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->jobid, &tmp32, buffer);
+		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
+		unpackstr_ptr(&object->name, &tmp32, buffer);
+		unpackstr_ptr(&object->nodelist, &tmp32, buffer);
+		unpackstr_ptr(&object->node_inx, &tmp32, buffer);
+		unpackstr_ptr(&object->partition, &tmp32, buffer);
+		unpackstr_ptr(&object->priority, &tmp32, buffer);
+		unpackstr_ptr(&object->qos, &tmp32, buffer);
+		unpackstr_ptr(&object->req_cpus, &tmp32, buffer);
+		unpackstr_ptr(&object->req_mem, &tmp32, buffer);
+		unpackstr_ptr(&object->resvid, &tmp32, buffer);
+		unpackstr_ptr(&object->start, &tmp32, buffer);
+		unpackstr_ptr(&object->state, &tmp32, buffer);
+		unpackstr_ptr(&object->submit, &tmp32, buffer);
+		unpackstr_ptr(&object->suspended, &tmp32, buffer);
+		unpackstr_ptr(&object->track_steps, &tmp32, buffer);
+
+		safe_unpack32(&count, buffer);
+
+		if (count != NO_VAL) {
+			object->tres = list_create(slurmdb_destroy_tres_rec);
+			for (i=0; i<count; i++) {
+				if (slurmdb_unpack_tres_rec(
+					    (void *)&tres_rec,
+					    rpc_version, buffer) == SLURM_ERROR)
+					goto unpack_error;
+				list_append(object->tres, tres_rec);
+			}
+		}
+
+		unpackstr_ptr(&object->uid, &tmp32, buffer);
+		unpackstr_ptr(&object->wckey, &tmp32, buffer);
+		unpackstr_ptr(&object->wckey_id, &tmp32, buffer);
+	} else if (rpc_version >= SLURM_14_11_PROTOCOL_VERSION) {
+		unpackstr_ptr(&object->account, &tmp32, buffer);
+
+		object->tres = list_create(slurmdb_destroy_tres_rec);
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_append(object->tres, tres_rec);
+		unpackstr_ptr(&tmp_char, &tmp32, buffer);
+		tres_rec->count = slurm_atoull(tmp_char);
+		xfree(tmp_char);
+
 		unpackstr_ptr(&object->alloc_nodes, &tmp32, buffer);
 		unpackstr_ptr(&object->associd, &tmp32, buffer);
 		unpackstr_ptr(&object->array_jobid, &tmp32, buffer);
@@ -595,7 +678,15 @@ static int _unpack_local_job(local_job_t *object,
 		unpackstr_ptr(&object->wckey_id, &tmp32, buffer);
 	} else if (rpc_version >= SLURMDBD_2_6_VERSION) {
 		unpackstr_ptr(&object->account, &tmp32, buffer);
-		unpackstr_ptr(&object->alloc_cpus, &tmp32, buffer);
+
+		object->tres = list_create(slurmdb_destroy_tres_rec);
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_append(object->tres, tres_rec);
+		unpackstr_ptr(&tmp_char, &tmp32, buffer);
+		tres_rec->count = slurm_atoull(tmp_char);
+		xfree(tmp_char);
+
 		unpackstr_ptr(&object->alloc_nodes, &tmp32, buffer);
 		unpackstr_ptr(&object->associd, &tmp32, buffer);
 		unpackstr_ptr(&object->blockid, &tmp32, buffer);
@@ -628,7 +719,15 @@ static int _unpack_local_job(local_job_t *object,
 		unpackstr_ptr(&object->wckey_id, &tmp32, buffer);
 	} else {
 		unpackstr_ptr(&object->account, &tmp32, buffer);
-		unpackstr_ptr(&object->alloc_cpus, &tmp32, buffer);
+
+		object->tres = list_create(slurmdb_destroy_tres_rec);
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_append(object->tres, tres_rec);
+		unpackstr_ptr(&tmp_char, &tmp32, buffer);
+		tres_rec->count = slurm_atoull(tmp_char);
+		xfree(tmp_char);
+
 		unpackstr_ptr(&object->alloc_nodes, &tmp32, buffer);
 		unpackstr_ptr(&object->associd, &tmp32, buffer);
 		unpackstr_ptr(&object->blockid, &tmp32, buffer);
@@ -660,6 +759,9 @@ static int _unpack_local_job(local_job_t *object,
 		unpackstr_ptr(&object->wckey_id, &tmp32, buffer);
 	}
 	return SLURM_SUCCESS;
+
+unpack_error:
+	return SLURM_ERROR;
 }
 
 static void _pack_local_resv(local_resv_t *object,
@@ -1672,18 +1774,25 @@ static uint32_t _archive_jobs(mysql_conn_t *mysql_conn, char *cluster_name,
 	local_job_t job;
 	Buf buffer;
 	int error_code = 0, i = 0;
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec, *loc_tres_rec;
+	assoc_mgr_lock_t locks = { READ_LOCK, NO_LOCK, NO_LOCK,
+				   NO_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
+
 
 	xfree(tmp);
 	xstrfmtcat(tmp, "%s", job_req_inx[0]);
 	for(i=1; i<JOB_REQ_COUNT; i++) {
 		xstrfmtcat(tmp, ", %s", job_req_inx[i]);
 	}
+	assoc_mgr_lock(&locks);
+	xstrcat(tmp, full_tres_query);
 
 	/* get all the events started before this time listed */
 	query = xstrdup_printf("select %s from \"%s_%s\" where "
 			       "time_submit < %ld && time_end != 0 && !deleted "
 			       "order by time_submit asc",
-			       tmp, cluster_name, job_table, period_end);
+			       tmp, cluster_name, job_view, period_end);
 	xfree(tmp);
 
 //	START_TIMER;
@@ -1707,6 +1816,7 @@ static uint32_t _archive_jobs(mysql_conn_t *mysql_conn, char *cluster_name,
 	packstr(cluster_name, buffer);
 	pack32(cnt, buffer);
 
+	itr = list_iterator_create(assoc_mgr_tres_list);
 	while ((row = mysql_fetch_row(result))) {
 		if (!period_start)
 			period_start = slurm_atoul(row[JOB_REQ_SUBMIT]);
@@ -1749,8 +1859,26 @@ static uint32_t _archive_jobs(mysql_conn_t *mysql_conn, char *cluster_name,
 		job.wckey = row[JOB_REQ_WCKEY];
 		job.wckey_id = row[JOB_REQ_WCKEYID];
 
+		i = JOB_REQ_COUNT-1;
+		list_iterator_reset(itr);
+		while ((tres_rec = list_next(itr))) {
+			i++;
+			/* Skip if the tres is NULL,
+			 * it means this cluster
+			 * doesn't care about it.
+			 */
+			if (!row[i] || !row[i][0])
+				continue;
+			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
+			loc_tres_rec->count = slurm_atoull(row[i]);
+			list_append(job.tres, loc_tres_rec);
+		}
+
 		_pack_local_job(&job, SLURM_PROTOCOL_VERSION, buffer);
+		FREE_NULL_LIST(job.tres);
 	}
+	list_iterator_destroy(itr);
+	assoc_mgr_unlock(&locks);
 	mysql_free_result(result);
 
 //	END_TIMER2("step query");
