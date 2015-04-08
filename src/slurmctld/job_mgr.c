@@ -455,6 +455,7 @@ static struct job_record *_create_job_record(int *error_code, uint32_t num_jobs)
 	job_ptr->details = detail_ptr;
 	job_ptr->prio_factors = xmalloc(sizeof(priority_factors_object_t));
 	job_ptr->step_list = list_create(NULL);
+	job_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
 
 	xassert (detail_ptr->magic = DETAILS_MAGIC); /* set value */
 	detail_ptr->submit_time = time(NULL);
@@ -5674,7 +5675,6 @@ static int _job_create(job_desc_msg_t *job_desc, int allocate, int will_run,
 
 	job_ptr->license_list = license_list;
 	license_list = NULL;
-	licenses_2_tres_list(job_ptr, 0);
 
 	if (job_desc->req_switch != NO_VAL) {	/* Max # of switches */
 		job_ptr->req_switch = job_desc->req_switch;
@@ -9029,7 +9029,6 @@ static void _merge_job_licenses(struct job_record *shrink_job_ptr,
 		FREE_NULL_LIST(expand_job_ptr->license_list);
 		expand_job_ptr->license_list = shrink_job_ptr->license_list;
 		shrink_job_ptr->license_list = NULL;
-		licenses_2_tres_list(expand_job_ptr, 1);
 		return;
 	}
 
@@ -9040,7 +9039,6 @@ static void _merge_job_licenses(struct job_record *shrink_job_ptr,
 	FREE_NULL_LIST(expand_job_ptr->license_list);
 	FREE_NULL_LIST(shrink_job_ptr->license_list);
 	license_job_merge(expand_job_ptr);
-	licenses_2_tres_list(expand_job_ptr, 1);
 	return;
 }
 
@@ -10505,7 +10503,6 @@ static int _update_job(struct job_record *job_ptr, job_desc_msg_t * job_specs,
 			FREE_NULL_LIST(license_list);
 		}
 
-		licenses_2_tres_list(job_ptr, 0);
 		update_accounting = 1;
 	}
 	if (error_code != SLURM_SUCCESS)

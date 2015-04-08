@@ -1942,6 +1942,8 @@ extern int select_nodes(struct job_record *job_ptr, bool test_only,
 					       * happen, but here just incase.
 					       */
 	_gres_2_job_tres_list(job_ptr, 0);
+	licenses_2_tres_list(job_ptr, 0);
+
 	/* If ran with slurmdbd this is handled out of band in the
 	 * job if happening right away.  If the job has already
 	 * become eligible and registered in the db then the start
