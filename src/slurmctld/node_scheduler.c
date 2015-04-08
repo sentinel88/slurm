@@ -107,6 +107,7 @@ static int  _fill_in_gres_fields(struct job_record *job_ptr);
 static void _filter_nodes_in_set(struct node_set *node_set_ptr,
 				 struct job_details *detail_ptr,
 				 char **err_msg);
+static int _gres_2_job_tres_list(struct job_record *job_ptr, bool update_acct);
 static void _launch_prolog(struct job_record *job_ptr);
 static int  _match_feature(char *seek, struct node_set *node_set_ptr);
 static int _nodes_in_sets(bitstr_t *req_bitmap,
@@ -1819,39 +1820,6 @@ extern int select_nodes(struct job_record *job_ptr, bool test_only,
 
 	job_ptr->node_bitmap = select_bitmap;
 
-	if (!job_ptr->tres_list)
-		job_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
-
-	tres_id = TRES_CPU;
-	if (!(tres_rec = list_find_first(job_ptr->tres_list,
-					 slurmdb_find_tres_in_list,
-					 &tres_id))) {
-		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
-		tres_rec->id = tres_id;
-		list_append(job_ptr->tres_list, tres_rec);
-	}
-	tres_rec->count = (uint64_t)job_ptr->total_cpus;
-
-	tres_id = TRES_MEM;
-	if (!(tres_rec = list_find_first(job_ptr->tres_list,
-					 slurmdb_find_tres_in_list,
-					 &tres_id))) {
-		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
-		tres_rec->id = tres_id;
-		list_append(job_ptr->tres_list, tres_rec);
-	}
-
-	tres_rec->count = (uint64_t)job_ptr->details->pn_min_memory;
-	if (tres_rec->count & MEM_PER_CPU) {
-		tres_rec->count &= (~MEM_PER_CPU);
-		tres_rec->count *= job_ptr->total_cpus;
-	} else if (selected_node_cnt != NO_VAL)
-		tres_rec->count *= selected_node_cnt;
-	else
-		tres_rec->count *= req_nodes; /* This should never
-					       * happen, but here just incase.
-					       */
-
 	/* we need to have these times set to know when the endtime
 	 * is for the job when we place it
 	 */
@@ -1941,6 +1909,39 @@ extern int select_nodes(struct job_record *job_ptr, bool test_only,
 		      THIS_FILE, __LINE__, job_ptr->job_id,
 		      job_ptr->gres, job_ptr->gres_alloc);
 
+	if (!job_ptr->tres_list)
+		job_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
+
+	tres_id = TRES_CPU;
+	if (!(tres_rec = list_find_first(job_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &tres_id))) {
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = tres_id;
+		list_append(job_ptr->tres_list, tres_rec);
+	}
+	tres_rec->count = (uint64_t)job_ptr->total_cpus;
+
+	tres_id = TRES_MEM;
+	if (!(tres_rec = list_find_first(job_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &tres_id))) {
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = tres_id;
+		list_append(job_ptr->tres_list, tres_rec);
+	}
+
+	tres_rec->count = (uint64_t)job_ptr->details->pn_min_memory;
+	if (tres_rec->count & MEM_PER_CPU) {
+		tres_rec->count &= (~MEM_PER_CPU);
+		tres_rec->count *= job_ptr->total_cpus;
+	} else if (selected_node_cnt != NO_VAL)
+		tres_rec->count *= selected_node_cnt;
+	else
+		tres_rec->count *= req_nodes; /* This should never
+					       * happen, but here just incase.
+					       */
+	_gres_2_job_tres_list(job_ptr, 0);
 	/* If ran with slurmdbd this is handled out of band in the
 	 * job if happening right away.  If the job has already
 	 * become eligible and registered in the db then the start
@@ -1983,6 +1984,57 @@ extern int select_nodes(struct job_record *job_ptr, bool test_only,
 #endif
 
 	return error_code;
+}
+
+/* node_read should be locked before coming in here
+ * returns 1 if change happened.
+ */
+static int _gres_2_job_tres_list(struct job_record *job_ptr, bool update_acct)
+{
+	ListIterator itr;
+	gres_job_state_t *gres_job_ptr;
+	int changed = 0;
+	slurmdb_tres_rec_t *tres_rec;
+	uint64_t count;
+	xassert(job_ptr);
+
+	/* no GRES */
+	if (!job_ptr->gres_list || !list_count(job_ptr->gres_list))
+		return changed;
+
+	if (!job_ptr->tres_list)
+		job_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
+	else {
+		itr = list_iterator_create(job_ptr->tres_list);
+		while ((tres_rec = list_next(itr))) {
+			if (!tres_rec->type || strcmp(tres_rec->type, "gres"))
+				continue;
+
+			if (!(gres_job_ptr = gres_get_job_state(
+				      job_ptr->gres_list, tres_rec->name))) {
+				/* info("removing %s %s", tres_rec->type, */
+				/*      tres_rec->name); */
+				list_delete_item(itr);
+				changed++;
+				continue; /* not tracked */
+			}
+
+			count = (uint64_t)gres_job_ptr->gres_cnt_alloc *
+				(uint64_t)gres_job_ptr->node_cnt;
+
+			if (tres_rec->count != count) {
+				tres_rec->count = count;
+				changed++;
+				continue; /* changed count */
+			}
+		}
+		list_iterator_destroy(itr);
+	}
+
+	changed += gres_add_tres(job_ptr->gres_list, job_ptr->tres_list,
+				 tres_list);
+	/* FIXME: handle updating accounting here if needed */
+	return changed;
 }
 
 /*

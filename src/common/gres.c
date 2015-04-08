@@ -237,11 +237,37 @@ static uint32_t	_build_id(char *gres_name)
 	return id;
 }
 
+/* Find a slurmdb_tres_rec that is a gres of a certain name */
+static int _gres_find_tres(void *x, void *key)
+{
+	slurmdb_tres_rec_t *tres_rec = (slurmdb_tres_rec_t *)x;
+
+	if (!tres_rec->type || strcmp(tres_rec->type, "gres"))
+		return 0;
+
+	if (key && tres_rec->name && !strcmp(tres_rec->name, (char *)key))
+		return 1;
+
+	return 0;
+
+}
+
 static int _gres_find_id(void *x, void *key)
 {
 	uint32_t *plugin_id = (uint32_t *)key;
 	gres_state_t *state_ptr = (gres_state_t *) x;
 	if (state_ptr->plugin_id == *plugin_id)
+		return 1;
+	return 0;
+}
+
+static int _gres_find_name(void *x, void *key)
+{
+	gres_state_t *state_ptr = (gres_state_t *) x;
+	gres_job_state_t *gres_job_ptr =
+		(gres_job_state_t *)state_ptr->gres_data;
+
+	if (!strcmp(gres_job_ptr->type_model, (char *)key))
 		return 1;
 	return 0;
 }
@@ -2566,6 +2592,8 @@ static int _job_state_validate(char *config, void **gres_data,
 	char *type = NULL, *num = NULL, *last_num = NULL;
 	uint64_t cnt;
 
+	info("here %s", config);
+
 	if (!xstrcmp(config, context_ptr->gres_name)) {
 		cnt = 1;
 	} else if (!xstrncmp(config, context_ptr->gres_name_colon,
@@ -2608,9 +2636,12 @@ static int _job_state_validate(char *config, void **gres_data,
 			num[0] = '\0';
 			gres_ptr->type_model = xstrdup(type);
 		}
-		*gres_data = gres_ptr;
-	}
 
+		*gres_data = gres_ptr;
+
+		info("got here %"PRIu64" %u %s %s", gres_ptr->gres_cnt_alloc, gres_ptr->node_cnt, gres_ptr->type_model, type);
+	}
+	info("out");
 	return SLURM_SUCCESS;
 }
 
@@ -2833,6 +2864,7 @@ extern int gres_plugin_job_state_pack(List gres_list, Buf buffer,
 			pack32(gres_job_ptr->gres_cnt_alloc, buffer);
 			packstr(gres_job_ptr->type_model, buffer);
 			pack32(gres_job_ptr->node_cnt, buffer);
+
 			if (gres_job_ptr->gres_bit_alloc) {
 				pack8((uint8_t) 1, buffer);
 				for (i = 0; i < gres_job_ptr->node_cnt; i++) {
@@ -2951,16 +2983,19 @@ extern int gres_plugin_job_state_unpack(List *gres_list, Buf buffer,
 		rec_cnt--;
 
 		if (protocol_version >= SLURM_14_11_PROTOCOL_VERSION) {
+			uint32_t x;
 			safe_unpack32(&magic, buffer);
 			if (magic != GRES_MAGIC)
 				goto unpack_error;
 			safe_unpack32(&plugin_id, buffer);
 			gres_job_ptr = xmalloc(sizeof(gres_job_state_t));
-			safe_unpack64(&gres_job_ptr->gres_cnt_alloc, buffer);
+			safe_unpack32(&x, buffer);
+			gres_job_ptr->gres_cnt_alloc = x;
 			safe_unpackstr_xmalloc(&gres_job_ptr->type_model,
 					       &utmp32, buffer);
 			safe_unpack32(&gres_job_ptr->node_cnt, buffer);
 			safe_unpack8(&has_more, buffer);
+
 			if (has_more) {
 				gres_job_ptr->gres_bit_alloc =
 					xmalloc(sizeof(bitstr_t *) *
@@ -6071,4 +6106,76 @@ extern int gres_get_step_info(List step_gres_list, char *gres_name,
 	slurm_mutex_unlock(&gres_context_lock);
 
 	return rc;
+}
+
+extern gres_job_state_t *gres_get_job_state(List gres_list, char *name)
+{
+	gres_state_t *gres_state_ptr;
+
+	if (!gres_list || !name || !list_count(gres_list))
+		return NULL;
+
+	slurm_mutex_lock(&gres_context_lock);
+	gres_state_ptr = list_find_first(gres_list, _gres_find_name, name);
+	slurm_mutex_unlock(&gres_context_lock);
+
+	if (!gres_state_ptr)
+		return NULL;
+
+	return (gres_job_state_t *)gres_state_ptr->gres_data;
+}
+
+extern int gres_add_tres(List gres_list, List tres_list_in,
+			 const List total_tres_list)
+{
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec, *tres_loc_rec;
+	gres_job_state_t *gres_job_ptr;
+	gres_state_t *gres_state_ptr;
+	int changed = 0;
+
+	slurm_mutex_lock(&gres_context_lock);
+	itr = list_iterator_create(gres_list);
+	while ((gres_state_ptr = list_next(itr))) {
+		gres_job_ptr = (gres_job_state_t *)gres_state_ptr->gres_data;
+		char *name = gres_job_ptr->type_model;
+		if (!name) {
+			int i;
+			for (i=0; i < gres_context_cnt; i++) {
+				if (gres_context[i].plugin_id ==
+				    gres_state_ptr->plugin_id) {
+					name = gres_context[i].gres_name;
+					break;
+				}
+			}
+
+			if (!name) {
+				debug("gres_add_tres: couldn't find name");
+				continue;
+			}
+		}
+
+		if (!(tres_rec = list_find_first(
+			      total_tres_list, _gres_find_tres, name)))
+			continue; /* not tracked */
+
+		if ((tres_loc_rec = list_find_first(
+			     tres_list_in, slurmdb_find_tres_in_list,
+			      &tres_rec->id)))
+			continue; /* already handled */
+
+		gres_job_ptr = (gres_job_state_t *)gres_state_ptr->gres_data;
+		/* New gres */
+		tres_loc_rec = slurmdb_copy_tres_rec(tres_rec);
+		tres_loc_rec->count = gres_job_ptr->gres_cnt_alloc
+			* gres_job_ptr->node_cnt;
+
+		list_append(tres_list_in, tres_loc_rec);
+		info("adding %s %"PRIu64, tres_loc_rec->name, tres_loc_rec->count);
+		changed++;
+	}
+	list_iterator_destroy(itr);
+	slurm_mutex_unlock(&gres_context_lock);
+
+	return changed;
 }

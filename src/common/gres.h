@@ -725,4 +725,9 @@ extern int gres_get_step_info(List step_gres_list, char *gres_name,
 			      uint32_t node_inx,
 			      enum gres_step_data_type data_type, void *data);
 
+extern gres_job_state_t *gres_get_job_state(List gres_list, char *name);
+
+extern int gres_add_tres(List gres_list, List tres_list_in,
+			 const List total_tres_list);
+
 #endif /* !_GRES_H */
