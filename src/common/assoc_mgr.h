@@ -360,52 +360,65 @@ extern List assoc_mgr_get_shares(
 /*
  * assoc_mgr_update - update the association manager
  * IN update_list: updates to perform
+ * IN locked: if appropriate write locks are locked before calling or not
  * RET: error code
  * NOTE: the items in update_list are not deleted
  */
-extern int assoc_mgr_update(List update_list);
+extern int assoc_mgr_update(List update_list, bool locked);
 
 /*
  * update associations in cache
  * IN:  slurmdb_update_object_t *object
+ * IN   locked: if appropriate write locks are locked before calling or not
  * RET: SLURM_SUCCESS on success (or not found) SLURM_ERROR else
  */
-extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update);
+extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update,
+				   bool locked);
 
 /*
  * update wckeys in cache
  * IN:  slurmdb_update_object_t *object
+ * IN   locked: if appropriate write locks are locked before calling or not
  * RET: SLURM_SUCCESS on success (or not found) SLURM_ERROR else
  */
-extern int assoc_mgr_update_wckeys(slurmdb_update_object_t *update);
+extern int assoc_mgr_update_wckeys(slurmdb_update_object_t *update,
+				   bool locked);
 
 /*
  * update qos in cache
  * IN:  slurmdb_update_object_t *object
+ * IN   locked: if appropriate write locks are locked before calling or not
  * RET: SLURM_SUCCESS on success (or not found) SLURM_ERROR else
  */
-extern int assoc_mgr_update_qos(slurmdb_update_object_t *update);
+extern int assoc_mgr_update_qos(slurmdb_update_object_t *update,
+				bool locked);
 
 /*
  * update cluster resources in cache
  * IN:  slurmdb_update_object_t *object
+ * IN   locked: if appropriate write locks are locked before calling or not
  * RET: SLURM_SUCCESS on success (or not found) SLURM_ERROR else
  */
-extern int assoc_mgr_update_res(slurmdb_update_object_t *update);
+extern int assoc_mgr_update_res(slurmdb_update_object_t *update,
+				bool locked);
 
 /*
  * update cluster tres in cache
  * IN:  slurmdb_update_object_t *object
+ * IN   locked: if appropriate write locks are locked before calling or not
  * RET: SLURM_SUCCESS on success (or not found) SLURM_ERROR else
  */
-extern int assoc_mgr_update_tres(slurmdb_update_object_t *update);
+extern int assoc_mgr_update_tres(slurmdb_update_object_t *update,
+				 bool locked);
 
 /*
  * update users in cache
  * IN:  slurmdb_update_object_t *object
+ * IN   locked: if appropriate write locks are locked before calling or not
  * RET: SLURM_SUCCESS on success (or not found) SLURM_ERROR else
  */
-extern int assoc_mgr_update_users(slurmdb_update_object_t *update);
+extern int assoc_mgr_update_users(slurmdb_update_object_t *update,
+				  bool locked);
 
 /*
  * validate that an association ID is still valid

@@ -2829,7 +2829,7 @@ end_it:
  * RET: error code
  * NOTE: the items in update_list are not deleted
  */
-extern int assoc_mgr_update(List update_list)
+extern int assoc_mgr_update(List update_list, bool locked)
 {
 	int rc = SLURM_SUCCESS;
 	ListIterator itr = NULL;
@@ -2847,29 +2847,29 @@ extern int assoc_mgr_update(List update_list)
 		case SLURMDB_REMOVE_USER:
 		case SLURMDB_ADD_COORD:
 		case SLURMDB_REMOVE_COORD:
-			rc = assoc_mgr_update_users(object);
+			rc = assoc_mgr_update_users(object, locked);
 			break;
 		case SLURMDB_ADD_ASSOC:
 		case SLURMDB_MODIFY_ASSOC:
 		case SLURMDB_REMOVE_ASSOC:
 		case SLURMDB_REMOVE_ASSOC_USAGE:
-			rc = assoc_mgr_update_assocs(object);
+			rc = assoc_mgr_update_assocs(object, locked);
 			break;
 		case SLURMDB_ADD_QOS:
 		case SLURMDB_MODIFY_QOS:
 		case SLURMDB_REMOVE_QOS:
 		case SLURMDB_REMOVE_QOS_USAGE:
-			rc = assoc_mgr_update_qos(object);
+			rc = assoc_mgr_update_qos(object, locked);
 			break;
 		case SLURMDB_ADD_WCKEY:
 		case SLURMDB_MODIFY_WCKEY:
 		case SLURMDB_REMOVE_WCKEY:
-			rc = assoc_mgr_update_wckeys(object);
+			rc = assoc_mgr_update_wckeys(object, locked);
 			break;
 		case SLURMDB_ADD_RES:
 		case SLURMDB_MODIFY_RES:
 		case SLURMDB_REMOVE_RES:
-			rc = assoc_mgr_update_res(object);
+			rc = assoc_mgr_update_res(object, locked);
 			break;
 		case SLURMDB_ADD_CLUSTER:
 		case SLURMDB_REMOVE_CLUSTER:
@@ -2878,7 +2878,7 @@ extern int assoc_mgr_update(List update_list)
 			*/
 			break;
 		case SLURMDB_ADD_TRES:
-			rc = assoc_mgr_update_tres(object);
+			rc = assoc_mgr_update_tres(object, locked);
 			break;
 		case SLURMDB_UPDATE_NOTSET:
 		default:
@@ -2892,7 +2892,7 @@ extern int assoc_mgr_update(List update_list)
 	return rc;
 }
 
-extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update)
+extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update, bool locked)
 {
 	slurmdb_assoc_rec_t * rec = NULL;
 	slurmdb_assoc_rec_t * object = NULL;
@@ -2906,9 +2906,11 @@ extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update)
 	assoc_mgr_lock_t locks = { NO_LOCK, WRITE_LOCK, NO_LOCK,
 				   WRITE_LOCK, NO_LOCK, WRITE_LOCK, NO_LOCK };
 
-	assoc_mgr_lock(&locks);
+	if (!locked)
+		assoc_mgr_lock(&locks);
 	if (!assoc_mgr_assoc_list) {
-		assoc_mgr_unlock(&locks);
+		if (!locked)
+			assoc_mgr_unlock(&locks);
 		return SLURM_SUCCESS;
 	}
 
@@ -3248,7 +3250,8 @@ extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update)
 		slurmdb_sort_hierarchical_assoc_list(
 			assoc_mgr_assoc_list);
 
-	assoc_mgr_unlock(&locks);
+	if (!locked)
+		assoc_mgr_unlock(&locks);
 
 	/* This needs to happen outside of the
 	   assoc_mgr_lock */
@@ -3274,7 +3277,7 @@ extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update)
 	return rc;
 }
 
-extern int assoc_mgr_update_wckeys(slurmdb_update_object_t *update)
+extern int assoc_mgr_update_wckeys(slurmdb_update_object_t *update, bool locked)
 {
 	slurmdb_wckey_rec_t * rec = NULL;
 	slurmdb_wckey_rec_t * object = NULL;
@@ -3284,9 +3287,11 @@ extern int assoc_mgr_update_wckeys(slurmdb_update_object_t *update)
 	assoc_mgr_lock_t locks = { NO_LOCK, NO_LOCK, NO_LOCK,
 				   NO_LOCK, NO_LOCK, WRITE_LOCK, WRITE_LOCK };
 
-	assoc_mgr_lock(&locks);
+	if (!locked)
+		assoc_mgr_lock(&locks);
 	if (!assoc_mgr_wckey_list) {
-		assoc_mgr_unlock(&locks);
+		if (!locked)
+			assoc_mgr_unlock(&locks);
 		return SLURM_SUCCESS;
 	}
 
@@ -3389,12 +3394,13 @@ extern int assoc_mgr_update_wckeys(slurmdb_update_object_t *update)
 		slurmdb_destroy_wckey_rec(object);
 	}
 	list_iterator_destroy(itr);
-	assoc_mgr_unlock(&locks);
+	if (!locked)
+		assoc_mgr_unlock(&locks);
 
 	return rc;
 }
 
-extern int assoc_mgr_update_users(slurmdb_update_object_t *update)
+extern int assoc_mgr_update_users(slurmdb_update_object_t *update, bool locked)
 {
 	slurmdb_user_rec_t * rec = NULL;
 	slurmdb_user_rec_t * object = NULL;
@@ -3405,9 +3411,11 @@ extern int assoc_mgr_update_users(slurmdb_update_object_t *update)
 	assoc_mgr_lock_t locks = { NO_LOCK, WRITE_LOCK, NO_LOCK,
 				   NO_LOCK, NO_LOCK, WRITE_LOCK, WRITE_LOCK };
 
-	assoc_mgr_lock(&locks);
+	if (!locked)
+		assoc_mgr_lock(&locks);
 	if (!assoc_mgr_user_list) {
-		assoc_mgr_unlock(&locks);
+		if (!locked)
+			assoc_mgr_unlock(&locks);
 		return SLURM_SUCCESS;
 	}
 
@@ -3507,12 +3515,13 @@ extern int assoc_mgr_update_users(slurmdb_update_object_t *update)
 		slurmdb_destroy_user_rec(object);
 	}
 	list_iterator_destroy(itr);
-	assoc_mgr_unlock(&locks);
+	if (!locked)
+		assoc_mgr_unlock(&locks);
 
 	return rc;
 }
 
-extern int assoc_mgr_update_qos(slurmdb_update_object_t *update)
+extern int assoc_mgr_update_qos(slurmdb_update_object_t *update, bool locked)
 {
 	slurmdb_qos_rec_t *rec = NULL;
 	slurmdb_qos_rec_t *object = NULL;
@@ -3528,9 +3537,11 @@ extern int assoc_mgr_update_qos(slurmdb_update_object_t *update)
 	assoc_mgr_lock_t locks = { NO_LOCK, WRITE_LOCK, NO_LOCK,
 				   WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 
-	assoc_mgr_lock(&locks);
+	if (!locked)
+		assoc_mgr_lock(&locks);
 	if (!assoc_mgr_qos_list) {
-		assoc_mgr_unlock(&locks);
+		if (!locked)
+			assoc_mgr_unlock(&locks);
 		return SLURM_SUCCESS;
 	}
 
@@ -3801,7 +3812,8 @@ extern int assoc_mgr_update_qos(slurmdb_update_object_t *update)
 
 	list_iterator_destroy(itr);
 
-	assoc_mgr_unlock(&locks);
+	if (!locked)
+		assoc_mgr_unlock(&locks);
 
 	/* This needs to happen outside of the
 	   assoc_mgr_lock */
@@ -3824,7 +3836,7 @@ extern int assoc_mgr_update_qos(slurmdb_update_object_t *update)
 	return rc;
 }
 
-extern int assoc_mgr_update_res(slurmdb_update_object_t *update)
+extern int assoc_mgr_update_res(slurmdb_update_object_t *update, bool locked)
 {
 	slurmdb_res_rec_t *rec = NULL;
 	slurmdb_res_rec_t *object = NULL;
@@ -3834,9 +3846,11 @@ extern int assoc_mgr_update_res(slurmdb_update_object_t *update)
 	assoc_mgr_lock_t locks = { NO_LOCK, NO_LOCK, NO_LOCK,
 				   NO_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK };
 
-	assoc_mgr_lock(&locks);
+	if (!locked)
+		assoc_mgr_lock(&locks);
 	if (!assoc_mgr_res_list) {
-		assoc_mgr_unlock(&locks);
+		if (!locked)
+			assoc_mgr_unlock(&locks);
 		return SLURM_SUCCESS;
 	}
 
@@ -3968,11 +3982,12 @@ extern int assoc_mgr_update_res(slurmdb_update_object_t *update)
 		slurmdb_destroy_res_rec(object);
 	}
 	list_iterator_destroy(itr);
-	assoc_mgr_unlock(&locks);
+	if (!locked)
+		assoc_mgr_unlock(&locks);
 	return rc;
 }
 
-extern int assoc_mgr_update_tres(slurmdb_update_object_t *update)
+extern int assoc_mgr_update_tres(slurmdb_update_object_t *update, bool locked)
 {
 	slurmdb_tres_rec_t *rec = NULL;
 	slurmdb_tres_rec_t *object = NULL;
@@ -3981,9 +3996,11 @@ extern int assoc_mgr_update_tres(slurmdb_update_object_t *update)
 	int rc = SLURM_SUCCESS;
 	assoc_mgr_lock_t locks = { WRITE_LOCK, NO_LOCK, NO_LOCK,
 				   NO_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
-	assoc_mgr_lock(&locks);
+	if (!locked)
+		assoc_mgr_lock(&locks);
 	if (!assoc_mgr_tres_list) {
-		assoc_mgr_unlock(&locks);
+		if (!locked)
+			assoc_mgr_unlock(&locks);
 		return SLURM_SUCCESS;
 	}
 
@@ -4015,7 +4032,8 @@ extern int assoc_mgr_update_tres(slurmdb_update_object_t *update)
 		slurmdb_destroy_tres_rec(object);
 	}
 	list_iterator_destroy(itr);
-	assoc_mgr_unlock(&locks);
+	if (!locked)
+		assoc_mgr_unlock(&locks);
 	return rc;
 }
 

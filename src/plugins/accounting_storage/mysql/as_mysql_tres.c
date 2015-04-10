@@ -248,12 +248,6 @@ extern int as_mysql_add_tres(mysql_conn_t *mysql_conn,
 	list_iterator_destroy(itr);
 	xfree(user_name);
 
-	if (list_count(mysql_conn->update_list)) {
-		/* We only want to update the local cache DBD or ctld */
-		assoc_mgr_update(mysql_conn->update_list);
-		list_flush(mysql_conn->update_list);
-	}
-
 update_views:
 
 	/* For some reason we are unable to update the views while
@@ -263,6 +257,14 @@ update_views:
 	slurm_mutex_lock(&usage_rollup_lock);
 	slurm_mutex_lock(&as_mysql_cluster_list_lock);
 	assoc_mgr_lock(&locks);
+
+	if (list_count(mysql_conn->update_list)) {
+		/* We only want to update the local cache DBD or ctld */
+		assoc_mgr_update(mysql_conn->update_list, 1);
+		list_flush(mysql_conn->update_list);
+	}
+
+
 	update_full_tres_query();
 	itr = list_iterator_create(as_mysql_total_cluster_list);
 	while ((cluster_name = list_next(itr)))
