@@ -92,6 +92,7 @@ extern char *qos_table;
 extern char *resv_table;
 extern char *res_table;
 extern char *step_table;
+extern char *step_ext_table;
 extern char *txn_table;
 extern char *user_table;
 extern char *suspend_table;
@@ -104,6 +105,8 @@ extern char *event_view;
 extern char *event_ext_view;
 extern char *job_view;
 extern char *job_ext_view;
+extern char *step_view;
+extern char *step_ext_view;
 
 /* Since tables are cluster centric we have a global cluster list to
  * go off of.

@@ -782,7 +782,6 @@ typedef struct {
 	time_t end;
 	int32_t exitcode;
 	slurmdb_job_rec_t *job_ptr;
-	uint32_t ncpus;
 	uint32_t nnodes;
 	char *nodes;
 	uint32_t ntasks;
@@ -802,6 +801,7 @@ typedef struct {
 	uint16_t task_dist;
 	uint32_t tot_cpu_sec;
 	uint32_t tot_cpu_usec;
+	List tres_list;
 	uint32_t user_cpu_sec;
 	uint32_t user_cpu_usec;
 } slurmdb_step_rec_t;

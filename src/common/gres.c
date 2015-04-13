@@ -261,13 +261,56 @@ static int _gres_find_id(void *x, void *key)
 	return 0;
 }
 
-static int _gres_find_name(void *x, void *key)
+static int _gres_job_find_name(void *x, void *key)
 {
 	gres_state_t *state_ptr = (gres_state_t *) x;
-	gres_job_state_t *gres_job_ptr =
+	gres_job_state_t *gres_data_ptr =
 		(gres_job_state_t *)state_ptr->gres_data;
+	char *name = gres_data_ptr->type_model;
 
-	if (!strcmp(gres_job_ptr->type_model, (char *)key))
+	if (!name) {
+		int i;
+		for (i=0; i < gres_context_cnt; i++) {
+			if (gres_context[i].plugin_id == state_ptr->plugin_id) {
+				name = gres_context[i].gres_name;
+				break;
+			}
+		}
+
+		if (!name) {
+			debug("_gres_job_find_name: couldn't find name");
+			return 0;
+		}
+	}
+
+	if (!xstrcmp(name, (char *)key))
+		return 1;
+	return 0;
+}
+
+static int _gres_step_find_name(void *x, void *key)
+{
+	gres_state_t *state_ptr = (gres_state_t *) x;
+	gres_step_state_t *gres_data_ptr =
+		(gres_step_state_t *)state_ptr->gres_data;
+	char *name = gres_data_ptr->type_model;
+
+	if (!name) {
+		int i;
+		for (i=0; i < gres_context_cnt; i++) {
+			if (gres_context[i].plugin_id == state_ptr->plugin_id) {
+				name = gres_context[i].gres_name;
+				break;
+			}
+		}
+
+		if (!name) {
+			debug("_gres_job_find_name: couldn't find name");
+			return 0;
+		}
+	}
+
+	if (!xstrcmp(name, (char *)key))
 		return 1;
 	return 0;
 }
@@ -6108,6 +6151,23 @@ extern int gres_get_step_info(List step_gres_list, char *gres_name,
 	return rc;
 }
 
+extern gres_step_state_t *gres_get_step_state(List gres_list, char *name)
+{
+	gres_state_t *gres_state_ptr;
+
+	if (!gres_list || !name || !list_count(gres_list))
+		return NULL;
+
+	slurm_mutex_lock(&gres_context_lock);
+	gres_state_ptr = list_find_first(gres_list, _gres_step_find_name, name);
+	slurm_mutex_unlock(&gres_context_lock);
+
+	if (!gres_state_ptr)
+		return NULL;
+
+	return (gres_step_state_t *)gres_state_ptr->gres_data;
+}
+
 extern gres_job_state_t *gres_get_job_state(List gres_list, char *name)
 {
 	gres_state_t *gres_state_ptr;
@@ -6116,7 +6176,7 @@ extern gres_job_state_t *gres_get_job_state(List gres_list, char *name)
 		return NULL;
 
 	slurm_mutex_lock(&gres_context_lock);
-	gres_state_ptr = list_find_first(gres_list, _gres_find_name, name);
+	gres_state_ptr = list_find_first(gres_list, _gres_job_find_name, name);
 	slurm_mutex_unlock(&gres_context_lock);
 
 	if (!gres_state_ptr)
@@ -6126,19 +6186,32 @@ extern gres_job_state_t *gres_get_job_state(List gres_list, char *name)
 }
 
 extern int gres_add_tres(List gres_list, List tres_list_in,
-			 const List total_tres_list)
+			 const List total_tres_list, bool is_job)
 {
 	ListIterator itr;
 	slurmdb_tres_rec_t *tres_rec, *tres_loc_rec;
-	gres_job_state_t *gres_job_ptr;
 	gres_state_t *gres_state_ptr;
 	int changed = 0;
+	char *name;
+	uint64_t count;
 
 	slurm_mutex_lock(&gres_context_lock);
 	itr = list_iterator_create(gres_list);
 	while ((gres_state_ptr = list_next(itr))) {
-		gres_job_ptr = (gres_job_state_t *)gres_state_ptr->gres_data;
-		char *name = gres_job_ptr->type_model;
+		if (is_job) {
+			gres_job_state_t *gres_data_ptr = (gres_job_state_t *)
+				gres_state_ptr->gres_data;
+			name = gres_data_ptr->type_model;
+			count = gres_data_ptr->gres_cnt_alloc
+				* (uint64_t)gres_data_ptr->node_cnt;
+		} else {
+			gres_step_state_t *gres_data_ptr = (gres_step_state_t *)
+				gres_state_ptr->gres_data;
+			name = gres_data_ptr->type_model;
+			count = gres_data_ptr->gres_cnt_alloc
+				* (uint64_t)gres_data_ptr->node_cnt;
+		}
+
 		if (!name) {
 			int i;
 			for (i=0; i < gres_context_cnt; i++) {
@@ -6164,14 +6237,11 @@ extern int gres_add_tres(List gres_list, List tres_list_in,
 			      &tres_rec->id)))
 			continue; /* already handled */
 
-		gres_job_ptr = (gres_job_state_t *)gres_state_ptr->gres_data;
 		/* New gres */
 		tres_loc_rec = slurmdb_copy_tres_rec(tres_rec);
-		tres_loc_rec->count = gres_job_ptr->gres_cnt_alloc
-			* gres_job_ptr->node_cnt;
+		tres_loc_rec->count = count;
 
 		list_append(tres_list_in, tres_loc_rec);
-		info("adding %s %"PRIu64, tres_loc_rec->name, tres_loc_rec->count);
 		changed++;
 	}
 	list_iterator_destroy(itr);

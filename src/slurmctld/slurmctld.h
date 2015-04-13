@@ -799,6 +799,7 @@ struct 	step_record {
 	switch_jobinfo_t *switch_job;	/* switch context, opaque */
 	time_t time_last_active;	/* time step was last found on node */
 	time_t tot_sus_time;		/* total time in suspended state */
+	List tres_list;                 /* amount of TRES for this step */
 };
 
 extern List job_list;			/* list of job_record entries */

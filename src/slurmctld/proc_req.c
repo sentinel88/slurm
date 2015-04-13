@@ -4806,7 +4806,7 @@ inline static void  _slurm_rpc_accounting_update_msg(slurm_msg_t *msg)
 			slurm_send_rc_msg(msg, rc);
 			sent_rc = true;
 		}
-		rc = assoc_mgr_update(update_ptr->update_list);
+		rc = assoc_mgr_update(update_ptr->update_list, 0);
 	}
 
 	END_TIMER2("_slurm_rpc_accounting_update_msg");

@@ -403,8 +403,8 @@ typedef struct dbd_step_start_msg {
 	uint32_t req_cpufreq_gov; /* requested CPU frequency governor */
 	uint32_t step_id;	/* step ID */
 	uint16_t task_dist;     /* layout method of step */
-	uint32_t total_cpus;	/* count of allocated processors */
 	uint32_t total_tasks;	/* count of tasks for step */
+	List tres_list;
 } dbd_step_start_msg_t;
 
 /* flag to let us know if we are running on cache or from the actual

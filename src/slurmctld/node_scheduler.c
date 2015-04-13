@@ -2034,7 +2034,7 @@ static int _gres_2_job_tres_list(struct job_record *job_ptr, bool update_acct)
 	}
 
 	changed += gres_add_tres(job_ptr->gres_list, job_ptr->tres_list,
-				 tres_list);
+				 tres_list, 1);
 	/* FIXME: handle updating accounting here if needed */
 	return changed;
 }

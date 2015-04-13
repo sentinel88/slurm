@@ -210,6 +210,7 @@ void print_fields(type_t type, void *object)
 	char outbuf[FORMAT_STRING_SIZE];
 	slurmdb_tres_rec_t *cpu_tres_rec = NULL;
 	int cpu_tres_rec_count = 0;
+	int step_cpu_tres_rec_count = 0;
 
 	switch(type) {
 	case JOB:
@@ -222,6 +223,13 @@ void print_fields(type_t type, void *object)
 		*/
 		if (!step)
 			job->track_steps = 1;
+		else if (step->tres_list &&
+			 (cpu_tres_rec = list_find_first(
+				 step->tres_list,
+				 slurmdb_find_tres_in_list,
+				 &cpu_tres)))
+			step_cpu_tres_rec_count = (int)cpu_tres_rec->count;
+
 		job_comp = NULL;
 
 		if (job->tres_list &&
@@ -233,12 +241,20 @@ void print_fields(type_t type, void *object)
 		break;
 	case JOBSTEP:
 		job = step->job_ptr;
-		if (job->tres_list &&
+
+		if (step->tres_list &&
 		    (cpu_tres_rec = list_find_first(
-			    job->tres_list,
+			    step->tres_list,
 			    slurmdb_find_tres_in_list,
 			    &cpu_tres)))
-			cpu_tres_rec_count = (int)cpu_tres_rec->count;
+			step_cpu_tres_rec_count = (int)cpu_tres_rec->count;
+		else if (job->tres_list &&
+			 (cpu_tres_rec = list_find_first(
+				 job->tres_list,
+				 slurmdb_find_tres_in_list,
+				 &cpu_tres)))
+			step_cpu_tres_rec_count = (int)cpu_tres_rec->count;
+
 		job_comp = NULL;
 		break;
 	case JOBCOMP:
@@ -268,7 +284,7 @@ void print_fields(type_t type, void *object)
 				if (!step)
 					break;
 			case JOBSTEP:
-				tmp_int = step->ncpus;
+				tmp_int = step_cpu_tres_rec_count;
 				break;
 			case JOBCOMP:
 			default:
@@ -321,7 +337,7 @@ void print_fields(type_t type, void *object)
 				break;
 			case JOBSTEP:
 				tmp_char = slurmdb_make_tres_string(
-					step->job_ptr->tres_list);
+					step->tres_list);
 				break;
 			case JOBCOMP:
 			default:
@@ -594,7 +610,7 @@ void print_fields(type_t type, void *object)
 				break;
 			case JOBSTEP:
 				tmp_uint64 = (uint64_t)step->elapsed
-					* (uint64_t)step->ncpus;
+					* (uint64_t)step_cpu_tres_rec_count;
 				break;
 			case JOBCOMP:
 				break;
@@ -613,7 +629,7 @@ void print_fields(type_t type, void *object)
 				break;
 			case JOBSTEP:
 				tmp_uint64 = (uint64_t)step->elapsed
-					* (uint64_t)step->ncpus;
+					* (uint64_t)step_cpu_tres_rec_count;
 				break;
 			case JOBCOMP:
 				break;
@@ -1496,7 +1512,7 @@ void print_fields(type_t type, void *object)
 				tmp_int = job->req_cpus;
 				break;
 			case JOBSTEP:
-				tmp_int = step->ncpus;
+				tmp_int = step_cpu_tres_rec_count;
 				break;
 			case JOBCOMP:
 

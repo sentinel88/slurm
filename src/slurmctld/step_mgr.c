@@ -182,6 +182,8 @@ static struct step_record * _create_step_record(struct job_record *job_ptr)
 	step_ptr->jobacct    = jobacctinfo_create(NULL);
 	step_ptr->requid     = -1;
 	step_ptr->start_protocol_ver = SLURM_PROTOCOL_VERSION;
+	step_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
+
 	(void) list_append (job_ptr->step_list, step_ptr);
 
 	return step_ptr;
@@ -2065,6 +2067,58 @@ static int _test_strlen(char *test_str, char *str_name, int max_str_len)
 	return SLURM_SUCCESS;
 }
 
+/* node_read should be locked before coming in here
+ * returns 1 if change happened.
+ */
+static int _gres_2_step_tres_list(struct step_record *step_ptr,
+				  bool update_acct)
+{
+	ListIterator itr;
+	gres_step_state_t *gres_step_ptr;
+	int changed = 0;
+	slurmdb_tres_rec_t *tres_rec;
+	uint64_t count;
+	xassert(step_ptr);
+
+	/* no GRES */
+	if (!step_ptr->gres_list || !list_count(step_ptr->gres_list))
+		return changed;
+
+	if (!step_ptr->tres_list)
+		step_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
+	else {
+		itr = list_iterator_create(step_ptr->tres_list);
+		while ((tres_rec = list_next(itr))) {
+			if (!tres_rec->type || strcmp(tres_rec->type, "gres"))
+				continue;
+
+			if (!(gres_step_ptr = gres_get_step_state(
+				      step_ptr->gres_list, tres_rec->name))) {
+				/* info("removing %s %s", tres_rec->type, */
+				/*      tres_rec->name); */
+				list_delete_item(itr);
+				changed++;
+				continue; /* not tracked */
+			}
+
+			count = (uint64_t)gres_step_ptr->gres_cnt_alloc *
+				(uint64_t)gres_step_ptr->node_cnt;
+
+			if (tres_rec->count != count) {
+				tres_rec->count = count;
+				changed++;
+				continue; /* changed count */
+			}
+		}
+		list_iterator_destroy(itr);
+	}
+
+	changed += gres_add_tres(step_ptr->gres_list, step_ptr->tres_list,
+				 tres_list, 0);
+	/* FIXME: handle updating accounting here if needed */
+	return changed;
+}
+
 /*
  * step_create - creates a step_record in step_specs->job_id, sets up the
  *	according to the step_specs.
@@ -2083,13 +2137,16 @@ step_create(job_step_create_request_msg_t *step_specs,
 	struct job_record  *job_ptr;
 	bitstr_t *nodeset;
 	int cpus_per_task, ret_code, i;
-	uint32_t node_count = 0;
+	uint32_t node_count = 0, cpu_count = 0;
 	time_t now = time(NULL);
 	char *step_node_list = NULL;
 	uint32_t orig_cpu_count;
 	List step_gres_list = (List) NULL;
 	dynamic_plugin_data_t *select_jobinfo = NULL;
 	uint16_t task_dist;
+	slurmdb_tres_rec_t *tres_rec;
+	int tres_id;
+
 #ifdef HAVE_ALPS_CRAY
 	uint32_t resv_id = 0;
 #endif
@@ -2469,6 +2526,50 @@ step_create(job_step_create_request_msg_t *step_specs,
 		jobacct_storage_g_job_start(acct_db_conn, job_ptr);
 
 	select_g_step_start(step_ptr);
+
+	if (!step_ptr->tres_list)
+		step_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
+
+	tres_id = TRES_CPU;
+	if (!(tres_rec = list_find_first(step_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &tres_id))) {
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = tres_id;
+		list_append(step_ptr->tres_list, tres_rec);
+	}
+
+#ifdef HAVE_BG_L_P
+	/* Only L and P use this code */
+	if (step_ptr->job_ptr->details)
+		cpu_count = step_ptr->job_ptr->details->min_cpus;
+	else
+		cpu_count = step_ptr->job_ptr->cpu_cnt;
+#else
+	if (!step_ptr->step_layout || !step_ptr->step_layout->task_cnt)
+		cpu_count = step_ptr->job_ptr->total_cpus;
+	else
+		cpu_count = step_ptr->cpu_count;
+#endif
+	tres_rec->count = (uint64_t)cpu_count;
+
+	tres_id = TRES_MEM;
+	if (!(tres_rec = list_find_first(step_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &tres_id))) {
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = tres_id;
+		list_append(step_ptr->tres_list, tres_rec);
+	}
+
+	tres_rec->count = (uint64_t)step_ptr->pn_min_memory;
+	if (tres_rec->count & MEM_PER_CPU) {
+		tres_rec->count &= (~MEM_PER_CPU);
+		tres_rec->count *= cpu_count;
+	} else
+		tres_rec->count *= node_count;
+
+	_gres_2_step_tres_list(step_ptr, 0);
 
 	jobacct_storage_g_step_start(acct_db_conn, step_ptr);
 	return SLURM_SUCCESS;

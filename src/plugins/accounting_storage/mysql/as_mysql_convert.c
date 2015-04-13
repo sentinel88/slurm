@@ -199,56 +199,57 @@ static int _update_old_cluster_tables(mysql_conn_t *mysql_conn,
 	/* 	{ NULL, NULL} */
 	/* }; */
 
-	/* storage_field_t step_table_fields_14_11[] = { */
-	/* 	{ "job_db_inx", "int not null" }, */
-	/* 	{ "deleted", "tinyint default 0 not null" }, */
-	/* 	{ "cpus_alloc", "int unsigned not null" }, */
-	/* 	{ "exit_code", "int default 0 not null" }, */
-	/* 	{ "id_step", "int not null" }, */
-	/* 	{ "kill_requid", "int default -1 not null" }, */
-	/* 	{ "nodelist", "text not null" }, */
-	/* 	{ "nodes_alloc", "int unsigned not null" }, */
-	/* 	{ "node_inx", "text" }, */
-	/* 	{ "state", "smallint unsigned not null" }, */
-	/* 	{ "step_name", "text not null" }, */
-	/* 	{ "task_cnt", "int unsigned not null" }, */
-	/* 	{ "task_dist", "smallint default 0 not null" }, */
-	/* 	{ "time_start", "int unsigned default 0 not null" }, */
-	/* 	{ "time_end", "int unsigned default 0 not null" }, */
-	/* 	{ "time_suspended", "int unsigned default 0 not null" }, */
-	/* 	{ "user_sec", "int unsigned default 0 not null" }, */
-	/* 	{ "user_usec", "int unsigned default 0 not null" }, */
-	/* 	{ "sys_sec", "int unsigned default 0 not null" }, */
-	/* 	{ "sys_usec", "int unsigned default 0 not null" }, */
-	/* 	{ "max_pages", "int unsigned default 0 not null" }, */
-	/* 	{ "max_pages_task", "int unsigned default 0 not null" }, */
-	/* 	{ "max_pages_node", "int unsigned default 0 not null" }, */
-	/* 	{ "ave_pages", "double unsigned default 0.0 not null" }, */
-	/* 	{ "max_rss", "bigint unsigned default 0 not null" }, */
-	/* 	{ "max_rss_task", "int unsigned default 0 not null" }, */
-	/* 	{ "max_rss_node", "int unsigned default 0 not null" }, */
-	/* 	{ "ave_rss", "double unsigned default 0.0 not null" }, */
-	/* 	{ "max_vsize", "bigint unsigned default 0 not null" }, */
-	/* 	{ "max_vsize_task", "int unsigned default 0 not null" }, */
-	/* 	{ "max_vsize_node", "int unsigned default 0 not null" }, */
-	/* 	{ "ave_vsize", "double unsigned default 0.0 not null" }, */
-	/* 	{ "min_cpu", "int unsigned default 0xfffffffe not null" }, */
-	/* 	{ "min_cpu_task", "int unsigned default 0 not null" }, */
-	/* 	{ "min_cpu_node", "int unsigned default 0 not null" }, */
-	/* 	{ "ave_cpu", "double unsigned default 0.0 not null" }, */
-	/* 	{ "act_cpufreq", "double unsigned default 0.0 not null" }, */
-	/* 	{ "consumed_energy", "double unsigned default 0.0 not null" }, */
-	/* 	{ "req_cpufreq", "int unsigned default 0 not null" }, */
-	/* 	{ "max_disk_read", "double unsigned default 0.0 not null" }, */
-	/* 	{ "max_disk_read_task", "int unsigned default 0 not null" }, */
-	/* 	{ "max_disk_read_node", "int unsigned default 0 not null" }, */
-	/* 	{ "ave_disk_read", "double unsigned default 0.0 not null" }, */
-	/* 	{ "max_disk_write", "double unsigned default 0.0 not null" }, */
-	/* 	{ "max_disk_write_task", "int unsigned default 0 not null" }, */
-	/* 	{ "max_disk_write_node", "int unsigned default 0 not null" }, */
-	/* 	{ "ave_disk_write", "double unsigned default 0.0 not null" }, */
-	/* 	{ NULL, NULL} */
-	/* }; */
+	storage_field_t step_table_fields_14_11[] = {
+		{ "inx", "int unsigned not null auto_increment" },
+		{ "job_db_inx", "int not null" },
+		{ "deleted", "tinyint default 0 not null" },
+		{ "cpus_alloc", "int unsigned not null" },
+		{ "exit_code", "int default 0 not null" },
+		{ "id_step", "int not null" },
+		{ "kill_requid", "int default -1 not null" },
+		{ "nodelist", "text not null" },
+		{ "nodes_alloc", "int unsigned not null" },
+		{ "node_inx", "text" },
+		{ "state", "smallint unsigned not null" },
+		{ "step_name", "text not null" },
+		{ "task_cnt", "int unsigned not null" },
+		{ "task_dist", "smallint default 0 not null" },
+		{ "time_start", "int unsigned default 0 not null" },
+		{ "time_end", "int unsigned default 0 not null" },
+		{ "time_suspended", "int unsigned default 0 not null" },
+		{ "user_sec", "int unsigned default 0 not null" },
+		{ "user_usec", "int unsigned default 0 not null" },
+		{ "sys_sec", "int unsigned default 0 not null" },
+		{ "sys_usec", "int unsigned default 0 not null" },
+		{ "max_pages", "int unsigned default 0 not null" },
+		{ "max_pages_task", "int unsigned default 0 not null" },
+		{ "max_pages_node", "int unsigned default 0 not null" },
+		{ "ave_pages", "double unsigned default 0.0 not null" },
+		{ "max_rss", "bigint unsigned default 0 not null" },
+		{ "max_rss_task", "int unsigned default 0 not null" },
+		{ "max_rss_node", "int unsigned default 0 not null" },
+		{ "ave_rss", "double unsigned default 0.0 not null" },
+		{ "max_vsize", "bigint unsigned default 0 not null" },
+		{ "max_vsize_task", "int unsigned default 0 not null" },
+		{ "max_vsize_node", "int unsigned default 0 not null" },
+		{ "ave_vsize", "double unsigned default 0.0 not null" },
+		{ "min_cpu", "int unsigned default 0xfffffffe not null" },
+		{ "min_cpu_task", "int unsigned default 0 not null" },
+		{ "min_cpu_node", "int unsigned default 0 not null" },
+		{ "ave_cpu", "double unsigned default 0.0 not null" },
+		{ "act_cpufreq", "double unsigned default 0.0 not null" },
+		{ "consumed_energy", "double unsigned default 0.0 not null" },
+		{ "req_cpufreq", "int unsigned default 0 not null" },
+		{ "max_disk_read", "double unsigned default 0.0 not null" },
+		{ "max_disk_read_task", "int unsigned default 0 not null" },
+		{ "max_disk_read_node", "int unsigned default 0 not null" },
+		{ "ave_disk_read", "double unsigned default 0.0 not null" },
+		{ "max_disk_write", "double unsigned default 0.0 not null" },
+		{ "max_disk_write_task", "int unsigned default 0 not null" },
+		{ "max_disk_write_node", "int unsigned default 0 not null" },
+		{ "ave_disk_write", "double unsigned default 0.0 not null" },
+		{ NULL, NULL}
+	};
 
 	storage_field_t wckey_usage_table_fields_14_11[] = {
 		{ "creation_time", "int unsigned not null" },
@@ -323,8 +324,8 @@ static int _update_old_cluster_tables(mysql_conn_t *mysql_conn,
 		 cluster_name, event_table);
 	if (mysql_db_create_table(mysql_conn, table_name,
 				  event_table_fields_14_11,
-				  ", primary key (inx), index(node_name(20), "
-				  "time_start))")
+				  ", primary key (inx), "
+				  "unique index (node_name(20), time_start))")
 	    == SLURM_ERROR)
 		return SLURM_ERROR;
 
@@ -354,13 +355,14 @@ static int _update_old_cluster_tables(mysql_conn_t *mysql_conn,
 	/*     == SLURM_ERROR) */
 	/* 	return SLURM_ERROR; */
 
-	/* snprintf(table_name, sizeof(table_name), "\"%s_%s\"", */
-	/* 	 cluster_name, step_table); */
-	/* if (mysql_db_create_table(mysql_conn, table_name, */
-	/* 			  step_table_fields_14_11, */
-	/* 			  ", primary key (job_db_inx, id_step))") */
-	/*     == SLURM_ERROR) */
-	/* 	return SLURM_ERROR; */
+	snprintf(table_name, sizeof(table_name), "\"%s_%s\"",
+		 cluster_name, step_table);
+	if (mysql_db_create_table(mysql_conn, table_name,
+				  step_table_fields_14_11,
+				  ", primary key (inx), "
+				  "unique index (job_db_inx, id_step))")
+	    == SLURM_ERROR)
+		return SLURM_ERROR;
 
 	snprintf(table_name, sizeof(table_name), "\"%s_%s\"",
 		 cluster_name, wckey_day_table);
@@ -605,7 +607,7 @@ static int _convert_job_table(mysql_conn_t *mysql_conn, char *cluster_name)
 	int rc = SLURM_SUCCESS, i;
 
 	/* if this changes you will need to edit the corresponding enum */
-	char *event_req_inx[] = {
+	char *req_inx[] = {
 		"job_db_inx",
 		"cpus_alloc",
 		"mem_req",
@@ -620,9 +622,9 @@ static int _convert_job_table(mysql_conn_t *mysql_conn, char *cluster_name)
 	int count = 0;
 
 	xfree(tmp);
-	xstrfmtcat(tmp, "%s", event_req_inx[0]);
+	xstrfmtcat(tmp, "%s", req_inx[0]);
 	for (i=1; i<REQ_COUNT; i++) {
-		xstrfmtcat(tmp, ", %s", event_req_inx[i]);
+		xstrfmtcat(tmp, ", %s", req_inx[i]);
 	}
 
 	/* see if the clus_info table has been made */
@@ -680,6 +682,89 @@ static int _convert_job_table(mysql_conn_t *mysql_conn, char *cluster_name)
 		debug4("(%s:%d) query\n%s", THIS_FILE, __LINE__, query);
 		if ((rc = mysql_db_query(mysql_conn, query)) != SLURM_SUCCESS)
 			error("Can't update %s job_table: %m", cluster_name);
+		xfree(query);
+	}
+
+	return rc;
+}
+
+static int _convert_step_table(mysql_conn_t *mysql_conn, char *cluster_name)
+{
+	MYSQL_ROW row;
+	MYSQL_RES *result = NULL;
+	char *query = NULL, *tmp = NULL;
+	int rc = SLURM_SUCCESS, i;
+
+	/* if this changes you will need to edit the corresponding enum */
+	char *req_inx[] = {
+		"inx",
+		"cpus_alloc",
+	};
+
+	enum {
+		REQ_INX,
+		REQ_CPU,
+		REQ_COUNT
+	};
+	int count = 0;
+
+	xfree(tmp);
+	xstrfmtcat(tmp, "%s", req_inx[0]);
+	for (i=1; i<REQ_COUNT; i++) {
+		xstrfmtcat(tmp, ", %s", req_inx[i]);
+	}
+
+	/* see if the clus_info table has been made */
+	query = xstrdup_printf("select %s from \"%s_%s\"",
+			       tmp, cluster_name, step_table);
+	xfree(tmp);
+
+	debug4("(%s:%d) query\n%s", THIS_FILE, __LINE__, query);
+	if (!(result = mysql_db_query_ret(mysql_conn, query, 0))) {
+		xfree(query);
+		return SLURM_ERROR;
+	}
+	xfree(query);
+
+	while ((row = mysql_fetch_row(result))) {
+		if (query) {
+			xstrfmtcat(query, ", (%s, %d, %s)",
+				   row[REQ_INX], TRES_CPU, row[REQ_CPU]);
+		} else {
+			query = xstrdup_printf("insert into \"%s_%s\" "
+					       "(inx, id_tres, count) "
+					       "values (%s, %d, %s)",
+					       cluster_name, step_ext_table,
+					       row[REQ_INX], TRES_CPU,
+					       row[REQ_CPU]);
+		}
+		count++;
+		if (count > 1000) {
+			xstrfmtcat(query,
+				   " on duplicate key update "
+				   "count=VALUES(count);");
+
+			debug4("(%s:%d) query\n%s", THIS_FILE, __LINE__, query);
+			if ((rc = mysql_db_query(mysql_conn, query))
+			    != SLURM_SUCCESS) {
+				xfree(query);
+				error("Can't update %s step_table: %m",
+				      cluster_name);
+				break;
+			}
+			xfree(query);
+			count = 0;
+		}
+	}
+	mysql_free_result(result);
+
+	if (query) {
+		xstrfmtcat(query,
+			   " on duplicate key update count=VALUES(count);");
+
+		debug4("(%s:%d) query\n%s", THIS_FILE, __LINE__, query);
+		if ((rc = mysql_db_query(mysql_conn, query)) != SLURM_SUCCESS)
+			error("Can't update %s step_table: %m", cluster_name);
 		xfree(query);
 	}
 
@@ -754,6 +839,12 @@ extern int as_mysql_convert_tables(mysql_conn_t *mysql_conn)
 		/* Now convert the job tables */
 		info("converting job table for %s", cluster_name);
 		if (_convert_job_table(mysql_conn, cluster_name)
+		    != SLURM_SUCCESS)
+			break;
+
+		/* Now convert the step tables */
+		info("converting step table for %s", cluster_name);
+		if (_convert_step_table(mysql_conn, cluster_name)
 		    != SLURM_SUCCESS)
 			break;
 	}

@@ -121,7 +121,6 @@ typedef struct {
 	char *ave_vsize;
 	char *exit_code;
 	char *consumed_energy;
-	char *cpus;
 	char *id;
 	char *kill_requid;
 	char *max_disk_read;
@@ -158,6 +157,7 @@ typedef struct {
 	char *sys_usec;
 	char *tasks;
 	char *task_dist;
+	List tres_list;
 	char *user_sec;
 	char *user_usec;
 } local_step_t;
@@ -312,7 +312,6 @@ static char *step_req_inx[] = {
 	"kill_requid",
 	"exit_code",
 	"nodes_alloc",
-	"cpus_alloc",
 	"task_cnt",
 	"task_dist",
 	"user_sec",
@@ -337,7 +336,9 @@ static char *step_req_inx[] = {
 	"ave_cpu",
 	"act_cpufreq",
 	"consumed_energy",
+	"req_cpufreq_min",
 	"req_cpufreq",
+	"req_cpufreq_gov",
 	"max_disk_read",
 	"max_disk_read_task",
 	"max_disk_read_node",
@@ -345,7 +346,7 @@ static char *step_req_inx[] = {
 	"max_disk_write",
 	"max_disk_write_task",
 	"max_disk_write_node",
-	"ave_disk_write"
+	"ave_disk_write",
 };
 
 
@@ -362,7 +363,6 @@ enum {
 	STEP_REQ_KILL_REQUID,
 	STEP_REQ_EXIT_CODE,
 	STEP_REQ_NODES,
-	STEP_REQ_CPUS,
 	STEP_REQ_TASKS,
 	STEP_REQ_TASKDIST,
 	STEP_REQ_USER_SEC,
@@ -387,7 +387,9 @@ enum {
 	STEP_REQ_AVE_CPU,
 	STEP_REQ_ACT_CPUFREQ,
 	STEP_REQ_CONSUMED_ENERGY,
+	STEP_REQ_REQ_CPUFREQ_MIN,
 	STEP_REQ_REQ_CPUFREQ_MAX,
+	STEP_REQ_REQ_CPUFREQ_GOV,
 	STEP_REQ_MAX_DISK_READ,
 	STEP_REQ_MAX_DISK_READ_TASK,
 	STEP_REQ_MAX_DISK_READ_NODE,
@@ -396,8 +398,6 @@ enum {
 	STEP_REQ_MAX_DISK_WRITE_TASK,
 	STEP_REQ_MAX_DISK_WRITE_NODE,
 	STEP_REQ_AVE_DISK_WRITE,
-	STEP_REQ_REQ_CPUFREQ_MIN,
-	STEP_REQ_REQ_CPUFREQ_GOV,
 	STEP_REQ_COUNT,
 };
 
@@ -547,9 +547,6 @@ static void _pack_local_job(local_job_t *object,
 	packstr(object->submit, buffer);
 	packstr(object->suspended, buffer);
 	packstr(object->track_steps, buffer);
-	packstr(object->uid, buffer);
-	packstr(object->wckey, buffer);
-	packstr(object->wckey_id, buffer);
 
 	if (object->tres_list)
 		count = list_count(object->tres_list);
@@ -566,6 +563,10 @@ static void _pack_local_job(local_job_t *object,
 		}
 		list_iterator_destroy(itr);
 	}
+
+	packstr(object->uid, buffer);
+	packstr(object->wckey, buffer);
+	packstr(object->wckey_id, buffer);
 }
 
 /* this needs to be allocated before calling, and since we aren't
@@ -798,103 +799,74 @@ static int _unpack_local_resv(local_resv_t *object,
 static void _pack_local_step(local_step_t *object,
 			     uint16_t rpc_version, Buf buffer)
 {
-	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
-		packstr(object->act_cpufreq, buffer);
-		packstr(object->ave_cpu, buffer);
-		packstr(object->ave_disk_read, buffer);
-		packstr(object->ave_disk_write, buffer);
-		packstr(object->ave_pages, buffer);
-		packstr(object->ave_rss, buffer);
-		packstr(object->ave_vsize, buffer);
-		packstr(object->exit_code, buffer);
-		packstr(object->consumed_energy, buffer);
-		packstr(object->cpus, buffer);
-		packstr(object->id, buffer);
-		packstr(object->kill_requid, buffer);
-		packstr(object->max_disk_read, buffer);
-		packstr(object->max_disk_read_node, buffer);
-		packstr(object->max_disk_read_task, buffer);
-		packstr(object->max_disk_write, buffer);
-		packstr(object->max_disk_write_node, buffer);
-		packstr(object->max_disk_write_task, buffer);
-		packstr(object->max_pages, buffer);
-		packstr(object->max_pages_node, buffer);
-		packstr(object->max_pages_task, buffer);
-		packstr(object->max_rss, buffer);
-		packstr(object->max_rss_node, buffer);
-		packstr(object->max_rss_task, buffer);
-		packstr(object->max_vsize, buffer);
-		packstr(object->max_vsize_node, buffer);
-		packstr(object->max_vsize_task, buffer);
-		packstr(object->min_cpu, buffer);
-		packstr(object->min_cpu_node, buffer);
-		packstr(object->min_cpu_task, buffer);
-		packstr(object->name, buffer);
-		packstr(object->nodelist, buffer);
-		packstr(object->nodes, buffer);
-		packstr(object->node_inx, buffer);
-		packstr(object->period_end, buffer);
-		packstr(object->period_start, buffer);
-		packstr(object->period_suspended, buffer);
-		packstr(object->req_cpufreq_min, buffer);
-		packstr(object->req_cpufreq_max, buffer);
-		packstr(object->req_cpufreq_gov, buffer);
-		packstr(object->state, buffer);
-		packstr(object->stepid, buffer);
-		packstr(object->sys_sec, buffer);
-		packstr(object->sys_usec, buffer);
-		packstr(object->tasks, buffer);
-		packstr(object->task_dist, buffer);
-		packstr(object->user_sec, buffer);
-		packstr(object->user_usec, buffer);
-	} else if (rpc_version >= SLURMDBD_2_6_VERSION) {
-		packstr(object->act_cpufreq, buffer);
-		packstr(object->ave_cpu, buffer);
-		packstr(object->ave_disk_read, buffer);
-		packstr(object->ave_disk_write, buffer);
-		packstr(object->ave_pages, buffer);
-		packstr(object->ave_rss, buffer);
-		packstr(object->ave_vsize, buffer);
-		packstr(object->exit_code, buffer);
-		packstr(object->consumed_energy, buffer);
-		packstr(object->cpus, buffer);
-		packstr(object->id, buffer);
-		packstr(object->kill_requid, buffer);
-		packstr(object->max_disk_read, buffer);
-		packstr(object->max_disk_read_node, buffer);
-		packstr(object->max_disk_read_task, buffer);
-		packstr(object->max_disk_write, buffer);
-		packstr(object->max_disk_write_node, buffer);
-		packstr(object->max_disk_write_task, buffer);
-		packstr(object->max_pages, buffer);
-		packstr(object->max_pages_node, buffer);
-		packstr(object->max_pages_task, buffer);
-		packstr(object->max_rss, buffer);
-		packstr(object->max_rss_node, buffer);
-		packstr(object->max_rss_task, buffer);
-		packstr(object->max_vsize, buffer);
-		packstr(object->max_vsize_node, buffer);
-		packstr(object->max_vsize_task, buffer);
-		packstr(object->min_cpu, buffer);
-		packstr(object->min_cpu_node, buffer);
-		packstr(object->min_cpu_task, buffer);
-		packstr(object->name, buffer);
-		packstr(object->nodelist, buffer);
-		packstr(object->nodes, buffer);
-		packstr(object->node_inx, buffer);
-		packstr(object->period_end, buffer);
-		packstr(object->period_start, buffer);
-		packstr(object->period_suspended, buffer);
-		packstr(object->req_cpufreq_min, buffer);
-		packstr(object->state, buffer);
-		packstr(object->stepid, buffer);
-		packstr(object->sys_sec, buffer);
-		packstr(object->sys_usec, buffer);
-		packstr(object->tasks, buffer);
-		packstr(object->task_dist, buffer);
-		packstr(object->user_sec, buffer);
-		packstr(object->user_usec, buffer);
+	slurmdb_tres_rec_t *tres_rec;
+	ListIterator itr = NULL;
+	uint32_t count = NO_VAL;
+
+	packstr(object->act_cpufreq, buffer);
+	packstr(object->ave_cpu, buffer);
+	packstr(object->ave_disk_read, buffer);
+	packstr(object->ave_disk_write, buffer);
+	packstr(object->ave_pages, buffer);
+	packstr(object->ave_rss, buffer);
+	packstr(object->ave_vsize, buffer);
+	packstr(object->exit_code, buffer);
+	packstr(object->consumed_energy, buffer);
+	packstr(object->id, buffer);
+	packstr(object->kill_requid, buffer);
+	packstr(object->max_disk_read, buffer);
+	packstr(object->max_disk_read_node, buffer);
+	packstr(object->max_disk_read_task, buffer);
+	packstr(object->max_disk_write, buffer);
+	packstr(object->max_disk_write_node, buffer);
+	packstr(object->max_disk_write_task, buffer);
+	packstr(object->max_pages, buffer);
+	packstr(object->max_pages_node, buffer);
+	packstr(object->max_pages_task, buffer);
+	packstr(object->max_rss, buffer);
+	packstr(object->max_rss_node, buffer);
+	packstr(object->max_rss_task, buffer);
+	packstr(object->max_vsize, buffer);
+	packstr(object->max_vsize_node, buffer);
+	packstr(object->max_vsize_task, buffer);
+	packstr(object->min_cpu, buffer);
+	packstr(object->min_cpu_node, buffer);
+	packstr(object->min_cpu_task, buffer);
+	packstr(object->name, buffer);
+	packstr(object->nodelist, buffer);
+	packstr(object->nodes, buffer);
+	packstr(object->node_inx, buffer);
+	packstr(object->period_end, buffer);
+	packstr(object->period_start, buffer);
+	packstr(object->period_suspended, buffer);
+	packstr(object->req_cpufreq_min, buffer);
+	packstr(object->req_cpufreq_max, buffer);
+	packstr(object->req_cpufreq_gov, buffer);
+	packstr(object->state, buffer);
+	packstr(object->stepid, buffer);
+	packstr(object->sys_sec, buffer);
+	packstr(object->sys_usec, buffer);
+	packstr(object->tasks, buffer);
+	packstr(object->task_dist, buffer);
+
+	if (object->tres_list)
+		count = list_count(object->tres_list);
+	else
+		count = NO_VAL;
+
+	pack32(count, buffer);
+
+	if (count && count != NO_VAL) {
+		itr = list_iterator_create(object->tres_list);
+		while ((tres_rec = list_next(itr))) {
+			slurmdb_pack_tres_rec(
+				tres_rec, rpc_version, buffer);
+		}
+		list_iterator_destroy(itr);
 	}
+
+	packstr(object->user_sec, buffer);
+	packstr(object->user_usec, buffer);
 }
 
 /* this needs to be allocated before calling, and since we aren't
@@ -903,6 +875,10 @@ static int _unpack_local_step(local_step_t *object,
 			      uint16_t rpc_version, Buf buffer)
 {
 	uint32_t tmp32;
+	uint32_t count;
+	char *tmp_char;
+	int i;
+	slurmdb_tres_rec_t *tres_rec;
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		unpackstr_ptr(&object->act_cpufreq, &tmp32, buffer);
@@ -914,7 +890,6 @@ static int _unpack_local_step(local_step_t *object,
 		unpackstr_ptr(&object->ave_vsize, &tmp32, buffer);
 		unpackstr_ptr(&object->exit_code, &tmp32, buffer);
 		unpackstr_ptr(&object->consumed_energy, &tmp32, buffer);
-		unpackstr_ptr(&object->cpus, &tmp32, buffer);
 		unpackstr_ptr(&object->id, &tmp32, buffer);
 		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
 		unpackstr_ptr(&object->max_disk_read, &tmp32, buffer);
@@ -951,6 +926,21 @@ static int _unpack_local_step(local_step_t *object,
 		unpackstr_ptr(&object->sys_usec, &tmp32, buffer);
 		unpackstr_ptr(&object->tasks, &tmp32, buffer);
 		unpackstr_ptr(&object->task_dist, &tmp32, buffer);
+
+		safe_unpack32(&count, buffer);
+
+		if (count != NO_VAL) {
+			object->tres_list = list_create(
+				slurmdb_destroy_tres_rec);
+			for (i=0; i<count; i++) {
+				if (slurmdb_unpack_tres_rec(
+					    (void *)&tres_rec,
+					    rpc_version, buffer) == SLURM_ERROR)
+					goto unpack_error;
+				list_append(object->tres_list, tres_rec);
+			}
+		}
+
 		unpackstr_ptr(&object->user_sec, &tmp32, buffer);
 		unpackstr_ptr(&object->user_usec, &tmp32, buffer);
 	} else if (rpc_version >= SLURMDBD_2_6_VERSION) {
@@ -963,7 +953,14 @@ static int _unpack_local_step(local_step_t *object,
 		unpackstr_ptr(&object->ave_vsize, &tmp32, buffer);
 		unpackstr_ptr(&object->exit_code, &tmp32, buffer);
 		unpackstr_ptr(&object->consumed_energy, &tmp32, buffer);
-		unpackstr_ptr(&object->cpus, &tmp32, buffer);
+
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_append(object->tres_list, tres_rec);
+		unpackstr_ptr(&tmp_char, &tmp32, buffer);
+		tres_rec->count = slurm_atoull(tmp_char);
+		xfree(tmp_char);
+
 		unpackstr_ptr(&object->id, &tmp32, buffer);
 		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
 		unpackstr_ptr(&object->max_disk_read, &tmp32, buffer);
@@ -1001,10 +998,13 @@ static int _unpack_local_step(local_step_t *object,
 		unpackstr_ptr(&object->user_sec, &tmp32, buffer);
 		unpackstr_ptr(&object->user_usec, &tmp32, buffer);
 	} else {
-		return SLURM_ERROR;
+		goto unpack_error;
 	}
 
 	return SLURM_SUCCESS;
+
+unpack_error:
+	return SLURM_ERROR;
 }
 
 static void _pack_local_suspend(local_suspend_t *object,
@@ -1604,7 +1604,7 @@ static uint32_t _archive_events(mysql_conn_t *mysql_conn, char *cluster_name,
 	xfree(tmp);
 
 //	START_TIMER;
-	if (debug_flags & DEBUG_FLAG_DB_USAGE)
+//	if (debug_flags & DEBUG_FLAG_DB_USAGE)
 		DB_DEBUG(mysql_conn->conn, "query\n%s", query);
 	if (!(result = mysql_db_query_ret(mysql_conn, query, 0))) {
 		xfree(query);
@@ -1625,7 +1625,6 @@ static uint32_t _archive_events(mysql_conn_t *mysql_conn, char *cluster_name,
 	pack16(DBD_GOT_EVENTS, buffer);
 	packstr(cluster_name, buffer);
 	pack32(cnt, buffer);
-
 	itr = list_iterator_create(assoc_mgr_tres_list);
 	while ((row = mysql_fetch_row(result))) {
 		if (!period_start)
@@ -1797,12 +1796,14 @@ static uint32_t _archive_jobs(mysql_conn_t *mysql_conn, char *cluster_name,
 		DB_DEBUG(mysql_conn->conn, "query\n%s", query);
 	if (!(result = mysql_db_query_ret(mysql_conn, query, 0))) {
 		xfree(query);
+		assoc_mgr_unlock(&locks);
 		return SLURM_ERROR;
 	}
 	xfree(query);
 
 	if (!(cnt = mysql_num_rows(result))) {
 		mysql_free_result(result);
+		assoc_mgr_unlock(&locks);
 		return 0;
 	}
 
@@ -1854,6 +1855,7 @@ static uint32_t _archive_jobs(mysql_conn_t *mysql_conn, char *cluster_name,
 		job.uid = row[JOB_REQ_UID];
 		job.wckey = row[JOB_REQ_WCKEY];
 		job.wckey_id = row[JOB_REQ_WCKEYID];
+		job.tres_list = list_create(slurmdb_destroy_tres_rec);
 
 		i = JOB_REQ_COUNT-1;
 		list_iterator_reset(itr);
@@ -2106,18 +2108,25 @@ static uint32_t _archive_steps(mysql_conn_t *mysql_conn, char *cluster_name,
 	local_step_t step;
 	Buf buffer;
 	int error_code = 0, i = 0;
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec, *loc_tres_rec;
+	assoc_mgr_lock_t locks = { READ_LOCK, NO_LOCK, NO_LOCK,
+				   NO_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
+
 
 	xfree(tmp);
 	xstrfmtcat(tmp, "%s", step_req_inx[0]);
-	for(i=1; i<STEP_REQ_COUNT; i++) {
+	for(i=1; i<STEP_REQ_COUNT; i++)
 		xstrfmtcat(tmp, ", %s", step_req_inx[i]);
-	}
+
+	assoc_mgr_lock(&locks);
+	xstrcat(tmp, full_tres_query);
 
 	/* get all the events started before this time listed */
 	query = xstrdup_printf("select %s from \"%s_%s\" where "
 			       "time_start <= %ld && time_end != 0 "
 			       "&& !deleted order by time_start asc",
-			       tmp, cluster_name, step_table, period_end);
+			       tmp, cluster_name, step_view, period_end);
 	xfree(tmp);
 
 //	START_TIMER;
@@ -2125,12 +2134,14 @@ static uint32_t _archive_steps(mysql_conn_t *mysql_conn, char *cluster_name,
 		DB_DEBUG(mysql_conn->conn, "query\n%s", query);
 	if (!(result = mysql_db_query_ret(mysql_conn, query, 0))) {
 		xfree(query);
+		assoc_mgr_unlock(&locks);
 		return SLURM_ERROR;
 	}
 	xfree(query);
 
 	if (!(cnt = mysql_num_rows(result))) {
 		mysql_free_result(result);
+		assoc_mgr_unlock(&locks);
 		return 0;
 	}
 
@@ -2141,6 +2152,7 @@ static uint32_t _archive_steps(mysql_conn_t *mysql_conn, char *cluster_name,
 	packstr(cluster_name, buffer);
 	pack32(cnt, buffer);
 
+	itr = list_iterator_create(assoc_mgr_tres_list);
 	while ((row = mysql_fetch_row(result))) {
 		if (!period_start)
 			period_start = slurm_atoul(row[STEP_REQ_START]);
@@ -2156,7 +2168,6 @@ static uint32_t _archive_steps(mysql_conn_t *mysql_conn, char *cluster_name,
 		step.ave_rss = row[STEP_REQ_AVE_RSS];
 		step.ave_vsize = row[STEP_REQ_AVE_VSIZE];
 		step.exit_code = row[STEP_REQ_EXIT_CODE];
-		step.cpus = row[STEP_REQ_CPUS];
 		step.id = row[STEP_REQ_ID];
 		step.kill_requid = row[STEP_REQ_KILL_REQUID];
 		step.max_disk_read = row[STEP_REQ_MAX_DISK_READ];
@@ -2195,9 +2206,28 @@ static uint32_t _archive_steps(mysql_conn_t *mysql_conn, char *cluster_name,
 		step.task_dist = row[STEP_REQ_TASKDIST];
 		step.user_sec = row[STEP_REQ_USER_SEC];
 		step.user_usec = row[STEP_REQ_USER_USEC];
+		step.tres_list = list_create(slurmdb_destroy_tres_rec);
+
+		i = STEP_REQ_COUNT-1;
+		list_iterator_reset(itr);
+		while ((tres_rec = list_next(itr))) {
+			i++;
+			/* Skip if the tres is NULL,
+			 * it means this cluster
+			 * doesn't care about it.
+			 */
+			if (!row[i] || !row[i][0])
+				continue;
+			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
+			loc_tres_rec->count = slurm_atoull(row[i]);
+			list_append(step.tres_list, loc_tres_rec);
+		}
 
 		_pack_local_step(&step, SLURM_PROTOCOL_VERSION, buffer);
+		FREE_NULL_LIST(step.tres_list);
 	}
+	list_iterator_destroy(itr);
+	assoc_mgr_unlock(&locks);
 	mysql_free_result(result);
 
 //	END_TIMER2("step query");
@@ -2256,7 +2286,6 @@ static char *_load_steps(uint16_t rpc_version, Buf buffer,
 			   object.kill_requid,
 			   object.exit_code,
 			   object.nodes,
-			   object.cpus,
 			   object.tasks,
 			   object.task_dist,
 			   object.user_sec,

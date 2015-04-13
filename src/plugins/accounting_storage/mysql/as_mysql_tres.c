@@ -69,14 +69,14 @@ extern int update_full_tres_query(void)
 /* assoc_mgr_lock_t->tres write must be locked before calling this */
 extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 {
-	char *query, *event_ext, *job_ext;
+	char *query;
 	int rc = SLURM_SUCCESS;
 
 	xassert(tres_view_str);
 	xassert(full_tres_query);
 
 	/* Create a view for easy access to the event_ext table	*/
-	event_ext = xstrdup_printf(
+	query = xstrdup_printf(
 		"drop view if exists \"%s_%s\";"
 		"create view \"%s_%s\" as (select inx ext_inx %s "
 		"from \"%s_%s\" group by inx);",
@@ -85,14 +85,14 @@ extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 		cluster_name, event_ext_table);
 
 	if (debug_flags & DEBUG_FLAG_DB_TRES)
-		DB_DEBUG(mysql_conn->conn, "%s", event_ext);
-	rc = mysql_db_query(mysql_conn, event_ext);
-	xfree(event_ext);
+		DB_DEBUG(mysql_conn->conn, "%s", query);
+	rc = mysql_db_query(mysql_conn, query);
+	xfree(query);
 	if (rc != SLURM_SUCCESS)
 		error("problem altering event_ext");
 
 	/* Create a view for easy access to the job_ext table */
-	job_ext = xstrdup_printf(
+	query = xstrdup_printf(
 		"drop view if exists \"%s_%s\";"
 		"create view \"%s_%s\" as (select job_db_inx ext_job_db_inx %s "
 		"from \"%s_%s\" group by job_db_inx);",
@@ -101,11 +101,27 @@ extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 		cluster_name, job_ext_table);
 
 	if (debug_flags & DEBUG_FLAG_DB_TRES)
-		DB_DEBUG(mysql_conn->conn, "%s", job_ext);
-	rc = mysql_db_query(mysql_conn, job_ext);
-	xfree(job_ext);
+		DB_DEBUG(mysql_conn->conn, "%s", query);
+	rc = mysql_db_query(mysql_conn, query);
+	xfree(query);
 	if (rc != SLURM_SUCCESS)
 		error("problem altering job_ext");
+
+	/* Create a view for easy access to the step_ext table	*/
+	query = xstrdup_printf(
+		"drop view if exists \"%s_%s\";"
+		"create view \"%s_%s\" as (select inx ext_inx %s "
+		"from \"%s_%s\" group by inx);",
+		cluster_name, step_ext_view,
+		cluster_name, step_ext_view, tres_view_str,
+		cluster_name, step_ext_table);
+
+	if (debug_flags & DEBUG_FLAG_DB_TRES)
+		DB_DEBUG(mysql_conn->conn, "%s", query);
+	rc = mysql_db_query(mysql_conn, query);
+	xfree(query);
+	if (rc != SLURM_SUCCESS)
+		error("problem altering step_ext");
 
 	/* handle other views */
 
@@ -115,7 +131,10 @@ extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 		"left join \"%s_%s\" t2 on t1.inx=t2.ext_inx);"
 		"drop view if exists \"%s_%s\";"
 		"create view \"%s_%s\" as (select * from \"%s_%s\" t1 "
-		"left join \"%s_%s\" t2 on t1.job_db_inx=t2.ext_job_db_inx);",
+		"left join \"%s_%s\" t2 on t1.job_db_inx=t2.ext_job_db_inx);"
+		"drop view if exists \"%s_%s\";"
+		"create view \"%s_%s\" as (select * from \"%s_%s\" t1 "
+		"left join \"%s_%s\" t2 on t1.inx=t2.ext_inx);",
 		cluster_name, event_view,
 		cluster_name, event_view,
 		cluster_name, event_table,
@@ -123,7 +142,11 @@ extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 		cluster_name, job_view,
 		cluster_name, job_view,
 		cluster_name, job_table,
-		cluster_name, job_ext_view);
+		cluster_name, job_ext_view,
+		cluster_name, step_view,
+		cluster_name, step_view,
+		cluster_name, step_table,
+		cluster_name, step_ext_view);
 
 	if (debug_flags & DEBUG_FLAG_DB_TRES)
 		DB_DEBUG(mysql_conn->conn, "%s", query);

@@ -234,6 +234,62 @@ no_wckeyid:
 	return wckeyid;
 }
 
+static int _add_tres(mysql_conn_t *mysql_conn, uint32_t inx, List tres_list,
+		     bool is_job)
+{
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec;
+	int rc = SLURM_SUCCESS;
+	char *query = NULL;
+
+	if (!inx || !tres_list || !list_count(tres_list))
+		return SLURM_SUCCESS;
+
+	itr = list_iterator_create(tres_list);
+	while ((tres_rec = list_next(itr))) {
+		if (!tres_rec->id || !tres_rec->count)
+			continue;
+		if (!query) {
+			char *inx_col_name = NULL;
+			char *table = NULL;
+			if (is_job) {
+				inx_col_name = "job_db_inx";
+				table = job_ext_table;
+			} else {
+				inx_col_name = "inx";
+				table = step_ext_table;
+			}
+			xstrfmtcat(query,
+				   "insert into \"%s_%s\" "
+				   "(%s, id_tres, count) "
+				   "values (%u, %u, %"PRIu64")",
+				   mysql_conn->cluster_name,
+				   table, inx_col_name,
+				   inx, tres_rec->id, tres_rec->count);
+		} else
+			xstrfmtcat(query,
+				   ", (%u, %u, %"PRIu64")",
+				   inx, tres_rec->id, tres_rec->count);
+		/* debug("inserting %s with tres %u " */
+		/*       "count of %"PRIu64"", */
+		/*       is_job ? "job" : "step", tres_rec->id, */
+		/*       tres_rec->count); */
+	}
+	list_iterator_destroy(itr);
+
+	if (query) {
+		xstrcat(query,
+			" on duplicate key update "
+			"count=VALUES(count);");
+		if (debug_flags & DEBUG_FLAG_DB_STEP)
+			DB_DEBUG(mysql_conn->conn, "query\n%s", query);
+		rc = mysql_db_query(mysql_conn, query);
+		xfree(query);
+	}
+
+	return rc;
+}
+
 /* extern functions */
 
 extern int as_mysql_job_start(mysql_conn_t *mysql_conn,
@@ -635,45 +691,9 @@ no_rollup_change:
 		rc = mysql_db_query(mysql_conn, query);
 	}
 
-	if (job_ptr->db_index && job_ptr->tres_list) {
-		ListIterator itr;
-		slurmdb_tres_rec_t *tres_rec;
-
-		xfree(query);
-
-		itr = list_iterator_create(job_ptr->tres_list);
-		while ((tres_rec = list_next(itr))) {
-			if (!tres_rec->id)
-				continue;
-			if (!query)
-				xstrfmtcat(query,
-					   "insert into \"%s_%s\" "
-					   "(job_db_inx, id_tres, count) "
-					   "values (%u, %u, %"PRIu64")",
-					   mysql_conn->cluster_name,
-					   job_ext_table,
-					   job_ptr->db_index,
-					   tres_rec->id, tres_rec->count);
-			else
-				xstrfmtcat(query,
-					   ", (%u, %u, %"PRIu64")",
-					   job_ptr->db_index,
-					   tres_rec->id, tres_rec->count);
-			/* debug("inserting %s(%s) with tres %u " */
-			/*       "count of %"PRIu64"", */
-			/*       job_ptr->name, mysql_conn->cluster_name, */
-			/*       tres_rec->id, tres_rec->count); */
-		}
-		list_iterator_destroy(itr);
-		if (query) {
-			xstrcat(query,
-				" on duplicate key update "
-				"count=VALUES(count);");
-			if (debug_flags & DEBUG_FLAG_DB_JOB)
-				DB_DEBUG(mysql_conn->conn, "query\n%s", query);
-			rc = mysql_db_query(mysql_conn, query);
-		}
-	}
+	if (rc == SLURM_SUCCESS)
+		rc = _add_tres(mysql_conn, job_ptr->db_index,
+			       job_ptr->tres_list, 1);
 
 	xfree(block_id);
 	xfree(partition);
@@ -931,12 +951,14 @@ extern int as_mysql_job_complete(mysql_conn_t *mysql_conn,
 extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 			       struct step_record *step_ptr)
 {
-	int cpus = 0, tasks = 0, nodes = 0, task_dist = 0;
+	int reinit = 0;
+	int tasks = 0, nodes = 0, task_dist = 0;
 	int rc=SLURM_SUCCESS;
 	char node_list[BUFFER_SIZE];
 	char *node_inx = NULL, *step_name = NULL;
 	time_t start_time, submit_time;
 	char *query = NULL;
+	uint32_t inx;
 
 	if (!step_ptr->job_ptr->db_index
 	    && ((!step_ptr->job_ptr->details
@@ -959,11 +981,10 @@ extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 	if (check_connection(mysql_conn) != SLURM_SUCCESS)
 		return ESLURM_DB_CONNECTION;
 	if (slurmdbd_conf) {
-		cpus = step_ptr->cpu_count;
 		if (step_ptr->job_ptr->details)
 			tasks = step_ptr->job_ptr->details->num_tasks;
 		else
-			tasks = cpus;
+			tasks = step_ptr->cpu_count;
 		snprintf(node_list, BUFFER_SIZE, "%s",
 			 step_ptr->job_ptr->nodes);
 		nodes = step_ptr->step_layout->node_cnt;
@@ -980,7 +1001,7 @@ extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 		   script was running.
 		*/
 		snprintf(node_list, BUFFER_SIZE, "%s", step_ptr->gres);
-		nodes = cpus = tasks = 1;
+		nodes = tasks = 1;
 	} else {
 		char *ionodes = NULL, *temp_nodes = NULL;
 		char temp_bit[BUF_SIZE];
@@ -992,9 +1013,9 @@ extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 #ifdef HAVE_BG_L_P
 		/* Only L and P use this code */
 		if (step_ptr->job_ptr->details)
-			tasks = cpus = step_ptr->job_ptr->details->min_cpus;
+			tasks = step_ptr->job_ptr->details->min_cpus;
 		else
-			tasks = cpus = step_ptr->job_ptr->cpu_cnt;
+			tasks = step_ptr->job_ptr->cpu_cnt;
 		select_g_select_jobinfo_get(step_ptr->job_ptr->select_jobinfo,
 					    SELECT_JOBDATA_NODE_CNT,
 					    &nodes);
@@ -1006,19 +1027,24 @@ extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 			int cpu_tres = TRES_CPU;
 
 			if (step_ptr->cpu_count)
-				tasks = cpus = step_ptr->cpu_count;
+				tasks = step_ptr->cpu_count;
+			else if (step_ptr->tres_list &&
+				 (tres_rec = list_find_first(
+					 step_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &cpu_tres)))
+				tasks = tres_rec->count;
 			else if (step_ptr->job_ptr->tres_list &&
 				 (tres_rec = list_find_first(
 					 step_ptr->job_ptr->tres_list,
 					 slurmdb_find_tres_in_list,
 					 &cpu_tres)))
-				tasks = cpus = tres_rec->count;
+				tasks = tres_rec->count;
 			else
-				tasks = cpus = step_ptr->job_ptr->total_nodes;
+				tasks = step_ptr->job_ptr->total_nodes;
 			nodes = step_ptr->job_ptr->total_nodes;
 			temp_nodes = step_ptr->job_ptr->nodes;
 		} else {
-			cpus = step_ptr->cpu_count;
 			tasks = step_ptr->step_layout->task_cnt;
 #ifdef HAVE_BGQ
 			select_g_select_jobinfo_get(step_ptr->select_jobinfo,
@@ -1068,28 +1094,44 @@ extern int as_mysql_step_start(mysql_conn_t *mysql_conn,
 	query = xstrdup_printf(
 		"insert into \"%s_%s\" (job_db_inx, id_step, time_start, "
 		"step_name, state, "
-		"cpus_alloc, nodes_alloc, task_cnt, nodelist, node_inx, "
+		"nodes_alloc, task_cnt, nodelist, node_inx, "
 		"task_dist, req_cpufreq, req_cpufreq_min, req_cpufreq_gov) "
-		"values (%d, %d, %d, '%s', %d, %d, %d, %d, "
+		"values (%d, %d, %d, '%s', %d, %d, %d, "
 		"'%s', '%s', %d, %u, %u, %u) "
-		"on duplicate key update cpus_alloc=%d, nodes_alloc=%d, "
-		"task_cnt=%d, time_end=0, state=%d, "
+		"on duplicate key update inx=LAST_INSERT_ID(inx), "
+		"nodes_alloc=%d, task_cnt=%d, time_end=0, state=%d, "
 		"nodelist='%s', node_inx='%s', task_dist=%d, "
 		"req_cpufreq=%u, req_cpufreq_min=%u, req_cpufreq_gov=%u",
 		mysql_conn->cluster_name, step_table,
 		step_ptr->job_ptr->db_index,
 		step_ptr->step_id,
 		(int)start_time, step_name,
-		JOB_RUNNING, cpus, nodes, tasks, node_list, node_inx, task_dist,
+		JOB_RUNNING, nodes, tasks, node_list, node_inx, task_dist,
 		step_ptr->cpu_freq_max, step_ptr->cpu_freq_min,
-		step_ptr->cpu_freq_gov, cpus, nodes, tasks, JOB_RUNNING, 
+		step_ptr->cpu_freq_gov, nodes, tasks, JOB_RUNNING,
 		node_list, node_inx, task_dist, step_ptr->cpu_freq_max,
 		step_ptr->cpu_freq_min, step_ptr->cpu_freq_gov);
 	if (debug_flags & DEBUG_FLAG_DB_STEP)
 		DB_DEBUG(mysql_conn->conn, "query\n%s", query);
-	rc = mysql_db_query(mysql_conn, query);
+try_again:
+	if (!(inx = mysql_db_insert_ret_id(mysql_conn, query))) {
+		if (!reinit) {
+			error("as_mysql_step_start: It looks like the "
+			      "storage has gone "
+			      "away trying to reconnect");
+			mysql_db_close_db_connection(mysql_conn);
+			/* reconnect */
+			check_connection(mysql_conn);
+			reinit = 1;
+			goto try_again;
+		} else
+			rc = SLURM_ERROR;
+	}
 	xfree(query);
 	xfree(step_name);
+
+	if (rc == SLURM_SUCCESS)
+		rc = _add_tres(mysql_conn, inx, step_ptr->tres_list, 0);
 
 	return rc;
 }
@@ -1157,6 +1199,12 @@ extern int as_mysql_step_complete(mysql_conn_t *mysql_conn,
 
 			if (step_ptr->cpu_count)
 				tasks = step_ptr->cpu_count;
+			else if (step_ptr->tres_list &&
+				 (tres_rec = list_find_first(
+					 step_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &cpu_tres)))
+				tasks = tres_rec->count;
 			else if (step_ptr->job_ptr->tres_list &&
 				 (tres_rec = list_find_first(
 					 step_ptr->job_ptr->tres_list,

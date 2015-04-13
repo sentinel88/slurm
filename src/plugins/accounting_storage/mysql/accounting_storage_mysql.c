@@ -147,6 +147,7 @@ char *qos_table = "qos_table";
 char *resv_table = "resv_table";
 char *res_table = "res_table";
 char *step_table = "step_table";
+char *step_ext_table = "step_ext_table";
 char *txn_table = "txn_table";
 char *user_table = "user_table";
 char *suspend_table = "suspend_table";
@@ -160,7 +161,8 @@ char *event_view = "event_view";
 char *event_ext_view = "event_ext_view";
 char *job_view = "job_view";
 char *job_ext_view = "job_ext_view";
-
+char *step_view = "step_view";
+char *step_ext_view = "step_ext_view";
 
 uint64_t debug_flags = 0;
 
@@ -1001,6 +1003,13 @@ extern int create_cluster_ext_tables(mysql_conn_t *mysql_conn,
 	/* 	{ NULL, NULL} */
 	/* }; */
 
+	storage_field_t step_ext_table_fields[] = {
+		{ "inx", "int unsigned not null" },
+		{ "id_tres", "int not null" },
+		{ "count", "bigint unsigned not null" },
+		{ NULL, NULL}
+	};
+
 	char table_name[200];
 
 	snprintf(table_name, sizeof(table_name), "\"%s_%s\"",
@@ -1018,6 +1027,15 @@ extern int create_cluster_ext_tables(mysql_conn_t *mysql_conn,
 	if (mysql_db_create_table(mysql_conn, table_name,
 				  job_ext_table_fields,
 				  ", unique index (job_db_inx, id_tres))")
+	    == SLURM_ERROR)
+		return SLURM_ERROR;
+
+	snprintf(table_name, sizeof(table_name), "\"%s_%s\"",
+		 cluster_name, step_ext_table);
+
+	if (mysql_db_create_table(mysql_conn, table_name,
+				  step_ext_table_fields,
+				  ", unique index (inx, id_tres))")
 	    == SLURM_ERROR)
 		return SLURM_ERROR;
 
@@ -1166,9 +1184,9 @@ extern int create_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 	};
 
 	storage_field_t step_table_fields[] = {
+		{ "inx", "int unsigned not null auto_increment" },
 		{ "job_db_inx", "int unsigned not null" },
 		{ "deleted", "tinyint default 0 not null" },
-		{ "cpus_alloc", "int unsigned not null" },
 		{ "exit_code", "int default 0 not null" },
 		{ "id_step", "int not null" },
 		{ "kill_requid", "int default -1 not null" },
@@ -1351,7 +1369,8 @@ extern int create_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 		 cluster_name, step_table);
 	if (mysql_db_create_table(mysql_conn, table_name,
 				  step_table_fields,
-				  ", primary key (job_db_inx, id_step))")
+				  ", primary key (inx), "
+				  "unique index (job_db_inx, id_step))")
 	    == SLURM_ERROR)
 		return SLURM_ERROR;
 
@@ -1437,8 +1456,9 @@ extern int remove_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
 		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
 		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
-		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\";"
-		   "drop view \"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\";",
+		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\";"
+		   "drop view \"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
+		   "\"%s_%s\", \"%s_%s\";",
 		   cluster_name, assoc_table,
 		   cluster_name, assoc_day_table,
 		   cluster_name, assoc_hour_table,
@@ -1458,12 +1478,15 @@ extern int remove_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 		   cluster_name, wckey_month_table,
 		   cluster_name, event_ext_table,
 		   cluster_name, job_ext_table,
+		   cluster_name, step_ext_table,
 		   cluster_name, event_view,
 		   cluster_name, event_ext_view,
 		   cluster_name, job_view,
-		   cluster_name, job_ext_view
+		   cluster_name, job_ext_view,
+		   cluster_name, step_view,
+		   cluster_name, step_ext_view
 		   /* cluster_name, resv_ext_table, */
-		   );
+		);
 	/* Since we could possibly add this exact cluster after this
 	   we will require a commit before doing anything else.  This
 	   flag will give us that.

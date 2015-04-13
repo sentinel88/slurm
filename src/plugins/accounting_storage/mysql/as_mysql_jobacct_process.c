@@ -158,7 +158,6 @@ char *step_req_inx[] = {
 	"t1.kill_requid",
 	"t1.exit_code",
 	"t1.nodes_alloc",
-	"t1.cpus_alloc",
 	"t1.task_cnt",
 	"t1.task_dist",
 	"t1.user_sec",
@@ -208,7 +207,6 @@ enum {
 	STEP_REQ_KILL_REQUID,
 	STEP_REQ_EXIT_CODE,
 	STEP_REQ_NODES,
-	STEP_REQ_CPUS,
 	STEP_REQ_TASKS,
 	STEP_REQ_TASKDIST,
 	STEP_REQ_USER_SEC,
@@ -755,7 +753,7 @@ static int _cluster_get_jobs(mysql_conn_t *mysql_conn,
 		query =	xstrdup_printf("select %s from \"%s_%s\" as t1 "
 				       "where t1.job_db_inx=%s",
 				       step_fields, cluster_name,
-				       step_table, id);
+				       step_view, id);
 		if (extra) {
 			xstrcat(query, extra);
 			xfree(extra);
@@ -799,14 +797,11 @@ static int _cluster_get_jobs(mysql_conn_t *mysql_conn,
 			step->state = slurm_atoul(step_row[STEP_REQ_STATE]);
 			step->exitcode =
 				slurm_atoul(step_row[STEP_REQ_EXIT_CODE]);
-			step->ncpus = slurm_atoul(step_row[STEP_REQ_CPUS]);
 			step->nnodes = slurm_atoul(step_row[STEP_REQ_NODES]);
 
 			step->ntasks = slurm_atoul(step_row[STEP_REQ_TASKS]);
 			step->task_dist =
 				slurm_atoul(step_row[STEP_REQ_TASKDIST]);
-			if (!step->ntasks)
-				step->ntasks = step->ncpus;
 
 			step->start = slurm_atoul(step_row[STEP_REQ_START]);
 
@@ -918,6 +913,26 @@ static int _cluster_get_jobs(mysql_conn_t *mysql_conn,
 
 			step->requid =
 				slurm_atoul(step_row[STEP_REQ_KILL_REQUID]);
+			step->tres_list = list_create(slurmdb_destroy_tres_rec);
+			i = STEP_REQ_COUNT-1;
+			list_iterator_reset(itr2);
+			while ((tres_rec = list_next(itr2))) {
+				i++;
+				/* Skip if the tres is NULL,
+				 * it means this step doesn't care about it.
+				 */
+				if (!step_row[i] || !step_row[i][0])
+					continue;
+				loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
+				loc_tres_rec->count = slurm_atoull(step_row[i]);
+				list_append(step->tres_list, loc_tres_rec);
+
+				if (!step->ntasks &&
+				    (loc_tres_rec->id == TRES_CPU))
+					step->ntasks =
+						(uint32_t)loc_tres_rec->count;
+
+			}
 		}
 		mysql_free_result(step_result);
 
@@ -1617,6 +1632,7 @@ extern List as_mysql_jobacct_process_get_jobs(mysql_conn_t *mysql_conn,
 
 	assoc_mgr_lock(&locks);
 	xstrcat(tmp, full_tres_query);
+	xstrcat(tmp2, full_tres_query);
 
 	job_list = list_create(slurmdb_destroy_job_rec);
 	itr = list_iterator_create(use_cluster_list);

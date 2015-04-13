@@ -522,7 +522,6 @@ extern slurmdb_step_rec_t *slurmdb_create_step_rec()
 	step->stepid = (uint32_t)NO_VAL;
 	step->state = NO_VAL;
 	step->exitcode = NO_VAL;
-	step->ncpus = (uint32_t)NO_VAL;
 	step->elapsed = (uint32_t)NO_VAL;
 	step->tot_cpu_sec = (uint32_t)NO_VAL;
 	step->tot_cpu_usec = (uint32_t)NO_VAL;
@@ -707,6 +706,7 @@ extern void slurmdb_destroy_step_rec(void *object)
 		xfree(step->nodes);
 		xfree(step->pid_str);
 		xfree(step->stepname);
+		FREE_NULL_LIST(step->tres_list);
 		xfree(step);
 	}
 }
