@@ -488,6 +488,9 @@ static void _layout_resv_record(GtkTreeView *treeview,
 	char time_buf[20];
 	reserve_info_t *resv_ptr = sview_resv_info->resv_ptr;
 	char *temp_char = NULL;
+	slurmdb_tres_rec_t *tres_rec = NULL;
+	int cpu_tres_rec_count = 0;
+	int cpu_tres = TRES_CPU;
 
 	GtkTreeStore *treestore =
 		GTK_TREE_STORE(gtk_tree_view_get_model(treeview));
@@ -502,7 +505,12 @@ static void _layout_resv_record(GtkTreeView *treeview,
 						 SORTID_BURST_BUFFER),
 				   resv_ptr->burst_buffer);
 
-	convert_num_unit((float)resv_ptr->core_cnt,
+	if (resv_ptr->tres_list &&
+	    (tres_rec = list_find_first(resv_ptr->tres_list,
+					slurmdb_find_tres_in_list,
+					&cpu_tres)))
+		cpu_tres_rec_count = (int)tres_rec->count;
+	convert_num_unit((float)cpu_tres_rec_count,
 			 time_buf, sizeof(time_buf), UNIT_NONE);
 	add_display_treestore_line(update, treestore, &iter,
 				   find_col_name(display_data_resv,
@@ -577,6 +585,9 @@ static void _update_resv_record(sview_resv_info_t *sview_resv_info_ptr,
 		tmp_cores[40];
 	char *tmp_flags;
 	reserve_info_t *resv_ptr = sview_resv_info_ptr->resv_ptr;
+	slurmdb_tres_rec_t *tres_rec = NULL;
+	int cpu_tres_rec_count = 0;
+	int cpu_tres = TRES_CPU;
 
 	secs2time_str((uint32_t)difftime(resv_ptr->end_time,
 					 resv_ptr->start_time),
@@ -587,7 +598,12 @@ static void _update_resv_record(sview_resv_info_t *sview_resv_info_ptr,
 
 	tmp_flags = reservation_flags_string(resv_ptr->flags);
 
-	convert_num_unit((float)resv_ptr->core_cnt,
+	if (resv_ptr->tres_list &&
+	    (tres_rec = list_find_first(resv_ptr->tres_list,
+					slurmdb_find_tres_in_list,
+					&cpu_tres)))
+		cpu_tres_rec_count = (int)tres_rec->count;
+	convert_num_unit((float)cpu_tres_rec_count,
 			 tmp_cores, sizeof(tmp_cores), UNIT_NONE);
 
 	convert_num_unit((float)resv_ptr->node_cnt,

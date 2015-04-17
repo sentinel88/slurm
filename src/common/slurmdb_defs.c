@@ -695,6 +695,7 @@ extern void slurmdb_destroy_reservation_rec(void *object)
 		xfree(slurmdb_resv->name);
 		xfree(slurmdb_resv->nodes);
 		xfree(slurmdb_resv->node_inx);
+		FREE_NULL_LIST(slurmdb_resv->tres_list);
 		xfree(slurmdb_resv);
 	}
 }
@@ -2829,6 +2830,31 @@ extern List slurmdb_copy_tres_list(List tres)
 	return tres_out;
 }
 
+extern List slurmdb_diff_tres_list(List tres_list_old, List tres_list_new)
+{
+	slurmdb_tres_rec_t *tres_rec = NULL, *tres_rec_old;
+	ListIterator itr;
+	List tres_out;
+
+	if (!tres_list_new || !list_count(tres_list_new))
+		return NULL;
+
+	tres_out = slurmdb_copy_tres_list(tres_list_new);
+
+	itr = list_iterator_create(tres_out);
+	while ((tres_rec = list_next(itr))) {
+		if (!(tres_rec_old = list_find_first(tres_list_old,
+						     slurmdb_find_tres_in_list,
+						     &tres_rec->id)))
+			continue;
+		if (tres_rec_old->count == tres_rec->count)
+			list_delete_item(itr);
+	}
+	list_iterator_destroy(itr);
+
+	return tres_out;
+}
+
 /* caller must xfree this char * returned */
 extern char *slurmdb_make_tres_string(List tres)
 {
@@ -2918,8 +2944,8 @@ extern int slurmdb_add_accounting_to_tres_list(
 		*tres = list_create(slurmdb_destroy_tres_rec);
 	else
 		tres_rec = list_find_first(*tres,
-					    slurmdb_find_tres_in_list,
-					    &accting->tres_rec.id);
+					   slurmdb_find_tres_in_list,
+					   &accting->tres_rec.id);
 
 	if (!tres_rec) {
 		tres_rec = slurmdb_copy_tres_rec(&accting->tres_rec);
@@ -2947,8 +2973,8 @@ extern int slurmdb_add_time_from_count_to_tres_list(
 		*tres = list_create(slurmdb_destroy_tres_rec);
 	else
 		tres_rec = list_find_first(*tres,
-					    slurmdb_find_tres_in_list,
-					    &tres_in->id);
+					   slurmdb_find_tres_in_list,
+					   &tres_in->id);
 
 	if (!tres_rec) {
 		tres_rec = slurmdb_copy_tres_rec(tres_in);
@@ -3012,5 +3038,25 @@ extern void slurmdb_transfer_acct_list_2_tres(
 	itr = list_iterator_create(accounting_list);
 	while ((accting = list_next(itr)))
 		slurmdb_add_accounting_to_tres_list(accting, tres);
+	list_iterator_destroy(itr);
+}
+
+extern void slurmdb_transfer_tres_list_time(
+	List *tres_list_out, List tres_list_in, int elapsed)
+{
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec = NULL;
+
+	xassert(tres_list_out);
+
+	if (!tres_list_in || !list_count(tres_list_in))
+		return;
+
+	/* get the amount of time this assoc used
+	   during the time we are looking at */
+	itr = list_iterator_create(tres_list_in);
+	while ((tres_rec = list_next(itr)))
+		slurmdb_add_time_from_count_to_tres_list(
+			tres_rec, tres_list_out, elapsed);
 	list_iterator_destroy(itr);
 }

@@ -126,6 +126,7 @@ extern char *slurmdb_get_selected_step_id(
 
 extern slurmdb_tres_rec_t *slurmdb_copy_tres_rec(slurmdb_tres_rec_t *tres);
 extern List slurmdb_copy_tres_list(List tres);
+extern List slurmdb_diff_tres_list(List tres_list_old, List tres_list_new);
 extern char *slurmdb_make_tres_string(List tres);
 extern int slurmdb_find_tres_in_list(void *x, void *key);
 extern int slurmdb_find_cluster_accting_tres_in_list(void *x, void *key);
@@ -142,5 +143,7 @@ extern int slurmdb_sum_accounting_list(
 	List *total_tres_acct);
 extern void slurmdb_transfer_acct_list_2_tres(
 	List accounting_list, List *tres);
+extern void slurmdb_transfer_tres_list_time(
+	List *tres_list_out, List tres_list_in, int elapsed);
 
 #endif

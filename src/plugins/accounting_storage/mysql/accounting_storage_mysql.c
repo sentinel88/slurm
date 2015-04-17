@@ -145,6 +145,7 @@ char *job_ext_table = "job_ext_table";
 char *last_ran_table = "last_ran_table";
 char *qos_table = "qos_table";
 char *resv_table = "resv_table";
+char *resv_ext_table = "resv_ext_table";
 char *res_table = "res_table";
 char *step_table = "step_table";
 char *step_ext_table = "step_ext_table";
@@ -161,6 +162,8 @@ char *event_view = "event_view";
 char *event_ext_view = "event_ext_view";
 char *job_view = "job_view";
 char *job_ext_view = "job_ext_view";
+char *resv_view = "resv_view";
+char *resv_ext_view = "resv_ext_view";
 char *step_view = "step_view";
 char *step_ext_view = "step_ext_view";
 
@@ -984,28 +987,28 @@ extern int create_cluster_ext_tables(mysql_conn_t *mysql_conn,
 {
 	storage_field_t event_ext_table_fields[] = {
 		{ "inx", "int unsigned not null" },
-		{ "id_tres", "int not null" },
+		{ "id_tres", "int unsigned not null" },
 		{ "count", "bigint unsigned not null" },
 		{ NULL, NULL}
 	};
 
 	storage_field_t job_ext_table_fields[] = {
 		{ "job_db_inx", "int unsigned not null" },
-		{ "id_tres", "int not null" },
+		{ "id_tres", "int unsigned not null" },
 		{ "count", "bigint unsigned not null" },
 		{ NULL, NULL}
 	};
 
-	/* storage_field_t resv_ext_table_fields[] = { */
-	/* 	{ "id_resv", "int not null" }, */
-	/* 	{ "id_tres", "int not null" }, */
-	/* 	{ "count", "int not null" }, */
-	/* 	{ NULL, NULL} */
-	/* }; */
+	storage_field_t resv_ext_table_fields[] = {
+		{ "inx", "int unsigned not null" },
+		{ "id_tres", "int unsigned not null" },
+		{ "count", "bigint unsigned not null" },
+		{ NULL, NULL}
+	};
 
 	storage_field_t step_ext_table_fields[] = {
 		{ "inx", "int unsigned not null" },
-		{ "id_tres", "int not null" },
+		{ "id_tres", "int unsigned not null" },
 		{ "count", "bigint unsigned not null" },
 		{ NULL, NULL}
 	};
@@ -1027,6 +1030,15 @@ extern int create_cluster_ext_tables(mysql_conn_t *mysql_conn,
 	if (mysql_db_create_table(mysql_conn, table_name,
 				  job_ext_table_fields,
 				  ", unique index (job_db_inx, id_tres))")
+	    == SLURM_ERROR)
+		return SLURM_ERROR;
+
+	snprintf(table_name, sizeof(table_name), "\"%s_%s\"",
+		 cluster_name, resv_ext_table);
+
+	if (mysql_db_create_table(mysql_conn, table_name,
+				  resv_ext_table_fields,
+				  ", unique index (inx, id_tres))")
 	    == SLURM_ERROR)
 		return SLURM_ERROR;
 
@@ -1170,10 +1182,10 @@ extern int create_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 	};
 
 	storage_field_t resv_table_fields[] = {
+		{ "inx", "int unsigned not null auto_increment" },
 		{ "id_resv", "int unsigned default 0 not null" },
 		{ "deleted", "tinyint default 0 not null" },
 		{ "assoclist", "text not null default ''" },
-		{ "cpus", "int unsigned not null" },
 		{ "flags", "smallint unsigned default 0 not null" },
 		{ "nodelist", "text not null default ''" },
 		{ "node_inx", "text not null default ''" },
@@ -1361,7 +1373,8 @@ extern int create_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 		 cluster_name, resv_table);
 	if (mysql_db_create_table(mysql_conn, table_name,
 				  resv_table_fields,
-				  ", primary key (id_resv, time_start))")
+				  ", primary key (inx), "
+				  "unique index (id_resv, time_start))")
 	    == SLURM_ERROR)
 		return SLURM_ERROR;
 
@@ -1455,10 +1468,10 @@ extern int remove_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 		   "drop table \"%s_%s\", \"%s_%s\", \"%s_%s\", "
 		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
 		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
-		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
+		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
 		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\";"
 		   "drop view \"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\", "
-		   "\"%s_%s\", \"%s_%s\";",
+		   "\"%s_%s\", \"%s_%s\", \"%s_%s\", \"%s_%s\";",
 		   cluster_name, assoc_table,
 		   cluster_name, assoc_day_table,
 		   cluster_name, assoc_hour_table,
@@ -1478,14 +1491,16 @@ extern int remove_cluster_tables(mysql_conn_t *mysql_conn, char *cluster_name)
 		   cluster_name, wckey_month_table,
 		   cluster_name, event_ext_table,
 		   cluster_name, job_ext_table,
+		   cluster_name, resv_ext_table,
 		   cluster_name, step_ext_table,
 		   cluster_name, event_view,
 		   cluster_name, event_ext_view,
 		   cluster_name, job_view,
 		   cluster_name, job_ext_view,
+		   cluster_name, resv_view,
+		   cluster_name, resv_ext_view,
 		   cluster_name, step_view,
 		   cluster_name, step_ext_view
-		   /* cluster_name, resv_ext_table, */
 		);
 	/* Since we could possibly add this exact cluster after this
 	   we will require a commit before doing anything else.  This

@@ -107,6 +107,22 @@ extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 	if (rc != SLURM_SUCCESS)
 		error("problem altering job_ext");
 
+	/* Create a view for easy access to the resv_ext table	*/
+	query = xstrdup_printf(
+		"drop view if exists \"%s_%s\";"
+		"create view \"%s_%s\" as (select inx ext_inx %s "
+		"from \"%s_%s\" group by inx);",
+		cluster_name, resv_ext_view,
+		cluster_name, resv_ext_view, tres_view_str,
+		cluster_name, resv_ext_table);
+
+	if (debug_flags & DEBUG_FLAG_DB_TRES)
+		DB_DEBUG(mysql_conn->conn, "%s", query);
+	rc = mysql_db_query(mysql_conn, query);
+	xfree(query);
+	if (rc != SLURM_SUCCESS)
+		error("problem altering step_ext");
+
 	/* Create a view for easy access to the step_ext table	*/
 	query = xstrdup_printf(
 		"drop view if exists \"%s_%s\";"
@@ -134,6 +150,9 @@ extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 		"left join \"%s_%s\" t2 on t1.job_db_inx=t2.ext_job_db_inx);"
 		"drop view if exists \"%s_%s\";"
 		"create view \"%s_%s\" as (select * from \"%s_%s\" t1 "
+		"left join \"%s_%s\" t2 on t1.inx=t2.ext_inx);"
+		"drop view if exists \"%s_%s\";"
+		"create view \"%s_%s\" as (select * from \"%s_%s\" t1 "
 		"left join \"%s_%s\" t2 on t1.inx=t2.ext_inx);",
 		cluster_name, event_view,
 		cluster_name, event_view,
@@ -143,6 +162,10 @@ extern int update_tres_views(mysql_conn_t *mysql_conn, char *cluster_name)
 		cluster_name, job_view,
 		cluster_name, job_table,
 		cluster_name, job_ext_view,
+		cluster_name, resv_view,
+		cluster_name, resv_view,
+		cluster_name, resv_table,
+		cluster_name, resv_ext_view,
 		cluster_name, step_view,
 		cluster_name, step_view,
 		cluster_name, step_table,

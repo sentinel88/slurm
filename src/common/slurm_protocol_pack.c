@@ -4532,11 +4532,13 @@ _unpack_reserve_info_members(reserve_info_t * resv, Buf buffer,
 {
 	char *node_inx_str = NULL;
 	uint32_t uint32_tmp;
+	uint32_t count = 0;
+	slurmdb_tres_rec_t *tres_rec;
+	int i;
 
 	if (protocol_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		safe_unpackstr_xmalloc(&resv->accounts,	&uint32_tmp, buffer);
 		safe_unpackstr_xmalloc(&resv->burst_buffer,&uint32_tmp, buffer);
-		safe_unpack32(&resv->core_cnt,		buffer);
 		safe_unpack_time(&resv->end_time,	buffer);
 		safe_unpackstr_xmalloc(&resv->features,	&uint32_tmp, buffer);
 		safe_unpack32(&resv->flags,		buffer);
@@ -4546,6 +4548,20 @@ _unpack_reserve_info_members(reserve_info_t * resv, Buf buffer,
 		safe_unpackstr_xmalloc(&resv->node_list, &uint32_tmp, buffer);
 		safe_unpackstr_xmalloc(&resv->partition, &uint32_tmp, buffer);
 		safe_unpack_time(&resv->start_time,	buffer);
+
+		safe_unpack32(&count, buffer);
+		if (count != NO_VAL) {
+			resv->tres_list = list_create(slurmdb_destroy_tres_rec);
+			for (i=0; i<count; i++) {
+				if (slurmdb_unpack_tres_rec(
+					    (void *)&tres_rec,
+					    protocol_version, buffer)
+				    == SLURM_ERROR)
+					goto unpack_error;
+				list_append(resv->tres_list, tres_rec);
+			}
+		}
+
 		safe_unpackstr_xmalloc(&resv->users,	&uint32_tmp, buffer);
 		safe_unpackstr_xmalloc(&node_inx_str,   &uint32_tmp, buffer);
 		if (node_inx_str == NULL)
@@ -4557,7 +4573,12 @@ _unpack_reserve_info_members(reserve_info_t * resv, Buf buffer,
 		}
 	} else if (protocol_version >= SLURM_14_03_PROTOCOL_VERSION) {
 		safe_unpackstr_xmalloc(&resv->accounts,	&uint32_tmp, buffer);
-		safe_unpack32(&resv->core_cnt,		buffer);
+		resv->tres_list = list_create(slurmdb_destroy_tres_rec);
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_push(resv->tres_list, tres_rec);
+		safe_unpack32(&uint32_tmp, buffer);
+		tres_rec->count = uint32_tmp;
 		safe_unpack_time(&resv->end_time,	buffer);
 		safe_unpackstr_xmalloc(&resv->features,	&uint32_tmp, buffer);
 		safe_unpack32(&resv->flags,		buffer);

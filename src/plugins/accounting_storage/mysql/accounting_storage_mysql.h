@@ -90,6 +90,7 @@ extern char *job_ext_table;
 extern char *last_ran_table;
 extern char *qos_table;
 extern char *resv_table;
+extern char *resv_ext_table;
 extern char *res_table;
 extern char *step_table;
 extern char *step_ext_table;
@@ -105,6 +106,8 @@ extern char *event_view;
 extern char *event_ext_view;
 extern char *job_view;
 extern char *job_ext_view;
+extern char *resv_view;
+extern char *resv_ext_view;
 extern char *step_view;
 extern char *step_ext_view;
 

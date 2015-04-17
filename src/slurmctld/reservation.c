@@ -225,7 +225,6 @@ static slurmctld_resv_t *_copy_resv(slurmctld_resv_t *resv_orig_ptr)
 		resv_copy_ptr->core_bitmap = bit_copy(resv_orig_ptr->
 						      core_bitmap);
 	}
-	resv_copy_ptr->cpu_cnt = resv_orig_ptr->cpu_cnt;
 	resv_copy_ptr->duration = resv_orig_ptr->duration;
 	resv_copy_ptr->end_time = resv_orig_ptr->end_time;
 	resv_copy_ptr->features = xstrdup(resv_orig_ptr->features);
@@ -248,6 +247,8 @@ static slurmctld_resv_t *_copy_resv(slurmctld_resv_t *resv_orig_ptr)
 	resv_copy_ptr->start_time = resv_orig_ptr->start_time;
 	resv_copy_ptr->start_time_first = resv_orig_ptr->start_time_first;
 	resv_copy_ptr->start_time_prev = resv_orig_ptr->start_time_prev;
+	resv_copy_ptr->tres_list = slurmdb_copy_tres_list(
+		resv_orig_ptr->tres_list);
 	resv_copy_ptr->users = xstrdup(resv_orig_ptr->users);
 	resv_copy_ptr->user_cnt = resv_orig_ptr->user_cnt;
 	resv_copy_ptr->user_list = xmalloc(sizeof(uid_t) *
@@ -294,7 +295,6 @@ static void _restore_resv(slurmctld_resv_t *dest_resv,
 	dest_resv->core_bitmap = src_resv->core_bitmap;
 	src_resv->core_bitmap = NULL;
 
-	dest_resv->cpu_cnt = src_resv->cpu_cnt;
 	dest_resv->duration = src_resv->duration;
 	dest_resv->end_time = src_resv->end_time;
 
@@ -342,6 +342,10 @@ static void _restore_resv(slurmctld_resv_t *dest_resv,
 	dest_resv->start_time = src_resv->start_time;
 	dest_resv->start_time_first = src_resv->start_time_first;
 	dest_resv->start_time_prev = src_resv->start_time_prev;
+
+	FREE_NULL_LIST(dest_resv->tres_list);
+	dest_resv->tres_list = src_resv->tres_list;
+	src_resv->tres_list = NULL;
 
 	xfree(dest_resv->users);
 	dest_resv->users = src_resv->users;
@@ -699,6 +703,10 @@ static int _post_resv_create(slurmctld_resv_t *resv_ptr)
 	int rc = SLURM_SUCCESS;
 	slurmdb_reservation_rec_t resv;
 	char temp_bit[BUF_SIZE];
+#ifdef HAVE_BG
+	slurmdb_tres_rec_t *tres_rec;
+	uint32_t tres_id = TRES_CPU;
+#endif
 
 	if (resv_ptr->flags & RESERVE_FLAG_TIME_FLOAT)
 		return rc;
@@ -706,7 +714,7 @@ static int _post_resv_create(slurmctld_resv_t *resv_ptr)
 	memset(&resv, 0, sizeof(slurmdb_reservation_rec_t));
 	resv.assocs = resv_ptr->assoc_list;
 	resv.cluster = slurmctld_cluster_name;
-	resv.cpus = resv_ptr->cpu_cnt;
+	resv.tres_list = slurmdb_copy_tres_list(resv_ptr->tres_list);
 #ifdef HAVE_BG
 	/* Since on a bluegene we track cnodes instead of cpus do the
 	   adjustment since accounting is expecting cpus here.
@@ -714,7 +722,12 @@ static int _post_resv_create(slurmctld_resv_t *resv_ptr)
 	if (!cpu_mult)
 		(void)select_g_alter_node_cnt(
 			SELECT_GET_NODE_CPU_CNT, &cpu_mult);
-	resv.cpus *= cpu_mult;
+
+	if (resv.tres_list && (tres_rec = list_find_first(
+				       resv.tres_list,
+				       slurmdb_find_tres_in_list,
+				       &tres_id)))
+		tres_rec->count *= cpu_mult;
 #endif
 	resv.flags = resv_ptr->flags;
 	resv.id = resv_ptr->resv_id;
@@ -728,6 +741,7 @@ static int _post_resv_create(slurmctld_resv_t *resv_ptr)
 	resv.time_start = resv_ptr->start_time;
 
 	rc = acct_storage_g_add_reservation(acct_db_conn, &resv);
+	FREE_NULL_LIST(resv.tres_list);
 
 	return rc;
 }
@@ -762,6 +776,10 @@ static int _post_resv_update(slurmctld_resv_t *resv_ptr,
 	int rc = SLURM_SUCCESS;
 	slurmdb_reservation_rec_t resv;
 	char temp_bit[BUF_SIZE];
+#ifdef HAVE_BG
+	slurmdb_tres_rec_t *tres_rec;
+	uint32_t tres_id = TRES_CPU;
+#endif
 
 	if (resv_ptr->flags & RESERVE_FLAG_TIME_FLOAT)
 		return rc;
@@ -773,17 +791,7 @@ static int _post_resv_update(slurmctld_resv_t *resv_ptr,
 
 	if (!old_resv_ptr) {
 		resv.assocs = resv_ptr->assoc_list;
-		resv.cpus = resv_ptr->cpu_cnt;
-#ifdef HAVE_BG
-		/* Since on a bluegene we track cnodes instead of cpus
-		 * do the adjustment since accounting is expecting
-		 * cpus here.
-		 */
-		if (!cpu_mult)
-			(void)select_g_alter_node_cnt(
-				SELECT_GET_NODE_CPU_CNT, &cpu_mult);
-		resv.cpus *= cpu_mult;
-#endif
+		resv.tres_list = slurmdb_copy_tres_list(resv_ptr->tres_list);
 		resv.flags = resv_ptr->flags;
 		resv.nodes = resv_ptr->node_list;
 	} else {
@@ -796,20 +804,8 @@ static int _post_resv_update(slurmctld_resv_t *resv_ptr,
 		} else if (resv_ptr->assoc_list)
 			resv.assocs = resv_ptr->assoc_list;
 
-		if (old_resv_ptr->cpu_cnt != resv_ptr->cpu_cnt) {
-			resv.cpus = resv_ptr->cpu_cnt;
-#ifdef HAVE_BG
-			/* Since on a bluegene we track cnodes instead
-			 * of cpus do the adjustment since accounting
-			 * is expecting cpus here.
-			 */
-			if (!cpu_mult)
-				(void)select_g_alter_node_cnt(
-					SELECT_GET_NODE_CPU_CNT, &cpu_mult);
-			resv.cpus *= cpu_mult;
-#endif
-		} else
-			resv.cpus = (uint32_t)NO_VAL;
+		resv.tres_list = slurmdb_diff_tres_list(
+			old_resv_ptr->tres_list, resv_ptr->tres_list);
 
 		if (old_resv_ptr->flags != resv_ptr->flags)
 			resv.flags = resv_ptr->flags;
@@ -832,11 +828,28 @@ static int _post_resv_update(slurmctld_resv_t *resv_ptr,
 		     && (resv.assocs
 			 || resv.nodes
 			 || (resv.flags != NO_VAL)
-			 || (resv.cpus != NO_VAL))) {
+			 || (resv.tres_list && list_count(resv.tres_list)))) {
 			resv_ptr->start_time_prev = resv_ptr->start_time;
 			resv_ptr->start_time = now;
 		}
 	}
+#ifdef HAVE_BG
+	/* Since on a bluegene we track cnodes instead of cpus
+	 * do the adjustment since accounting is expecting
+	 * cpus here.
+	 */
+	if (!cpu_mult)
+		(void)select_g_alter_node_cnt(
+			SELECT_GET_NODE_CPU_CNT, &cpu_mult);
+
+	if (resv.tres_list && (tres_rec = list_find_first(
+				       resv.tres_list,
+				       slurmdb_find_tres_in_list,
+				       &tres_id)))
+		tres_rec->count *= cpu_mult;
+#endif
+
+
 	/* now set the (maybe new) start_times */
 	resv.time_start = resv_ptr->start_time;
 	resv.time_start_prev = resv_ptr->start_time_prev;
@@ -847,6 +860,7 @@ static int _post_resv_update(slurmctld_resv_t *resv_ptr,
 	}
 
 	rc = acct_storage_g_modify_reservation(acct_db_conn, &resv);
+	FREE_NULL_LIST(resv.tres_list);
 
 	return rc;
 }
@@ -1333,6 +1347,9 @@ static void _pack_resv(slurmctld_resv_t *resv_ptr, Buf buffer,
 		       bool internal, uint16_t protocol_version)
 {
 	time_t now = time(NULL), start_relative, end_relative;
+	uint32_t count = 0;
+	slurmdb_tres_rec_t *tres_rec;
+	uint32_t tres_id = TRES_CPU;
 
 	if (resv_ptr->flags & RESERVE_FLAG_TIME_FLOAT)
 		last_resv_update = now;
@@ -1355,7 +1372,6 @@ static void _pack_resv(slurmctld_resv_t *resv_ptr, Buf buffer,
 	if (protocol_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		packstr(resv_ptr->accounts,	buffer);
 		packstr(resv_ptr->burst_buffer,	buffer);
-		pack32(resv_ptr->cpu_cnt,	buffer);
 		pack_time(end_relative,		buffer);
 		packstr(resv_ptr->features,	buffer);
 		pack32(resv_ptr->flags,		buffer);
@@ -1365,6 +1381,23 @@ static void _pack_resv(slurmctld_resv_t *resv_ptr, Buf buffer,
 		packstr(resv_ptr->node_list,	buffer);
 		packstr(resv_ptr->partition,	buffer);
 		pack_time(start_relative,	buffer);
+
+		if (resv_ptr->tres_list)
+			count = list_count(resv_ptr->tres_list);
+		else
+			count = NO_VAL;
+
+		pack32(count, buffer);
+
+		if (count && count != NO_VAL) {
+			ListIterator itr = list_iterator_create(
+				resv_ptr->tres_list);
+			while ((tres_rec = list_next(itr)))
+				slurmdb_pack_tres_rec(
+					tres_rec, protocol_version, buffer);
+			list_iterator_destroy(itr);
+		}
+
 		packstr(resv_ptr->users,	buffer);
 
 		if (internal) {
@@ -1386,7 +1419,15 @@ static void _pack_resv(slurmctld_resv_t *resv_ptr, Buf buffer,
 		}
 	} else if (protocol_version >= SLURM_14_03_PROTOCOL_VERSION) {
 		packstr(resv_ptr->accounts,	buffer);
-		pack32(resv_ptr->cpu_cnt,	buffer);
+
+		if (resv_ptr->tres_list && (tres_rec = list_find_first(
+					  resv_ptr->tres_list,
+					  slurmdb_find_tres_in_list,
+					  &tres_id)))
+			count = tres_rec->count;
+		else
+			count = 0;
+		pack32(count,           	buffer);
 		pack_time(end_relative,		buffer);
 		packstr(resv_ptr->features,	buffer);
 		pack32(resv_ptr->flags,		buffer);
@@ -1424,6 +1465,9 @@ slurmctld_resv_t *_load_reservation_state(Buf buffer,
 	slurmctld_resv_t *resv_ptr;
 	uint32_t core_cnt, uint32_tmp;
 	char *core_inx_str = NULL;
+	uint32_t count = 0;
+	slurmdb_tres_rec_t *tres_rec;
+	int i;
 
 	resv_ptr = xmalloc(sizeof(slurmctld_resv_t));
 	xassert(resv_ptr->magic = RESV_MAGIC);	/* Sets value */
@@ -1432,7 +1476,6 @@ slurmctld_resv_t *_load_reservation_state(Buf buffer,
 				       &uint32_tmp,	buffer);
 		safe_unpackstr_xmalloc(&resv_ptr->burst_buffer,
 				       &uint32_tmp,	buffer);
-		safe_unpack32(&resv_ptr->cpu_cnt,	buffer);
 		safe_unpack_time(&resv_ptr->end_time,	buffer);
 		safe_unpackstr_xmalloc(&resv_ptr->features,
 				       &uint32_tmp, 	buffer);
@@ -1447,6 +1490,21 @@ slurmctld_resv_t *_load_reservation_state(Buf buffer,
 		safe_unpackstr_xmalloc(&resv_ptr->partition,
 				       &uint32_tmp, 	buffer);
 		safe_unpack_time(&resv_ptr->start_time_first,	buffer);
+
+		safe_unpack32(&count, buffer);
+		if (count != NO_VAL) {
+			resv_ptr->tres_list = list_create(
+				slurmdb_destroy_tres_rec);
+			for (i=0; i<count; i++) {
+				if (slurmdb_unpack_tres_rec(
+					    (void *)&tres_rec,
+					    protocol_version, buffer)
+				    == SLURM_ERROR)
+					goto unpack_error;
+				list_append(resv_ptr->tres_list, tres_rec);
+			}
+		}
+
 		safe_unpackstr_xmalloc(&resv_ptr->users, &uint32_tmp, buffer);
 
 		/* Fields saved for internal use only (save state) */
@@ -1477,7 +1535,12 @@ slurmctld_resv_t *_load_reservation_state(Buf buffer,
 	} else if (protocol_version >= SLURM_14_03_PROTOCOL_VERSION) {
 		safe_unpackstr_xmalloc(&resv_ptr->accounts,
 				       &uint32_tmp,	buffer);
-		safe_unpack32(&resv_ptr->cpu_cnt,	buffer);
+		resv_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_push(resv_ptr->tres_list, tres_rec);
+		safe_unpack32(&uint32_tmp, buffer);
+		tres_rec->count = uint32_tmp;
 		safe_unpack_time(&resv_ptr->end_time,	buffer);
 		safe_unpackstr_xmalloc(&resv_ptr->features,
 				       &uint32_tmp, 	buffer);
@@ -1627,6 +1690,8 @@ static void _set_cpu_cnt(slurmctld_resv_t *resv_ptr)
 	int i;
 	uint32_t cpu_cnt = 0;
 	struct node_record *node_ptr = node_record_table_ptr;
+	slurmdb_tres_rec_t *tres_rec;
+	uint32_t tres_id = TRES_CPU;
 
 	if (!resv_ptr->node_bitmap)
 		return;
@@ -1652,7 +1717,18 @@ static void _set_cpu_cnt(slurmctld_resv_t *resv_ptr)
 			cpu_cnt += node_ptr->cpus;
 #endif
 	}
-	resv_ptr->cpu_cnt = cpu_cnt;
+
+	if (!resv_ptr->tres_list)
+		resv_ptr->tres_list = list_create(slurmdb_destroy_tres_rec);
+	if (!(tres_rec = list_find_first(resv_ptr->tres_list,
+					 slurmdb_find_tres_in_list,
+					 &tres_id))) {
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		list_append(resv_ptr->tres_list, tres_rec);
+		tres_rec->type = xstrdup("cpu");
+		tres_rec->id = tres_id;
+	}
+	tres_rec->count = cpu_cnt;
 }
 
 /*
@@ -1704,7 +1780,7 @@ extern int create_resv(resv_desc_msg_t *resv_desc_ptr)
 	uid_t *user_list = NULL;
 	char start_time[32], end_time[32];
 	List license_list = (List) NULL;
-	char *name1, *name2, *val1, *val2;
+	char *name1, *name2, *val1, *val2, *tres;
 	uint32_t total_node_cnt = NO_VAL;
 	bool account_not = false, user_not = false;
 
@@ -2080,10 +2156,24 @@ extern int create_resv(resv_desc_msg_t *resv_desc_ptr)
 		_set_cpu_cnt(resv_ptr);
 		resv_ptr->full_nodes = 1;
 	} else {
-		resv_ptr->cpu_cnt = bit_set_count(resv_ptr->core_bitmap);
+		int tres_id = TRES_CPU;
+		slurmdb_tres_rec_t *tres_rec;
+
+		if (!resv_ptr->tres_list)
+			resv_ptr->tres_list =
+				list_create(slurmdb_destroy_tres_rec);
+		if (!(tres_rec = list_find_first(resv_ptr->tres_list,
+						 slurmdb_find_tres_in_list,
+						 &tres_id))) {
+			tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+			list_append(resv_ptr->tres_list, tres_rec);
+			tres_rec->type = xstrdup("cpu");
+			tres_rec->id = tres_id;
+		}
+		tres_rec->count = bit_set_count(resv_ptr->core_bitmap);
 #if _DEBUG
-		info("reservation using partial nodes: core count %u",
-		     resv_ptr->cpu_cnt);
+		info("reservation using partial nodes: core count %"PRIu64,
+		     tres_rec->count);
 #endif
 		resv_ptr->full_nodes = 0;
 	}
@@ -2104,9 +2194,14 @@ extern int create_resv(resv_desc_msg_t *resv_desc_ptr)
 		val2  = resv_ptr->users;
 	} else
 		name2 = val2 = "";
-	info("sched: Created reservation %s%s%s%s%s nodes=%s start=%s end=%s",
+
+	licenses_2_tres_list(resv_ptr->license_list, &resv_ptr->tres_list, 0);
+	tres = slurmdb_make_tres_string(resv_ptr->tres_list);
+	info("sched: Created reservation %s%s%s%s%s nodes=%s start=%s end=%s "
+	     "TRES=%s",
 	     resv_ptr->name, name1, val1, name2, val2,
-	     resv_ptr->node_list, start_time, end_time);
+	     resv_ptr->node_list, start_time, end_time, tres);
+	xfree(tres);
 	if (resv_ptr->flags & RESERVE_FLAG_TIME_FLOAT)
 		resv_ptr->start_time -= now;
 
@@ -4411,8 +4506,9 @@ extern int job_test_resv(struct job_record *job_ptr, time_t *when,
 			if (job_ptr->details->req_node_bitmap &&
 			    bit_overlap(job_ptr->details->req_node_bitmap,
 					resv_ptr->node_bitmap) &&
-			    ((resv_ptr->cpu_cnt == 0) ||
-			     (job_ptr->details->whole_node))) {
+			    ((!resv_ptr->tres_list ||
+			      !list_count(resv_ptr->tres_list)) ||
+			     job_ptr->details->whole_node)) {
 				*when = resv_ptr->end_time;
 				rc = ESLURM_NODES_BUSY;
 				break;

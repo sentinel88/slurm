@@ -227,7 +227,7 @@ typedef struct assoc_mgr_qos_usage assoc_mgr_qos_usage_t;
  */
 typedef struct {
 	uint64_t alloc_secs; /* total amount of secs allocated if used in an
-				accounting_list, DON'T PACK */
+				accounting_list */
 	uint32_t rec_count;  /* number of records alloc_secs is, DON'T PACK */
 	uint64_t count; /* Count of tres on a given cluster, 0 if
 			   listed generically. */
@@ -753,11 +753,8 @@ typedef struct {
 } slurmdb_reservation_cond_t;
 
 typedef struct {
-	uint64_t alloc_secs; /* number of cpu seconds allocated */
 	char *assocs; /* comma separated list of associations */
 	char *cluster; /* cluster reservation is for */
-	uint32_t cpus; /* how many cpus are in reservation */
-	uint64_t down_secs; /* number of cpu seconds down */
 	uint32_t flags; /* flags for reservation. */
 	uint32_t id;   /* id of reservation. */
 	char *name; /* name of reservation */
@@ -768,6 +765,7 @@ typedef struct {
 	time_t time_start_prev; /* If start time was changed this is
 				 * the pervious start time.  Needed
 				 * for accounting */
+	List tres_list;
 } slurmdb_reservation_rec_t;
 
 typedef struct {

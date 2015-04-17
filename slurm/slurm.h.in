@@ -2068,7 +2068,6 @@ void slurm_init_update_block_msg PARAMS((update_block_msg_t *update_block_msg));
 typedef struct reserve_info {
 	char *accounts;		/* names of accounts permitted to use */
 	char *burst_buffer;	/* burst buffer resources to be included */
-	uint32_t core_cnt;	/* count of cores required */
 	time_t end_time;	/* end time of reservation */
 	char *features;		/* required node features */
 	uint32_t flags;		/* see RESERVE_FLAG_* above */
@@ -2081,6 +2080,7 @@ typedef struct reserve_info {
 	char *node_list;	/* list of reserved nodes or ALL */
 	char *partition;	/* name of partition to be used */
 	time_t start_time;	/* start time of reservation */
+	List tres_list;         /* list of TRES's used by reservation */
 	char *users;		/* names of users permitted to use */
 } reserve_info_t;
 
@@ -2108,6 +2108,7 @@ typedef struct resv_desc_msg {
 	char *node_list;	/* list of reserved nodes or ALL */
 	char *partition;	/* name of partition to be used */
 	time_t start_time;	/* start time of reservation */
+	List tres_list;         /* list of TRES's used by reservation */
 	char *users;		/* names of users permitted to use */
 } resv_desc_msg_t;
 

@@ -379,7 +379,6 @@ typedef struct slurmctld_resv {
 	bool account_not;	/* account_list users NOT permitted to use */
 	char *assoc_list;	/* list of associations			*/
 	char *burst_buffer;	/* burst buffer resources		*/
-	uint32_t cpu_cnt;	/* number of reserved CPUs		*/
 	bitstr_t *core_bitmap;	/* bitmap of reserved cores		*/
 	uint32_t duration;	/* time in seconds for this
 				 * reservation to last                  */
@@ -408,6 +407,7 @@ typedef struct slurmctld_resv {
 	time_t start_time_prev;	/* If start time was changed this is
 				 * the pervious start time.  Needed
 				 * for accounting */
+	List tres_list;         /* List of tres to deal with 		*/
 	char *users;		/* names of users permitted to use	*/
 	int user_cnt;		/* count of users permitted to use	*/
 	uid_t *user_list;	/* array of users permitted to use	*/
