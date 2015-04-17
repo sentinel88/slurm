@@ -2635,8 +2635,6 @@ static int _job_state_validate(char *config, void **gres_data,
 	char *type = NULL, *num = NULL, *last_num = NULL;
 	uint64_t cnt;
 
-	info("here %s", config);
-
 	if (!xstrcmp(config, context_ptr->gres_name)) {
 		cnt = 1;
 	} else if (!xstrncmp(config, context_ptr->gres_name_colon,
@@ -2681,10 +2679,8 @@ static int _job_state_validate(char *config, void **gres_data,
 		}
 
 		*gres_data = gres_ptr;
-
-		info("got here %"PRIu64" %u %s %s", gres_ptr->gres_cnt_alloc, gres_ptr->node_cnt, gres_ptr->type_model, type);
 	}
-	info("out");
+
 	return SLURM_SUCCESS;
 }
 
