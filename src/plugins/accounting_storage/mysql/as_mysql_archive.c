@@ -415,6 +415,130 @@ enum {
 
 static int high_buffer_size = (1024 * 1024);
 
+static void _free_local_event(local_event_t *object)
+{
+	xfree(object->cluster_nodes);
+	xfree(object->node_name);
+	xfree(object->period_end);
+	xfree(object->period_start);
+	xfree(object->reason);
+	xfree(object->reason_uid);
+	xfree(object->state);
+	FREE_NULL_LIST(object->tres_list);
+}
+
+static void _free_local_job(local_job_t *object)
+{
+	xfree(object->account);
+	xfree(object->alloc_nodes);
+	xfree(object->associd);
+	xfree(object->array_jobid);
+	xfree(object->array_max_tasks);
+	xfree(object->array_taskid);
+	xfree(object->blockid);
+	xfree(object->derived_ec);
+	xfree(object->derived_es);
+	xfree(object->exit_code);
+	xfree(object->eligible);
+	xfree(object->end);
+	xfree(object->gid);
+	xfree(object->job_db_inx);
+	xfree(object->jobid);
+	xfree(object->kill_requid);
+	xfree(object->name);
+	xfree(object->nodelist);
+	xfree(object->node_inx);
+	xfree(object->partition);
+	xfree(object->priority);
+	xfree(object->qos);
+	xfree(object->req_cpus);
+	xfree(object->req_mem);
+	xfree(object->resvid);
+	xfree(object->start);
+	xfree(object->state);
+	xfree(object->submit);
+	xfree(object->suspended);
+	xfree(object->timelimit);
+	xfree(object->track_steps);
+	FREE_NULL_LIST(object->tres_list);
+	xfree(object->uid);
+	xfree(object->wckey);
+	xfree(object->wckey_id);
+}
+
+static void _free_local_resv(local_resv_t *object)
+{
+	xfree(object->assocs);
+	xfree(object->flags);
+	xfree(object->id);
+	xfree(object->name);
+	xfree(object->nodes);
+	xfree(object->node_inx);
+	xfree(object->time_end);
+	xfree(object->time_start);
+	FREE_NULL_LIST(object->tres_list);
+}
+
+static void _free_local_step(local_step_t *object)
+{
+	xfree(object->act_cpufreq);
+	xfree(object->ave_cpu);
+	xfree(object->ave_disk_read);
+	xfree(object->ave_disk_write);
+	xfree(object->ave_pages);
+	xfree(object->ave_rss);
+	xfree(object->ave_vsize);
+	xfree(object->exit_code);
+	xfree(object->consumed_energy);
+	xfree(object->job_db_inx);
+	xfree(object->kill_requid);
+	xfree(object->max_disk_read);
+	xfree(object->max_disk_read_node);
+	xfree(object->max_disk_read_task);
+	xfree(object->max_disk_write);
+	xfree(object->max_disk_write_node);
+	xfree(object->max_disk_write_task);
+	xfree(object->max_pages);
+	xfree(object->max_pages_node);
+	xfree(object->max_pages_task);
+	xfree(object->max_rss);
+	xfree(object->max_rss_node);
+	xfree(object->max_rss_task);
+	xfree(object->max_vsize);
+	xfree(object->max_vsize_node);
+	xfree(object->max_vsize_task);
+	xfree(object->min_cpu);
+	xfree(object->min_cpu_node);
+	xfree(object->min_cpu_task);
+	xfree(object->name);
+	xfree(object->nodelist);
+	xfree(object->nodes);
+	xfree(object->node_inx);
+	xfree(object->period_end);
+	xfree(object->period_start);
+	xfree(object->period_suspended);
+	xfree(object->req_cpufreq_min);
+	xfree(object->req_cpufreq_max);
+	xfree(object->req_cpufreq_gov);
+	xfree(object->state);
+	xfree(object->stepid);
+	xfree(object->sys_sec);
+	xfree(object->sys_usec);
+	xfree(object->tasks);
+	xfree(object->task_dist);
+	FREE_NULL_LIST(object->tres_list);
+	xfree(object->user_sec);
+	xfree(object->user_usec);
+}
+
+static void _free_local_suspend(local_suspend_t *object)
+{
+	xfree(object->associd);
+	xfree(object->job_db_inx);
+	xfree(object->period_end);
+	xfree(object->period_start);
+}
+
 static void _pack_local_event(local_event_t *object,
 			      uint16_t rpc_version, Buf buffer)
 {
@@ -1791,6 +1915,7 @@ _load_events(uint16_t rpc_version, Buf buffer, char *cluster_name,
 			xstrfmtcat(insert, "%s;", tres_values);
 			xfree(tres_values);
 		}
+		_free_local_event(&object);
 	}
 //	END_TIMER2("step query");
 //	info("event query took %s", TIME_STR);
@@ -2030,6 +2155,7 @@ static char *_load_jobs(uint16_t rpc_version, Buf buffer,
 			xstrfmtcat(insert, "%s;", tres_values);
 			xfree(tres_values);
 		}
+		_free_local_job(&object);
 	}
 //	END_TIMER2("step query");
 //	info("job query took %s", TIME_STR);
@@ -2208,6 +2334,7 @@ static char *_load_resvs(uint16_t rpc_version, Buf buffer,
 			xstrfmtcat(insert, "%s;", tres_values);
 			xfree(tres_values);
 		}
+		_free_local_resv(&object);
 	}
 //	END_TIMER2("step query");
 //	info("resv query took %s", TIME_STR);
@@ -2472,6 +2599,7 @@ static char *_load_steps(uint16_t rpc_version, Buf buffer,
 			xstrfmtcat(insert, "%s;", tres_values);
 			xfree(tres_values);
 		}
+		_free_local_step(&object);
 	}
 //	END_TIMER2("step query");
 //	info("step query took %s", TIME_STR);
@@ -2592,6 +2720,7 @@ static char *_load_suspend(uint16_t rpc_version, Buf buffer,
 			   object.period_start,
 			   object.period_end);
 
+		_free_local_suspend(&object);
 	}
 //	END_TIMER2("suspend query");
 //	info("suspend query took %s", TIME_STR);
