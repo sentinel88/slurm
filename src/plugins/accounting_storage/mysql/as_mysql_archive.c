@@ -51,7 +51,6 @@
 
 typedef struct {
 	char *cluster_nodes;
-	char *inx;
 	char *node_name;
 	char *period_end;
 	char *period_start;
@@ -75,7 +74,7 @@ typedef struct {
 	char *eligible;
 	char *end;
 	char *gid;
-	char *id;
+	char *job_db_inx;
 	char *jobid;
 	char *kill_requid;
 	char *name;
@@ -101,7 +100,6 @@ typedef struct {
 
 typedef struct {
 	char *assocs;
-	char *cpus;
 	char *flags;
 	char *id;
 	char *name;
@@ -109,6 +107,7 @@ typedef struct {
 	char *node_inx;
 	char *time_end;
 	char *time_start;
+	List tres_list;
 } local_resv_t;
 
 typedef struct {
@@ -121,7 +120,7 @@ typedef struct {
 	char *ave_vsize;
 	char *exit_code;
 	char *consumed_energy;
-	char *id;
+	char *job_db_inx;
 	char *kill_requid;
 	char *max_disk_read;
 	char *max_disk_read_node;
@@ -164,7 +163,7 @@ typedef struct {
 
 typedef struct {
 	char *associd;
-	char *id;
+	char *job_db_inx;
 	char *period_end;
 	char *period_start;
 } local_suspend_t;
@@ -172,7 +171,6 @@ typedef struct {
 /* if this changes you will need to edit the corresponding
  * enum below */
 char *event_req_inx[] = {
-	"inx",
 	"time_start",
 	"time_end",
 	"node_name",
@@ -183,7 +181,6 @@ char *event_req_inx[] = {
 };
 
 enum {
-	EVENT_REQ_INX,
 	EVENT_REQ_START,
 	EVENT_REQ_END,
 	EVENT_REQ_NODE,
@@ -248,7 +245,7 @@ enum {
 	JOB_REQ_ELIGIBLE,
 	JOB_REQ_END,
 	JOB_REQ_GID,
-	JOB_REQ_ID,
+	JOB_REQ_DB_INX,
 	JOB_REQ_JOBID,
 	JOB_REQ_KILL_REQUID,
 	JOB_REQ_NAME,
@@ -275,7 +272,6 @@ enum {
 char *resv_req_inx[] = {
 	"id_resv",
 	"assoclist",
-	"cpus",
 	"flags",
 	"nodelist",
 	"node_inx",
@@ -287,7 +283,6 @@ char *resv_req_inx[] = {
 enum {
 	RESV_REQ_ID,
 	RESV_REQ_ASSOCS,
-	RESV_REQ_CPUS,
 	RESV_REQ_FLAGS,
 	RESV_REQ_NODES,
 	RESV_REQ_NODE_INX,
@@ -351,7 +346,7 @@ static char *step_req_inx[] = {
 
 
 enum {
-	STEP_REQ_ID,
+	STEP_REQ_DB_INX,
 	STEP_REQ_STEPID,
 	STEP_REQ_START,
 	STEP_REQ_END,
@@ -411,7 +406,7 @@ static char *suspend_req_inx[] = {
 };
 
 enum {
-	SUSPEND_REQ_ID,
+	SUSPEND_REQ_DB_INX,
 	SUSPEND_REQ_ASSOCID,
 	SUSPEND_REQ_START,
 	SUSPEND_REQ_END,
@@ -428,7 +423,6 @@ static void _pack_local_event(local_event_t *object,
 	uint32_t count = NO_VAL;
 
 	packstr(object->cluster_nodes, buffer);
-	packstr(object->inx, buffer);
 	packstr(object->node_name, buffer);
 	packstr(object->period_end, buffer);
 	packstr(object->period_start, buffer);
@@ -466,7 +460,6 @@ static int _unpack_local_event(local_event_t *object,
 
 	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
 		unpackstr_ptr(&object->cluster_nodes, &tmp32, buffer);
-		unpackstr_ptr(&object->inx, &tmp32, buffer);
 		unpackstr_ptr(&object->node_name, &tmp32, buffer);
 		unpackstr_ptr(&object->period_end, &tmp32, buffer);
 		unpackstr_ptr(&object->period_start, &tmp32, buffer);
@@ -530,7 +523,7 @@ static void _pack_local_job(local_job_t *object,
 	packstr(object->eligible, buffer);
 	packstr(object->end, buffer);
 	packstr(object->gid, buffer);
-	packstr(object->id, buffer);
+	packstr(object->job_db_inx, buffer);
 	packstr(object->jobid, buffer);
 	packstr(object->kill_requid, buffer);
 	packstr(object->name, buffer);
@@ -595,7 +588,7 @@ static int _unpack_local_job(local_job_t *object,
 		unpackstr_ptr(&object->eligible, &tmp32, buffer);
 		unpackstr_ptr(&object->end, &tmp32, buffer);
 		unpackstr_ptr(&object->gid, &tmp32, buffer);
-		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->job_db_inx, &tmp32, buffer);
 		unpackstr_ptr(&object->jobid, &tmp32, buffer);
 		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
 		unpackstr_ptr(&object->name, &tmp32, buffer);
@@ -654,7 +647,7 @@ static int _unpack_local_job(local_job_t *object,
 		unpackstr_ptr(&object->eligible, &tmp32, buffer);
 		unpackstr_ptr(&object->end, &tmp32, buffer);
 		unpackstr_ptr(&object->gid, &tmp32, buffer);
-		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->job_db_inx, &tmp32, buffer);
 		unpackstr_ptr(&object->jobid, &tmp32, buffer);
 		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
 		unpackstr_ptr(&object->name, &tmp32, buffer);
@@ -695,7 +688,7 @@ static int _unpack_local_job(local_job_t *object,
 		unpackstr_ptr(&object->eligible, &tmp32, buffer);
 		unpackstr_ptr(&object->end, &tmp32, buffer);
 		unpackstr_ptr(&object->gid, &tmp32, buffer);
-		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->job_db_inx, &tmp32, buffer);
 		unpackstr_ptr(&object->jobid, &tmp32, buffer);
 		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
 		unpackstr_ptr(&object->name, &tmp32, buffer);
@@ -736,7 +729,7 @@ static int _unpack_local_job(local_job_t *object,
 		unpackstr_ptr(&object->eligible, &tmp32, buffer);
 		unpackstr_ptr(&object->end, &tmp32, buffer);
 		unpackstr_ptr(&object->gid, &tmp32, buffer);
-		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->job_db_inx, &tmp32, buffer);
 		unpackstr_ptr(&object->jobid, &tmp32, buffer);
 		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
 		unpackstr_ptr(&object->name, &tmp32, buffer);
@@ -765,8 +758,11 @@ unpack_error:
 static void _pack_local_resv(local_resv_t *object,
 			     uint16_t rpc_version, Buf buffer)
 {
+	slurmdb_tres_rec_t *tres_rec;
+	ListIterator itr = NULL;
+	uint32_t count = NO_VAL;
+
 	packstr(object->assocs, buffer);
-	packstr(object->cpus, buffer);
 	packstr(object->flags, buffer);
 	packstr(object->id, buffer);
 	packstr(object->name, buffer);
@@ -774,6 +770,22 @@ static void _pack_local_resv(local_resv_t *object,
 	packstr(object->node_inx, buffer);
 	packstr(object->time_end, buffer);
 	packstr(object->time_start, buffer);
+
+	if (object->tres_list)
+		count = list_count(object->tres_list);
+	else
+		count = NO_VAL;
+
+	pack32(count, buffer);
+
+	if (count && count != NO_VAL) {
+		itr = list_iterator_create(object->tres_list);
+		while ((tres_rec = list_next(itr))) {
+			slurmdb_pack_tres_rec(
+				tres_rec, rpc_version, buffer);
+		}
+		list_iterator_destroy(itr);
+	}
 }
 
 /* this needs to be allocated before calling, and since we aren't
@@ -782,18 +794,57 @@ static int _unpack_local_resv(local_resv_t *object,
 			      uint16_t rpc_version, Buf buffer)
 {
 	uint32_t tmp32;
+	uint32_t count;
+	char *tmp_char;
+	int i;
+	slurmdb_tres_rec_t *tres_rec;
 
-	unpackstr_ptr(&object->assocs, &tmp32, buffer);
-	unpackstr_ptr(&object->cpus, &tmp32, buffer);
-	unpackstr_ptr(&object->flags, &tmp32, buffer);
-	unpackstr_ptr(&object->id, &tmp32, buffer);
-	unpackstr_ptr(&object->name, &tmp32, buffer);
-	unpackstr_ptr(&object->nodes, &tmp32, buffer);
-	unpackstr_ptr(&object->node_inx, &tmp32, buffer);
-	unpackstr_ptr(&object->time_end, &tmp32, buffer);
-	unpackstr_ptr(&object->time_start, &tmp32, buffer);
+	if (rpc_version >= SLURM_15_08_PROTOCOL_VERSION) {
+		unpackstr_ptr(&object->assocs, &tmp32, buffer);
+		unpackstr_ptr(&object->flags, &tmp32, buffer);
+		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->name, &tmp32, buffer);
+		unpackstr_ptr(&object->nodes, &tmp32, buffer);
+		unpackstr_ptr(&object->node_inx, &tmp32, buffer);
+		unpackstr_ptr(&object->time_end, &tmp32, buffer);
+		unpackstr_ptr(&object->time_start, &tmp32, buffer);
+		safe_unpack32(&count, buffer);
+
+		if (count != NO_VAL) {
+			object->tres_list = list_create(
+				slurmdb_destroy_tres_rec);
+			for (i=0; i<count; i++) {
+				if (slurmdb_unpack_tres_rec(
+					    (void *)&tres_rec,
+					    rpc_version, buffer) == SLURM_ERROR)
+					goto unpack_error;
+				list_append(object->tres_list, tres_rec);
+			}
+		}
+	} else {
+		unpackstr_ptr(&object->assocs, &tmp32, buffer);
+
+		object->tres_list = list_create(slurmdb_destroy_tres_rec);
+		tres_rec = xmalloc(sizeof(slurmdb_tres_rec_t));
+		tres_rec->id = TRES_CPU;
+		list_append(object->tres_list, tres_rec);
+		unpackstr_ptr(&tmp_char, &tmp32, buffer);
+		tres_rec->count = slurm_atoull(tmp_char);
+		xfree(tmp_char);
+
+		unpackstr_ptr(&object->flags, &tmp32, buffer);
+		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->name, &tmp32, buffer);
+		unpackstr_ptr(&object->nodes, &tmp32, buffer);
+		unpackstr_ptr(&object->node_inx, &tmp32, buffer);
+		unpackstr_ptr(&object->time_end, &tmp32, buffer);
+		unpackstr_ptr(&object->time_start, &tmp32, buffer);
+	}
 
 	return SLURM_SUCCESS;
+
+unpack_error:
+	return SLURM_ERROR;
 }
 
 static void _pack_local_step(local_step_t *object,
@@ -812,7 +863,7 @@ static void _pack_local_step(local_step_t *object,
 	packstr(object->ave_vsize, buffer);
 	packstr(object->exit_code, buffer);
 	packstr(object->consumed_energy, buffer);
-	packstr(object->id, buffer);
+	packstr(object->job_db_inx, buffer);
 	packstr(object->kill_requid, buffer);
 	packstr(object->max_disk_read, buffer);
 	packstr(object->max_disk_read_node, buffer);
@@ -890,7 +941,7 @@ static int _unpack_local_step(local_step_t *object,
 		unpackstr_ptr(&object->ave_vsize, &tmp32, buffer);
 		unpackstr_ptr(&object->exit_code, &tmp32, buffer);
 		unpackstr_ptr(&object->consumed_energy, &tmp32, buffer);
-		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->job_db_inx, &tmp32, buffer);
 		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
 		unpackstr_ptr(&object->max_disk_read, &tmp32, buffer);
 		unpackstr_ptr(&object->max_disk_read_node, &tmp32, buffer);
@@ -961,7 +1012,7 @@ static int _unpack_local_step(local_step_t *object,
 		tres_rec->count = slurm_atoull(tmp_char);
 		xfree(tmp_char);
 
-		unpackstr_ptr(&object->id, &tmp32, buffer);
+		unpackstr_ptr(&object->job_db_inx, &tmp32, buffer);
 		unpackstr_ptr(&object->kill_requid, &tmp32, buffer);
 		unpackstr_ptr(&object->max_disk_read, &tmp32, buffer);
 		unpackstr_ptr(&object->max_disk_read_node, &tmp32, buffer);
@@ -1011,7 +1062,7 @@ static void _pack_local_suspend(local_suspend_t *object,
 				uint16_t rpc_version, Buf buffer)
 {
 	packstr(object->associd, buffer);
-	packstr(object->id, buffer);
+	packstr(object->job_db_inx, buffer);
 	packstr(object->period_end, buffer);
 	packstr(object->period_start, buffer);
 }
@@ -1024,7 +1075,7 @@ static int _unpack_local_suspend(local_suspend_t *object,
 	uint32_t tmp32;
 
 	unpackstr_ptr(&object->associd, &tmp32, buffer);
-	unpackstr_ptr(&object->id, &tmp32, buffer);
+	unpackstr_ptr(&object->job_db_inx, &tmp32, buffer);
 	unpackstr_ptr(&object->period_end, &tmp32, buffer);
 	unpackstr_ptr(&object->period_start, &tmp32, buffer);
 
@@ -1633,7 +1684,6 @@ static uint32_t _archive_events(mysql_conn_t *mysql_conn, char *cluster_name,
 		memset(&event, 0, sizeof(local_event_t));
 
 		event.cluster_nodes = row[EVENT_REQ_CNODES];
-		event.inx = row[EVENT_REQ_INX];
 		event.node_name = row[EVENT_REQ_NODE];
 		event.period_end = row[EVENT_REQ_END];
 		event.period_start = row[EVENT_REQ_START];
@@ -1699,7 +1749,6 @@ _load_events(uint16_t rpc_version, Buf buffer, char *cluster_name,
 	xstrcat(format, ");");
 
 	for (i=0; i<rec_cnt; i++) {
-		char *inx;
 		memset(&object, 0, sizeof(local_event_t));
 		if (_unpack_local_event(&object, rpc_version, buffer)
 		    != SLURM_SUCCESS) {
@@ -1713,7 +1762,6 @@ _load_events(uint16_t rpc_version, Buf buffer, char *cluster_name,
 
 		xstrfmtcat(insert, format,
 			   cluster_name, event_table, cols,
-			   object.inx,
 			   object.period_start,
 			   object.period_end,
 			   object.node_name,
@@ -1721,26 +1769,21 @@ _load_events(uint16_t rpc_version, Buf buffer, char *cluster_name,
 			   object.reason,
 			   object.reason_uid,
 			   object.state);
-		if (slurm_atoul(object.inx))
-			inx = object.inx;
-		else
-			inx = "LAST_INSERT_ID()";
 
 		itr = list_iterator_create(object.tres_list);
 		while ((tres_rec = list_next(itr))) {
 			if (tres_values) {
 				xstrfmtcat(tres_values,
-					   ", (%s, %u, %"PRIu64")",
-					   inx, tres_rec->id,
-					   tres_rec->count);
+					   ", (LAST_INSERT_ID(), "
+					   "%u, %"PRIu64")",
+					   tres_rec->id, tres_rec->count);
 			} else {
 				xstrfmtcat(tres_values,
 					   "insert into \"%s_%s\" "
 					   "(inx, id_tres, count) values "
-					   "(%s, %u, %"PRIu64")",
+					   "(LAST_INSERT_ID(), %u, %"PRIu64")",
 					   cluster_name, event_ext_table,
-					   inx, tres_rec->id,
-					   tres_rec->count);
+					   tres_rec->id, tres_rec->count);
 			}
 		}
 		list_iterator_destroy(itr);
@@ -1835,7 +1878,7 @@ static uint32_t _archive_jobs(mysql_conn_t *mysql_conn, char *cluster_name,
 		job.eligible = row[JOB_REQ_ELIGIBLE];
 		job.end = row[JOB_REQ_END];
 		job.gid = row[JOB_REQ_GID];
-		job.id = row[JOB_REQ_ID];
+		job.job_db_inx = row[JOB_REQ_DB_INX];
 		job.jobid = row[JOB_REQ_JOBID];
 		job.kill_requid = row[JOB_REQ_KILL_REQUID];
 		job.name = row[JOB_REQ_NAME];
@@ -1900,6 +1943,9 @@ static char *_load_jobs(uint16_t rpc_version, Buf buffer,
 	char *insert = NULL, *format = NULL;
 	local_job_t object;
 	int i = 0;
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec;
+	char *inx, *tres_values = NULL;
 
 	xstrfmtcat(insert, "insert into \"%s_%s\" (%s",
 		   cluster_name, job_table, job_req_inx[0]);
@@ -1937,7 +1983,7 @@ static char *_load_jobs(uint16_t rpc_version, Buf buffer,
 			   object.eligible,
 			   object.end,
 			   object.gid,
-			   object.id,
+			   object.job_db_inx,
 			   object.jobid,
 			   object.kill_requid,
 			   object.name,
@@ -1957,7 +2003,33 @@ static char *_load_jobs(uint16_t rpc_version, Buf buffer,
 			   object.uid,
 			   object.wckey,
 			   object.wckey_id);
+		if (slurm_atoul(object.job_db_inx))
+			inx = object.job_db_inx;
+		else
+			inx = "LAST_INSERT_ID()";
 
+		itr = list_iterator_create(object.tres_list);
+		while ((tres_rec = list_next(itr))) {
+			if (tres_values) {
+				xstrfmtcat(tres_values,
+					   ", (%s, %u, %"PRIu64")",
+					   inx, tres_rec->id,
+					   tres_rec->count);
+			} else {
+				xstrfmtcat(tres_values,
+					   "insert into \"%s_%s\" "
+					   "(inx, id_tres, count) values "
+					   "(%s, %u, %"PRIu64")",
+					   cluster_name, event_ext_table,
+					   inx, tres_rec->id,
+					   tres_rec->count);
+			}
+		}
+		list_iterator_destroy(itr);
+		if (tres_values) {
+			xstrfmtcat(insert, "%s;", tres_values);
+			xfree(tres_values);
+		}
 	}
 //	END_TIMER2("step query");
 //	info("job query took %s", TIME_STR);
@@ -1979,18 +2051,24 @@ static uint32_t _archive_resvs(mysql_conn_t *mysql_conn, char *cluster_name,
 	local_resv_t resv;
 	Buf buffer;
 	int error_code = 0, i = 0;
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec, *loc_tres_rec;
+	assoc_mgr_lock_t locks = { READ_LOCK, NO_LOCK, NO_LOCK,
+				   NO_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
 
 	xfree(tmp);
 	xstrfmtcat(tmp, "%s", resv_req_inx[0]);
 	for(i=1; i<RESV_REQ_COUNT; i++) {
 		xstrfmtcat(tmp, ", %s", resv_req_inx[i]);
 	}
+	assoc_mgr_lock(&locks);
+	xstrcat(tmp, full_tres_query);
 
 	/* get all the events started before this time listed */
 	query = xstrdup_printf("select %s from \"%s_%s\" where "
 			       "time_start <= %ld "
 			       "&& time_end != 0 order by time_start asc",
-			       tmp, cluster_name, resv_table, period_end);
+			       tmp, cluster_name, resv_view, period_end);
 	xfree(tmp);
 
 //	START_TIMER;
@@ -1998,12 +2076,14 @@ static uint32_t _archive_resvs(mysql_conn_t *mysql_conn, char *cluster_name,
 		DB_DEBUG(mysql_conn->conn, "query\n%s", query);
 	if (!(result = mysql_db_query_ret(mysql_conn, query, 0))) {
 		xfree(query);
+		assoc_mgr_unlock(&locks);
 		return SLURM_ERROR;
 	}
 	xfree(query);
 
 	if (!(cnt = mysql_num_rows(result))) {
 		mysql_free_result(result);
+		assoc_mgr_unlock(&locks);
 		return 0;
 	}
 
@@ -2014,6 +2094,7 @@ static uint32_t _archive_resvs(mysql_conn_t *mysql_conn, char *cluster_name,
 	packstr(cluster_name, buffer);
 	pack32(cnt, buffer);
 
+	itr = list_iterator_create(assoc_mgr_tres_list);
 	while ((row = mysql_fetch_row(result))) {
 		if (!period_start)
 			period_start = slurm_atoul(row[RESV_REQ_START]);
@@ -2021,7 +2102,6 @@ static uint32_t _archive_resvs(mysql_conn_t *mysql_conn, char *cluster_name,
 		memset(&resv, 0, sizeof(local_resv_t));
 
 		resv.assocs = row[RESV_REQ_ASSOCS];
-		resv.cpus = row[RESV_REQ_CPUS];
 		resv.flags = row[RESV_REQ_FLAGS];
 		resv.id = row[RESV_REQ_ID];
 		resv.name = row[RESV_REQ_NAME];
@@ -2029,9 +2109,28 @@ static uint32_t _archive_resvs(mysql_conn_t *mysql_conn, char *cluster_name,
 		resv.node_inx = row[RESV_REQ_NODE_INX];
 		resv.time_end = row[RESV_REQ_END];
 		resv.time_start = row[RESV_REQ_START];
+		resv.tres_list = list_create(slurmdb_destroy_tres_rec);
+
+		i = RESV_REQ_COUNT-1;
+		list_iterator_reset(itr);
+		while ((tres_rec = list_next(itr))) {
+			i++;
+			/* Skip if the tres is NULL,
+			 * it means this cluster
+			 * doesn't care about it.
+			 */
+			if (!row[i] || !row[i][0])
+				continue;
+			loc_tres_rec = slurmdb_copy_tres_rec(tres_rec);
+			loc_tres_rec->count = slurm_atoull(row[i]);
+			list_append(resv.tres_list, loc_tres_rec);
+		}
 
 		_pack_local_resv(&resv, SLURM_PROTOCOL_VERSION, buffer);
+		FREE_NULL_LIST(resv.tres_list);
 	}
+	list_iterator_destroy(itr);
+	assoc_mgr_unlock(&locks);
 	mysql_free_result(result);
 
 //	END_TIMER2("step query");
@@ -2052,9 +2151,11 @@ static uint32_t _archive_resvs(mysql_conn_t *mysql_conn, char *cluster_name,
 static char *_load_resvs(uint16_t rpc_version, Buf buffer,
 			 char *cluster_name, uint32_t rec_cnt)
 {
-	char *insert = NULL, *format = NULL;
+	char *insert = NULL, *format = NULL, *tres_values = NULL;
 	local_resv_t object;
 	int i = 0;
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec;
 
 	xstrfmtcat(insert, "insert into \"%s_%s\" (%s",
 		   cluster_name, resv_table, resv_req_inx[0]);
@@ -2080,13 +2181,33 @@ static char *_load_resvs(uint16_t rpc_version, Buf buffer,
 		xstrfmtcat(insert, format,
 			   object.id,
 			   object.assocs,
-			   object.cpus,
 			   object.flags,
 			   object.nodes,
 			   object.node_inx,
 			   object.name,
 			   object.time_start,
 			   object.time_end);
+		itr = list_iterator_create(object.tres_list);
+		while ((tres_rec = list_next(itr))) {
+			if (tres_values) {
+				xstrfmtcat(tres_values,
+					   ", (LAST_INSERT_ID(), "
+					   "%u, %"PRIu64")",
+					   tres_rec->id, tres_rec->count);
+			} else {
+				xstrfmtcat(tres_values,
+					   "insert into \"%s_%s\" "
+					   "(inx, id_tres, count) values "
+					   "(LAST_INSERT_ID(), %u, %"PRIu64")",
+					   cluster_name, event_ext_table,
+					   tres_rec->id, tres_rec->count);
+			}
+		}
+		list_iterator_destroy(itr);
+		if (tres_values) {
+			xstrfmtcat(insert, "%s;", tres_values);
+			xfree(tres_values);
+		}
 	}
 //	END_TIMER2("step query");
 //	info("resv query took %s", TIME_STR);
@@ -2168,7 +2289,7 @@ static uint32_t _archive_steps(mysql_conn_t *mysql_conn, char *cluster_name,
 		step.ave_rss = row[STEP_REQ_AVE_RSS];
 		step.ave_vsize = row[STEP_REQ_AVE_VSIZE];
 		step.exit_code = row[STEP_REQ_EXIT_CODE];
-		step.id = row[STEP_REQ_ID];
+		step.job_db_inx = row[STEP_REQ_DB_INX];
 		step.kill_requid = row[STEP_REQ_KILL_REQUID];
 		step.max_disk_read = row[STEP_REQ_MAX_DISK_READ];
 		step.max_disk_read_node = row[STEP_REQ_MAX_DISK_READ_NODE];
@@ -2251,6 +2372,9 @@ static char *_load_steps(uint16_t rpc_version, Buf buffer,
 	char *insert = NULL, *format = NULL;
 	local_step_t object;
 	int i = 0;
+	ListIterator itr;
+	slurmdb_tres_rec_t *tres_rec;
+	char *inx, *tres_values = NULL;
 
 	xstrfmtcat(insert, "insert into \"%s_%s\" (%s",
 		   cluster_name, step_table, step_req_inx[0]);
@@ -2274,7 +2398,7 @@ static char *_load_steps(uint16_t rpc_version, Buf buffer,
 			xstrcat(insert, ", ");
 
 		xstrfmtcat(insert, format,
-			   object.id,
+			   object.job_db_inx,
 			   object.stepid,
 			   object.period_start,
 			   object.period_end,
@@ -2321,7 +2445,33 @@ static char *_load_steps(uint16_t rpc_version, Buf buffer,
 			   object.ave_disk_write,
 			   object.req_cpufreq_min,
 			   object.req_cpufreq_gov);
+		if (slurm_atoul(object.job_db_inx))
+			inx = object.job_db_inx;
+		else
+			inx = "LAST_INSERT_ID()";
 
+		itr = list_iterator_create(object.tres_list);
+		while ((tres_rec = list_next(itr))) {
+			if (tres_values) {
+				xstrfmtcat(tres_values,
+					   ", (%s, %u, %"PRIu64")",
+					   inx, tres_rec->id,
+					   tres_rec->count);
+			} else {
+				xstrfmtcat(tres_values,
+					   "insert into \"%s_%s\" "
+					   "(inx, id_tres, count) values "
+					   "(%s, %u, %"PRIu64")",
+					   cluster_name, event_ext_table,
+					   inx, tres_rec->id,
+					   tres_rec->count);
+			}
+		}
+		list_iterator_destroy(itr);
+		if (tres_values) {
+			xstrfmtcat(insert, "%s;", tres_values);
+			xfree(tres_values);
+		}
 	}
 //	END_TIMER2("step query");
 //	info("step query took %s", TIME_STR);
@@ -2384,7 +2534,7 @@ static uint32_t _archive_suspend(mysql_conn_t *mysql_conn, char *cluster_name,
 
 		memset(&suspend, 0, sizeof(local_suspend_t));
 
-		suspend.id = row[SUSPEND_REQ_ID];
+		suspend.job_db_inx = row[SUSPEND_REQ_DB_INX];
 		suspend.associd = row[SUSPEND_REQ_ASSOCID];
 		suspend.period_start = row[SUSPEND_REQ_START];
 		suspend.period_end = row[SUSPEND_REQ_END];
@@ -2437,7 +2587,7 @@ static char *_load_suspend(uint16_t rpc_version, Buf buffer,
 			xstrcat(insert, ", ");
 
 		xstrfmtcat(insert, format,
-			   object.id,
+			   object.job_db_inx,
 			   object.associd,
 			   object.period_start,
 			   object.period_end);
