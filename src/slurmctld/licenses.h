@@ -146,6 +146,7 @@ extern uint32_t get_total_license_cnt(char *name);
 /* node_read should be locked before coming in here
  * returns 1 if change happened.
  */
-extern int licenses_2_tres_list(struct job_record *job_ptr, bool update_acct);
+extern int licenses_2_tres_list(
+	List license_list, List *tres_list, bool update_acct);
 
 #endif /* !_LICENSES_H */
