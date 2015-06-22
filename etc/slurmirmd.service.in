@@ -1,0 +1,13 @@
+[Unit]
+Description=Slurm Invasive resource manager daemon
+After=network.target
+ConditionPathExists=@sysconfdir@/slurm.conf
+
+[Service]
+Type=forking
+EnvironmentFile=/etc/default/slurmirmd
+ExecStart=@sbindir@/slurmirmd $SLURMCTLD_OPTIONS
+PIDFile=/var/run/slurm/slurmirmd.pid
+
+[Install]
+WantedBy=multi-user.target

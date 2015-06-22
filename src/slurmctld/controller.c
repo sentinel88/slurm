@@ -250,6 +250,8 @@ int main(int argc, char *argv[])
 	slurm_trigger_callbacks_t callbacks;
 	char *dir_name;
 
+        debug("slurmctld main function starting........");    
+ 
 	/*
 	 * Make sure we have no extra open files which
 	 * would be propagated to spawned tasks.
