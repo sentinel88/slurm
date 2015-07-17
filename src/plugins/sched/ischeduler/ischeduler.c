@@ -1,44 +1,7 @@
 /*****************************************************************************\
- *  builtin.c - Simple builtin (FIFO) scheduler plugin.
- *		Periodically when pending jobs can start.
- *		This is a minimal implementation of the logic found in
- *		src/plugins/sched/backfill/backfill.c and disregards
- *		how jobs are scheduled sequencially.
+ *  ischeduler.c - iScheduler plugin for talking to Invasive resource manager.
  *****************************************************************************
- *  Copyright (C) 2003-2007 The Regents of the University of California.
- *  Copyright (C) 2008-2010 Lawrence Livermore National Security.
- *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
- *  Written by Morris Jette <jette1@llnl.gov>
- *  CODE-OCEC-09-009. All rights reserved.
- *
- *  This file is part of SLURM, a resource management program.
- *  For details, see <http://slurm.schedmd.com/>.
- *  Please also read the included file: DISCLAIMER.
- *
- *  SLURM is free software; you can redistribute it and/or modify it under
- *  the terms of the GNU General Public License as published by the Free
- *  Software Foundation; either version 2 of the License, or (at your option)
- *  any later version.
- *
- *  In addition, as a special exception, the copyright holders give permission
- *  to link the code of portions of this program with the OpenSSL library under
- *  certain conditions as described in each individual source file, and
- *  distribute linked combinations including the two. You must obey the GNU
- *  General Public License in all respects for all of the code used other than
- *  OpenSSL. If you modify file(s) with this exception, you may extend this
- *  exception to your version of the file(s), but you are not obligated to do
- *  so. If you do not wish to do so, delete this exception statement from your
- *  version.  If you delete this exception statement from all source files in
- *  the program, then also delete it here.
- *
- *  SLURM is distributed in the hope that it will be useful, but WITHOUT ANY
- *  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- *  FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
- *  details.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with SLURM; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA.
+ *  Copyright (C) 2015-2016 Nishanth Nagendra, Technical University of Munich.
 \*****************************************************************************/
 
 #include <pthread.h>
@@ -70,7 +33,10 @@
 #endif
 
 /*********************** local variables *********************/
-static bool stop_builtin = false;
+static bool stop_isched = false;
+static pthread_t irm_thread = 0;
+static pthread_t feedback_thread = 0;
+static pthread_t ping_thread = 0;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
@@ -83,11 +49,14 @@ static void _compute_start_times(void);
 static void _load_config(void);
 static void _my_sleep(int secs);
 
-/* Terminate builtin_agent */
-extern void stop_ischeduler_agent(void)
+/* Terminate ischeduler_agent */
+extern void stop_isched_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
-	stop_builtin = true;
+        pthread_join(ping_thread,  NULL);
+        pthread_join(feedback_thread,  NULL);
+        pthread_join(irm_thread,  NULL);
+	stop_isched = true;
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -101,14 +70,14 @@ static void _my_sleep(int secs)
 	ts.tv_sec = now.tv_sec + secs;
 	ts.tv_nsec = now.tv_usec * 1000;
 	pthread_mutex_lock(&term_lock);
-	if (!stop_builtin)
+	if (!stop_isched)
 		pthread_cond_timedwait(&term_cond, &term_lock, &ts);
 	pthread_mutex_unlock(&term_lock);
 }
 
 static void _load_config(void)
 {
-	char *sched_params, *select_type, *tmp_ptr;
+/*	char *sched_params, *select_type, *tmp_ptr;
 
 	sched_timeout = slurm_get_msg_timeout() / 2;
 	sched_timeout = MAX(sched_timeout, 1);
@@ -136,18 +105,18 @@ static void _load_config(void)
 	xfree(sched_params);
 
 	select_type = slurm_get_select_type();
-	if (!strcmp(select_type, "select/serial")) {
+	if (!strcmp(select_type, "select/serial")) {*/
 		/* Do not spend time computing expected start time for
 		 * pending jobs */
-		max_sched_job_cnt = 0;
+/*		max_sched_job_cnt = 0;
 		stop_builtin_agent();
 	}
-	xfree(select_type);
+	xfree(select_type);*/
 }
 
 static void _compute_start_times(void)
 {
-	int j, rc = SLURM_SUCCESS, job_cnt = 0;
+/*	int j, rc = SLURM_SUCCESS, job_cnt = 0;
 	List job_queue;
 	job_queue_rec_t *job_queue_rec;
 	List preemptee_candidates = NULL;
@@ -169,18 +138,18 @@ static void _compute_start_times(void)
 		part_ptr = job_queue_rec->part_ptr;
 		xfree(job_queue_rec);
 		if (part_ptr != job_ptr->part_ptr)
-			continue;	/* Only test one partition */
+			continue;*/	/* Only test one partition */
 
-		if (job_cnt++ > max_sched_job_cnt) {
+	/*	if (job_cnt++ > max_sched_job_cnt) {
 			debug2("scheduling loop exiting after %d jobs",
 			       max_sched_job_cnt);
 			break;
-		}
+		} */
 
 		/* Determine minimum and maximum node counts */
 		/* On BlueGene systems don't adjust the min/max node limits
 		   here.  We are working on midplane values. */
-		min_nodes = MAX(job_ptr->details->min_nodes,
+	/*	min_nodes = MAX(job_ptr->details->min_nodes,
 				part_ptr->min_nodes);
 
 		if (job_ptr->details->max_nodes == 0)
@@ -189,16 +158,16 @@ static void _compute_start_times(void)
 			max_nodes = MIN(job_ptr->details->max_nodes,
 					part_ptr->max_nodes);
 
-		max_nodes = MIN(max_nodes, 500000);     /* prevent overflows */
+		max_nodes = MIN(max_nodes, 500000); */    /* prevent overflows */
 
-		if (job_ptr->details->max_nodes)
+	/*	if (job_ptr->details->max_nodes)
 			req_nodes = max_nodes;
 		else
 			req_nodes = min_nodes;
 
-		if (min_nodes > max_nodes) {
+		if (min_nodes > max_nodes) {*/
 			/* job's min_nodes exceeds partition's max_nodes */
-			continue;
+	/*		continue;
 		}
 
 		j = job_test_resv(job_ptr, &now, true, &avail_bitmap,
@@ -242,8 +211,8 @@ static void _compute_start_times(void)
 		}
 	}
 	list_destroy(job_queue);
-	FREE_NULL_BITMAP(alloc_bitmap);
-}
+	FREE_NULL_BITMAP(alloc_bitmap); */
+} 
 
 /* Note that slurm.conf has changed */
 extern void ischeduler_reconfig(void)
@@ -251,21 +220,44 @@ extern void ischeduler_reconfig(void)
 	config_flag = true;
 }
 
-/* builtin_agent - detached thread periodically when pending jobs can start */
+/* ischeduler_agent */
 extern void *ischeduler_agent(void *args)
 {
 	time_t now;
 	double wait_time;
 	static time_t last_sched_time = 0;
+        pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
 	slurmctld_lock_t all_locks = {
 		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
 
 	_load_config();
+
+        /* Create an attached thread for iRM agent */
+        slurm_attr_init(&attr);
+        if (pthread_create(&irm_thread, &attr, irm_agent, NULL)) {
+           error("pthread_create error %m");
+        }
+        slurm_attr_destroy(&attr);
+
+        /* Create an attached thread for feedback agent */
+        slurm_attr_init(&attr);
+        if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
+           error("pthread_create error %m");
+        }
+        slurm_attr_destroy(&attr);
+
+        /* Create an attached thread for ping agent */
+        slurm_attr_init(&attr);
+        if (pthread_create(&ping_thread, &attr, ping_agent, NULL)) {
+           error("pthread_create error %m");
+        }
+        slurm_attr_destroy(&attr);
+
 	last_sched_time = time(NULL);
-	while (!stop_builtin) {
-		_my_sleep(builtin_interval);
-		if (stop_builtin)
+	while (!stop_isched) {
+		_my_sleep(isched_interval);
+		if (stop_isched)
 			break;
 		if (config_flag) {
 			config_flag = false;
@@ -273,7 +265,7 @@ extern void *ischeduler_agent(void *args)
 		}
 		now = time(NULL);
 		wait_time = difftime(now, last_sched_time);
-		if ((wait_time < builtin_interval))
+		if ((wait_time < isched_interval))
 			continue;
 
 		lock_slurmctld(all_locks);
