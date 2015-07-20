@@ -15,6 +15,7 @@ SUBDIRS =		\
 	sdiag		\
 	sinfo		\
 	slurmctld	\
+	slurmirmd	\
 	slurmd		\
 	slurmdbd	\
 	smap		\

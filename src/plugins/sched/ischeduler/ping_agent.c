@@ -1,6 +1,5 @@
 /*****************************************************************************\
- *  feedback_agent.c - Feedback Agent for receiving periodic reports from
- *                     Invasive resource manager.
+ *  ping_agent.c - Ping Agent for checking liveness of Invasive resource manager.
  *****************************************************************************
  *  Copyright (C) 2015-2016 Nishanth Nagendra, Technical University of Munich.
 \*****************************************************************************/
@@ -27,31 +26,32 @@
 #include "src/slurmctld/preempt.h"
 #include "src/slurmctld/reservation.h"
 #include "src/slurmctld/slurmctld.h"
-#include "src/plugins/sched/builtin/builtin.h"
+#include "src/plugins/sched/ischeduler/ischeduler.h"
 
 #ifndef BACKFILL_INTERVAL
 #  define BACKFILL_INTERVAL	30
 #endif
 
 /*********************** local variables *********************/
-static bool stop_feedback_agent = false;
+static bool stop_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
-static int ischeduler_interval = BACKFILL_INTERVAL;
-static int max_sched_job_cnt = 50;
-static int sched_timeout = 0;
+static int ping_interval = BACKFILL_INTERVAL;
+//static int max_sched_job_cnt = 50;
+//static int sched_timeout = 0;
 
 /*********************** local functions *********************/
-static void _compute_start_times(void);
+//static void _compute_start_times(void);
 static void _load_config(void);
 static void _my_sleep(int secs);
 
 /* Terminate feedback_agent */
-extern void stop_feedback_agent(void)
+extern void stop_ping_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
-	stop_feedback_agent = true;
+	stop_agent = true;
+        printf("\nStopping PING agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -65,7 +65,7 @@ static void _my_sleep(int secs)
 	ts.tv_sec = now.tv_sec + secs;
 	ts.tv_nsec = now.tv_usec * 1000;
 	pthread_mutex_lock(&term_lock);
-	if (!stop_isched)
+	if (!stop_agent)
 		pthread_cond_timedwait(&term_cond, &term_lock, &ts);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -109,8 +109,8 @@ static void _load_config(void)
 	xfree(select_type);*/
 }
 
-static void _compute_start_times(void)
-{
+//static void _compute_start_times(void)
+//{
 /*	int j, rc = SLURM_SUCCESS, job_cnt = 0;
 	List job_queue;
 	job_queue_rec_t *job_queue_rec;
@@ -207,66 +207,54 @@ static void _compute_start_times(void)
 	}
 	list_destroy(job_queue);
 	FREE_NULL_BITMAP(alloc_bitmap); */
-} 
+//} 
 
 /* Note that slurm.conf has changed */
-extern void feedback_agent_reconfig(void)
+extern void ping_agent_reconfig(void)
 {
 	config_flag = true;
 }
 
-/* ischeduler_agent */
-extern void *feedback_agent(void *args)
+/* ping_agent */
+extern void *ping_agent(void *args)
 {
 	time_t now;
 	double wait_time;
-	static time_t last_sched_time = 0;
-        pthread_attr_t attr;
+	static time_t last_ping_time = 0;
+        //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
-	slurmctld_lock_t all_locks = {
-		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
+	/*slurmctld_lock_t all_locks = {
+		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };*/
+
+        printf("\n[PING_AGENT]: Entering ping_agent\n");
 
 	_load_config();
 
-        /* Create an attached thread for iRM agent */
-        slurm_attr_init(&attr);
-        if (pthread_create(&irm_thread, &attr, irm_agent, NULL)) {
-           error("pthread_create error %m");
-        }
-        slurm_attr_destroy(&attr);
-
-        /* Create an attached thread for feedback agent */
-        slurm_attr_init(&attr);
-        if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
-           error("pthread_create error %m");
-        }
-        slurm_attr_destroy(&attr);
-
-        /* Create an attached thread for ping agent */
-        slurm_attr_init(&attr);
-        if (pthread_create(&ping_thread, &attr, ping_agent, NULL)) {
-           error("pthread_create error %m");
-        }
-        slurm_attr_destroy(&attr);
-
-	last_sched_time = time(NULL);
-	while (!stop_isched) {
-		_my_sleep(isched_interval);
-		if (stop_isched)
+	last_ping_time = time(NULL);
+	while (!stop_agent) {
+		_my_sleep(ping_interval);
+		if (stop_agent)
 			break;
 		if (config_flag) {
 			config_flag = false;
 			_load_config();
 		}
 		now = time(NULL);
-		wait_time = difftime(now, last_sched_time);
-		if ((wait_time < isched_interval))
+		wait_time = difftime(now, last_ping_time);
+		if ((wait_time < ping_interval))
 			continue;
 
-		lock_slurmctld(all_locks);
-		_compute_start_times();
-		last_sched_time = time(NULL);
-		unlock_slurmctld(all_locks);
+		//lock_slurmctld(all_locks);
+                printf("\n***************[PING AGENT]****************\n");
+                printf("\nSending PING message to iRM\n");
+                printf("\nReceived response from iRM\n");
+                printf("\nPING successful\n");
+                printf("\nWill sleep for ping_interval seconds before starting the next PING transaction\n");
+                printf("\n***************[PING AGENT]****************\n");
+		//_compute_start_times();
+		last_ping_time = time(NULL);
+		//unlock_slurmctld(all_locks);
 	}
+        printf("\n[PING_AGENT]: Exiting ping_agent\n");
 	return NULL;
 }

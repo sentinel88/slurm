@@ -62,6 +62,7 @@ void fini( void )
 	pthread_mutex_lock( &thread_flag_mutex );
 	if ( isched_thread ) {
 		verbose( "iScheduler plugin shutting down" );
+                printf("\niScheduler plugin shutting down\n"); 
 		stop_isched_agent();
 		pthread_join(isched_thread, NULL);
 		isched_thread = 0;

@@ -27,31 +27,33 @@
 #include "src/slurmctld/preempt.h"
 #include "src/slurmctld/reservation.h"
 #include "src/slurmctld/slurmctld.h"
-#include "src/plugins/sched/builtin/builtin.h"
+#include "src/plugins/sched/ischeduler/ischeduler.h"
 
 #ifndef BACKFILL_INTERVAL
-#  define BACKFILL_INTERVAL	30
+#  define BACKFILL_INTERVAL	10
 #endif
 
 /*********************** local variables *********************/
-static bool stop_irm_agent = false;
+static bool stop_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
-//static int ischeduler_interval = BACKFILL_INTERVAL;
+static int irm_interval = BACKFILL_INTERVAL;
 //static int max_sched_job_cnt = 50;
 //static int sched_timeout = 0;
 
 /*********************** local functions *********************/
-static void _compute_start_times(void);
+//static void _compute_start_times(void);
 static void _load_config(void);
 static void _my_sleep(int secs);
+static int _connect_to_irmd(void);
 
 /* Terminate ischeduler_agent */
 extern void stop_irm_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
-	stop_irm_agent = true;
+	stop_agent = true;
+        printf("\nStopping IRM agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -65,7 +67,7 @@ static void _my_sleep(int secs)
 	ts.tv_sec = now.tv_sec + secs;
 	ts.tv_nsec = now.tv_usec * 1000;
 	pthread_mutex_lock(&term_lock);
-	if (!stop_isched)
+	if (!stop_agent)
 		pthread_cond_timedwait(&term_cond, &term_lock, &ts);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -109,8 +111,8 @@ static void _load_config(void)
 	xfree(select_type);*/
 }
 
-static void _compute_start_times(void)
-{
+//static void _compute_start_times(void)
+//{
 /*	int j, rc = SLURM_SUCCESS, job_cnt = 0;
 	List job_queue;
 	job_queue_rec_t *job_queue_rec;
@@ -207,7 +209,29 @@ static void _compute_start_times(void)
 	}
 	list_destroy(job_queue);
 	FREE_NULL_BITMAP(alloc_bitmap); */
-} 
+//} 
+
+
+//Connect to iRM daemon via a TCP connection
+static int _connect_to_irmd(void) {
+   slurm_fd_t fd = -1;
+   slurm_addr_t irm_address;
+   uint16_t port = 12345;
+   char *host = "127.0.0.1";
+
+   _slurm_set_addr_char(&irm_address, port, host);
+
+   while (!stop_agent) {
+      fd = slurm_open_msg_conn(&irm_address);   
+      if (fd < 0) {
+         printf("\n[IRM_AGENT]: Failed to contact iRM daemon. Agent will shutdown shortly\n");
+         return -1;
+      }
+   }
+   if (!stop_agent)
+      printf("\n[IRM_AGENT]: Successfully connected to iRM daemon\n");
+   return fd;
+}
 
 /* Note that slurm.conf has changed */
 extern void irm_reconfig(void)
@@ -220,53 +244,80 @@ extern void *irm_agent(void *args)
 {
 	time_t now;
 	double wait_time;
-	static time_t last_sched_time = 0;
-        pthread_attr_t attr;
+	static time_t last_mapping_time = 0;
+        slurm_fd_t fd = -1;
+        int log_fd = -1;
+        char *buf = NULL;
+        int ret_val;
+        int timeout = 10 * 1000;   // 30 secs converted to millisecs
+        //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
-	slurmctld_lock_t all_locks = {
-		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
+	/*slurmctld_lock_t all_locks = {
+		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };*/
+
+        buf = (char *)malloc(sizeof(int));
+
+        printf("\n[IRM_AGENT]: Entering irm_agent\n");
+        printf("\n[IRM_AGENT]: Attempting to connect to iRM Daemon\n");
+
+        fd = _connect_to_irmd();
+
+        if (fd == -1) { 
+           printf("\n[IRM_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
+           return NULL;
+        }
 
 	_load_config();
 
-        /* Create an attached thread for iRM agent */
-        slurm_attr_init(&attr);
-        if (pthread_create(&irm_thread, &attr, irm_agent, NULL)) {
-           error("pthread_create error %m");
-        }
-        slurm_attr_destroy(&attr);
-
-        /* Create an attached thread for feedback agent */
-        slurm_attr_init(&attr);
-        if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
-           error("pthread_create error %m");
-        }
-        slurm_attr_destroy(&attr);
-
-        /* Create an attached thread for ping agent */
-        slurm_attr_init(&attr);
-        if (pthread_create(&ping_thread, &attr, ping_agent, NULL)) {
-           error("pthread_create error %m");
-        }
-        slurm_attr_destroy(&attr);
-
-	last_sched_time = time(NULL);
-	while (!stop_isched) {
-		_my_sleep(isched_interval);
-		if (stop_isched)
+	last_mapping_time = time(NULL);
+	while (!stop_agent) {
+		_my_sleep(irm_interval);
+		if (stop_agent)
 			break;
 		if (config_flag) {
 			config_flag = false;
 			_load_config();
 		}
 		now = time(NULL);
-		wait_time = difftime(now, last_sched_time);
-		if ((wait_time < isched_interval))
+		wait_time = difftime(now, last_mapping_time);
+		if ((wait_time < irm_interval))
 			continue;
+                ret_val = _slurm_recv_timeout(fd, buf, sizeof(int), 0, timeout);
+                printf("\nret_val = %d\n", ret_val);
+                printf("\nExited the recv timeout function\n");
+                if (ret_val < 4) {
+                   printf("\n[IRM_AGENT]: Did not receive correct number of bytes\n");
+                   printf("\n[IRM_AGENT]: iRM agent closing\n");
+                   stop_irm_agent();
+                   continue;
+                }
 
-		lock_slurmctld(all_locks);
-		_compute_start_times();
-		last_sched_time = time(NULL);
-		unlock_slurmctld(all_locks);
+                printf("\n[IRM_AGENT]: Received a resource offer from iRM daemon which is %d\n", *(int *)buf);
+                printf("[IRM_AGENT]: Processing the offer\n");
+		//lock_slurmctld(all_locks);
+                
+                //printf("\n***************[iRM AGENT]****************\n");
+                //printf("\nReceived a resource offer from iRM\n");
+                //printf("\nProcessing the offer for mapping jobs in the Invasic queue to this offer\n");
+                printf("\nSuccessfully mapped jobs to this offer and sending the list of jobs to be launched\n");
+                printf("\nNegotiation complete\n");
+                //printf("\n***************[iRM AGENT]****************\n");
+                memset(buf, 0, sizeof(int));
+                *buf = 0;
+ 
+                ret_val = _slurm_send_timeout(fd, buf, sizeof(int), 0, timeout);
+                if (ret_val < 4) {
+                   printf("\n[IRM_AGENT]: Did not send correct number of bytes\n");
+                   printf("\n[IRM_AGENT]: iRM agent closing\n");
+                   stop_irm_agent();
+                   continue;
+                }
+		//_compute_start_times();
+		last_mapping_time = time(NULL);
+		//unlock_slurmctld(all_locks);
 	}
+        free(buf);
+        close(fd);
+        printf("\n[IRM_AGENT]: Exiting irm_agent\n");
 	return NULL;
 }

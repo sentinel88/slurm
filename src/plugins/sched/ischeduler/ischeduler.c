@@ -26,7 +26,7 @@
 #include "src/slurmctld/preempt.h"
 #include "src/slurmctld/reservation.h"
 #include "src/slurmctld/slurmctld.h"
-#include "src/plugins/sched/builtin/builtin.h"
+#include "src/plugins/sched/ischeduler/ischeduler.h"
 
 #ifndef BACKFILL_INTERVAL
 #  define BACKFILL_INTERVAL	30
@@ -40,12 +40,12 @@ static pthread_t ping_thread = 0;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
-static int ischeduler_interval = BACKFILL_INTERVAL;
-static int max_sched_job_cnt = 50;
-static int sched_timeout = 0;
+static int isched_interval = BACKFILL_INTERVAL;
+//static int max_sched_job_cnt = 50;
+//static int sched_timeout = 0;
 
 /*********************** local functions *********************/
-static void _compute_start_times(void);
+//static void _compute_start_times(void);
 static void _load_config(void);
 static void _my_sleep(int secs);
 
@@ -53,9 +53,14 @@ static void _my_sleep(int secs);
 extern void stop_isched_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
+        printf("\nBeginning to stop all agents\n");
+        stop_ping_agent();
+        stop_feedback_agent();
+        stop_irm_agent();
         pthread_join(ping_thread,  NULL);
         pthread_join(feedback_thread,  NULL);
         pthread_join(irm_thread,  NULL);
+        printf("\nPing, Feedback and iRM threads have shutdown successfully\n");
 	stop_isched = true;
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -114,8 +119,8 @@ static void _load_config(void)
 	xfree(select_type);*/
 }
 
-static void _compute_start_times(void)
-{
+//static void _compute_start_times(void)
+//{
 /*	int j, rc = SLURM_SUCCESS, job_cnt = 0;
 	List job_queue;
 	job_queue_rec_t *job_queue_rec;
@@ -212,7 +217,7 @@ static void _compute_start_times(void)
 	}
 	list_destroy(job_queue);
 	FREE_NULL_BITMAP(alloc_bitmap); */
-} 
+//} 
 
 /* Note that slurm.conf has changed */
 extern void ischeduler_reconfig(void)
@@ -221,15 +226,17 @@ extern void ischeduler_reconfig(void)
 }
 
 /* ischeduler_agent */
-extern void *ischeduler_agent(void *args)
+extern void *isched_agent(void *args)
 {
 	time_t now;
 	double wait_time;
 	static time_t last_sched_time = 0;
         pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
-	slurmctld_lock_t all_locks = {
-		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
+	/*slurmctld_lock_t all_locks = {
+		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };*/
+
+        printf("\n[ISCHED_AGENT]: Entering isched_agent\n");
 
 	_load_config();
 
@@ -268,10 +275,14 @@ extern void *ischeduler_agent(void *args)
 		if ((wait_time < isched_interval))
 			continue;
 
-		lock_slurmctld(all_locks);
-		_compute_start_times();
+		//lock_slurmctld(all_locks);
+		//_compute_start_times();
+                printf("\n***************[iScheduler AGENT]****************\n");
+                printf("\nThis is the main control loop. All agents running.\n");
+                printf("\n***************[iScheduler AGENT]****************\n");
 		last_sched_time = time(NULL);
-		unlock_slurmctld(all_locks);
+		//unlock_slurmctld(all_locks);
 	}
+        printf("\n[ISCHED_AGENT]: Exiting isched_agent\n");
 	return NULL;
 }
