@@ -27,6 +27,7 @@
 #ifndef BACKFILL_INTERVAL
 #  define BACKFILL_INTERVAL	10
 #endif
+#define MAX_NEGOTIATION_ATTEMPTS 5
 
 /*********************** local variables *********************/
 static bool stop_agent = false;
@@ -133,15 +134,18 @@ static int _init_comm(void) {
 /* irm daemon */
 int main(int argc, char *argv[])
 {
-	time_t now;
+	/*time_t now;
 	double wait_time;
-	static time_t last_mapping_time = 0;
+	static time_t last_mapping_time = 0;*/
         slurm_fd_t fd = -1;
         slurm_fd_t client_fd = -1;
         char *buf = NULL;
+        uint16_t buf_val = -1;
         int ret_val;
-        int timeout = 10 * 1000;   // 30 secs converted to millisecs
+        int attempts = 0;
+        int timeout = 30 * 1000;   // 30 secs converted to millisecs
         slurm_addr_t cli_addr;
+        int val = -1, input = -1;
         //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
 	//slurmctld_lock_t all_locks = {
@@ -169,24 +173,43 @@ int main(int argc, char *argv[])
 
 	_load_config();
 
-	last_mapping_time = time(NULL);
+	//last_mapping_time = time(NULL);
 	while (!stop_agent) {
-		_my_sleep(irm_interval);
+		//_my_sleep(irm_interval);
 		if (stop_agent)
 			break;
 		/*if (config_flag) {
 			config_flag = false;
 			_load_config();
 		}*/
-		now = time(NULL);
+		/*now = time(NULL);
 		wait_time = difftime(now, last_mapping_time);
 		if ((wait_time < irm_interval))
-			continue;
+			continue;*/
+
+                if (input == 0) {
+                   printf("\niRM has not accepted the mapping from iScheduler. We will send a new offer now.\n");
+                   attempts++;
+                } 
+                if (input == 1) {
+                   printf("\niRM has accepted the mapping from iScheduler. Will launch the submitted jobs shortly. After launch we will send further new offers.\n");
+                   attempts = 0;
+                } /*else {
+                   if (attempts) {
+                      printf("\nEither iScheduler did not accept the offer we sent or it was an invalid response.\n");
+                   } 
+                }*/
+                
+                input = -1;
+                //sleep(2);
                 printf("\nCreating a new resource offer to send to iScheduler\n");
                 sleep(5);
-                *buf = 1;
-                ret_val = _slurm_send_timeout(client_fd, buf, sizeof(int), 0, timeout);
-                if (ret_val < 4) {
+                buf_val = htons(1);   
+                //buf_val = 1;
+                memcpy(buf, &buf_val, sizeof(buf_val));
+                //*buf = 1;
+                ret_val = _slurm_send_timeout(client_fd, buf, sizeof(uint16_t), 0, timeout);
+                if (ret_val < 2) {
                    printf("\n[IRM_DAEMON]: Did not send correct number of bytes\n");
                    printf("\n[IRM_DAEMON]: iRM Daemon closing\n");
                    break;
@@ -199,15 +222,36 @@ int main(int argc, char *argv[])
                 //printf("\nReceived a resource offer from iRM\n");
                 //printf("\nProcessing the offer for mapping jobs in the Invasic queue to this offer\n");
  
-                ret_val = _slurm_recv_timeout(client_fd, buf, sizeof(int), 0, timeout);
-                if (ret_val < 4) {
+                ret_val = _slurm_recv_timeout(client_fd, buf, sizeof(uint16_t), 0, timeout);
+
+                if (ret_val < 2) {
                    printf("\n[IRM_DAEMON]: Did not receive correct number of bytes\n");
                    printf("\n[IRM_DAEMON]: iRM Daemon closing\n");
                    break;
                 }
-                printf("\nReceived a mapping from jobs to offer from iScheduler. Processing the same\n");
+                val = ntohs(*(int *)(buf));
+
+                if (attempts == MAX_NEGOTIATION_ATTEMPTS) {
+                   printf("\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
+                   attempts = 0;
+                   continue;
+                }
+
+                if (val == 0) {
+                   printf("\niScheduler did not accept this offer.\n");
+                   attempts++;
+                } else if (val == 1) {
+                   printf("\niScheduler accepted the offer\n");
+                   printf("\nEnter 1/0 to accept/reject the Map:Jobs->offer sent by iScheduler\n");
+                   scanf("%d", &input);
+                } else {
+                   printf("\nInvalid response from iScheduler. Ignoring this.\n");
+                   attempts++;
+                }  
+
+                //printf("\nReceived a mapping from jobs to offer from iScheduler. Processing the same\n");
 		//_compute_start_times();
-		last_mapping_time = time(NULL);
+		//last_mapping_time = time(NULL);
 		//unlock_slurmctld(all_locks);
 	}
         free(buf);

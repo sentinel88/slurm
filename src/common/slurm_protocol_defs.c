@@ -2819,6 +2819,19 @@ extern void slurm_free_accounting_update_msg(accounting_update_msg_t *msg)
 	}
 }
 
+
+extern void slurm_free_resource_offer_msg(resource_offer_msg_t *msg)
+{
+        xfree(msg);
+}
+
+
+extern void slurm_free_resource_offer_resp_msg(resource_offer_resp_msg_t *msg)
+{
+        xfree(msg);
+}
+
+
 extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 {
 	switch(type) {
@@ -3048,6 +3061,12 @@ extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 		break;
 	case RESPONSE_JOB_ARRAY_ERRORS:
 		slurm_free_job_array_resp(data);
+		break;
+	case RESOURCE_OFFER:
+		slurm_free_resource_offer_msg(data);
+		break;
+	case RESPONSE_OFFER_RESP:
+		slurm_free_resource_offer_resp_msg(data);
 		break;
 	default:
 		error("invalid type trying to be freed %u", type);
@@ -3518,6 +3537,10 @@ rpc_num2string(uint16_t opcode)
 		return "ACCOUNTING_FIRST_REG";
 	case ACCOUNTING_REGISTER_CTLD:
 		return "ACCOUNTING_REGISTER_CTLD";
+	case RESOURCE_OFFER:
+		return "RESOURCE_OFFER";
+	case RESPONSE_RESOURCE_OFFER:
+		return "RESPONSE_RESOURCE_OFFER";
 	default:
 		(void) snprintf(buf, sizeof(buf), "%u", opcode);
 		return buf;

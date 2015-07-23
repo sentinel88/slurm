@@ -1325,6 +1325,14 @@ pack_msg(slurm_msg_t const *msg, Buf buffer)
 		_pack_job_array_resp_msg((job_array_resp_msg_t *) msg->data,
 					 buffer, msg->protocol_version);
 		break;
+	case RESOURCE_OFFER:
+		_pack_resource_offer_msg((resource_offer_msg_t *) msg->data,
+					 buffer, msg->protocol_version);
+		break;
+	case RESOURCE_OFFER_RESP:
+		_pack_resource_offer_resp_msg((resource_offer_resp_msg_t *) msg->data,
+					 buffer, msg->protocol_version);
+		break;
 	default:
 		debug("No pack method for msg type %u", msg->msg_type);
 		return EINVAL;
@@ -1961,6 +1969,16 @@ unpack_msg(slurm_msg_t * msg, Buf buffer)
 		break;
 	case RESPONSE_JOB_ARRAY_ERRORS:
 		rc = _unpack_job_array_resp_msg((job_array_resp_msg_t **)
+						&(msg->data), buffer,
+						msg->protocol_version);
+		break;
+	case RESOURCE_OFFER:
+		rc = _unpack_resource_offer_msg((resource_offer_msg_t **)
+						&(msg->data), buffer,
+						msg->protocol_version);
+		break;
+	case RESOURCE_OFFER_RESP:
+		rc = _unpack_resource_offer_resp_msg((resource_offer_resp_msg_t **)
 						&(msg->data), buffer,
 						msg->protocol_version);
 		break;
@@ -12044,6 +12062,37 @@ unpack_error:
 	*msg = NULL;
 	return SLURM_ERROR;
 }
+
+
+static void _pack_resource_offer_msg(resource_offer_msg_t *msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+	pack16(msg->value, buffer);
+}
+
+
+static void _unpack_resource_offer_msg(resource_offer_msg_t **msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+	*msg = xmalloc(sizeof(resource_offer_msg_t));
+	safe_unpack16(&((*msg)->value), buffer);
+}
+
+
+static void _pack_resource_offer_resp_msg(resource_offer_resp_msg_t *msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+	pack16(msg->value, buffer);
+}
+
+
+static void _unpack_resource_offer_resp_msg(resource_offer_resp_msg_t **msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+	*msg = xmalloc(sizeof(resource_offer_resp_msg_t));
+	safe_unpack16(&((*msg)->value), buffer);
+}
+
 
 /* template
    void pack_ ( * msg , Buf buffer )
