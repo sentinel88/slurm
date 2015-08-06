@@ -200,7 +200,9 @@ ssize_t _slurm_msg_sendto_timeout(slurm_fd_t fd, char *buffer, size_t size,
 	int   len;
 	uint32_t usize;
 	SigFunc *ohandler;
-
+ 
+        printf("\nInside _slurm_msg_sendto_timeout\n");
+       
 	/*
 	 *  Ignore SIGPIPE so that send can return a error code if the
 	 *    other side closes the socket
@@ -220,6 +222,7 @@ ssize_t _slurm_msg_sendto_timeout(slurm_fd_t fd, char *buffer, size_t size,
 
      done:
 	xsignal(SIGPIPE, ohandler);
+        printf("\nExiting _slurm_msg_sendto_timeout\n");
 	return len;
 }
 

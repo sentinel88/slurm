@@ -42,7 +42,7 @@
 #define _SLURM_ISCHEDULER_H
 
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
-extern void *isched_agent(void *args);
+extern void *isched_agent(void *);
 
 /* Terminate builtin_agent */
 extern void stop_isched_agent(void);
@@ -52,14 +52,24 @@ extern void ischeduler_reconfig(void);
 
 extern void stop_ping_agent(void);
 
-extern void *ping_agent(void *args);
+extern void *ping_agent(void *);
 
 extern void stop_feedback_agent(void);
 
-extern void *feedback_agent(void *args);
+extern void *feedback_agent(void *);
 
 extern void stop_irm_agent(void);
 
-extern void *irm_agent(void *args);
+extern void *irm_agent(void *);
+
+extern int isched_recv_rsrc_offer (slurm_fd_t);
+
+extern int process_rsrc_offer (resource_offer_msg_t *, uint16_t *);
+
+extern int isched_send_irm_msg(slurm_msg_t *, char *, int); 
+
+extern int slurm_request_resource_offer(slurm_fd_t);
+
+#define timeout 20*1000
 
 #endif	/* _SLURM_ISCHEDULER_H */

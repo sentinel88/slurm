@@ -1919,13 +1919,6 @@ typedef struct {
 
 typedef block_info_t update_block_msg_t;
 
-typedef struct {
-	uint16_t value;	/* info */
-} resource_offer_msg_t;
-
-typedef struct {
-	uint16_t value;	/* info */
-} resource_offer_resp_msg_t;
 
 /*
  * slurm_print_block_info_msg - output information about all Bluegene

@@ -29,6 +29,8 @@
 #endif
 #define MAX_NEGOTIATION_ATTEMPTS 5
 
+#define DONT_EXECUTE_NOW 1
+
 /*********************** local variables *********************/
 static bool stop_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -137,6 +139,7 @@ int main(int argc, char *argv[])
 	/*time_t now;
 	double wait_time;
 	static time_t last_mapping_time = 0;*/
+        slurm_msg_t msg;
         slurm_fd_t fd = -1;
         slurm_fd_t client_fd = -1;
         char *buf = NULL;
@@ -146,6 +149,8 @@ int main(int argc, char *argv[])
         int timeout = 30 * 1000;   // 30 secs converted to millisecs
         slurm_addr_t cli_addr;
         int val = -1, input = -1;
+        resource_offer_msg_t req;
+        resource_offer_resp_msg_t resp;
         //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
 	//slurmctld_lock_t all_locks = {
@@ -175,6 +180,7 @@ int main(int argc, char *argv[])
 
 	//last_mapping_time = time(NULL);
 	while (!stop_agent) {
+                val = -1;
 		//_my_sleep(irm_interval);
 		if (stop_agent)
 			break;
@@ -204,6 +210,20 @@ int main(int argc, char *argv[])
                 //sleep(2);
                 printf("\nCreating a new resource offer to send to iScheduler\n");
                 sleep(5);
+#ifdef DONT_EXECUTE_NOW
+                ret_val = wait_req_rsrc_offer(fd, &msg, timeout);
+                if (ret_val == SLURM_SUCCESS)
+                   ret_val = slurm_submit_resource_offer(client_fd, &req, &resp);
+                else {
+                   printf("\nHave not received any request for resource offer yet. Shutting down the daemon\n");
+                   stop_irm_agent();
+                   continue;
+                }
+                if (ret_val != SLURM_SUCCESS) {
+                   printf("\niRM agent shutting down\n");
+                   stop_irm_agent();
+                }
+#else
                 buf_val = htons(1);   
                 //buf_val = 1;
                 memcpy(buf, &buf_val, sizeof(buf_val));
@@ -212,6 +232,7 @@ int main(int argc, char *argv[])
                 if (ret_val < 2) {
                    printf("\n[IRM_DAEMON]: Did not send correct number of bytes\n");
                    printf("\n[IRM_DAEMON]: iRM Daemon closing\n");
+                   //stop_irm_agent();
                    break;
                 }
 
@@ -230,7 +251,12 @@ int main(int argc, char *argv[])
                    break;
                 }
                 val = ntohs(*(int *)(buf));
+#endif
 
+#ifdef DONT_EXECUTE_NOW
+                val = resp.value;
+                //printf("\nval = %d, resp.value = %d\n", val, resp.value);
+#endif
                 if (attempts == MAX_NEGOTIATION_ATTEMPTS) {
                    printf("\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
                    attempts = 0;
@@ -248,7 +274,7 @@ int main(int argc, char *argv[])
                    printf("\nInvalid response from iScheduler. Ignoring this.\n");
                    attempts++;
                 }  
-
+//#endif
                 //printf("\nReceived a mapping from jobs to offer from iScheduler. Processing the same\n");
 		//_compute_start_times();
 		//last_mapping_time = time(NULL);

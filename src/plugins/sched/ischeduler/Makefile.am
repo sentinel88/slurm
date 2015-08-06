@@ -16,5 +16,6 @@ sched_ischeduler_la_SOURCES = \
                         ping_agent.c            \
                         feedback_agent.c        \
                         irm_agent.c             \
+                        process_rsrc_offer.c    \
 			ischeduler.h
 sched_ischeduler_la_LDFLAGS = $(SO_LDFLAGS) $(PLUGIN_FLAGS)

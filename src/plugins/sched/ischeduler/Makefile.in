@@ -171,7 +171,8 @@ am__installdirs = "$(DESTDIR)$(pkglibdir)"
 LTLIBRARIES = $(pkglib_LTLIBRARIES)
 sched_ischeduler_la_LIBADD =
 am_sched_ischeduler_la_OBJECTS = ischeduler_wrapper.lo ischeduler.lo \
-	ping_agent.lo feedback_agent.lo irm_agent.lo
+	ping_agent.lo feedback_agent.lo irm_agent.lo \
+	process_rsrc_offer.lo
 sched_ischeduler_la_OBJECTS = $(am_sched_ischeduler_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -491,6 +492,7 @@ sched_ischeduler_la_SOURCES = \
                         ping_agent.c            \
                         feedback_agent.c        \
                         irm_agent.c             \
+                        process_rsrc_offer.c    \
 			ischeduler.h
 
 sched_ischeduler_la_LDFLAGS = $(SO_LDFLAGS) $(PLUGIN_FLAGS)
@@ -577,6 +579,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ischeduler.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ischeduler_wrapper.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ping_agent.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/process_rsrc_offer.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

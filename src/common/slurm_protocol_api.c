@@ -3227,6 +3227,12 @@ _pack_msg(slurm_msg_t *msg, header_t *hdr, Buf buffer)
 	set_buf_offset(buffer, tmplen);
 }
 
+/* Temporarily introduced a new function below to access the actual
+   _pack_msg function from INVASIC components which is a static method */
+void new_pack_msg(slurm_msg_t *msg, header_t *hdr, Buf buffer) {
+   _pack_msg(msg, hdr, buffer);
+}
+
 /*
  *  Send a slurm message over an open file descriptor `fd'
  *    Returns the size of the message sent in bytes, or -1 on failure.

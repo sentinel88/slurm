@@ -1255,4 +1255,6 @@ extern int slurm_job_step_create (
 extern int slurm_forward_data(char *nodelist, char *address, uint32_t len,
 	char *data);
 
+extern void new_pack_msg(slurm_msg_t *msg, header_t *hdr, Buf buffer);
+
 #endif

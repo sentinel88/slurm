@@ -361,6 +361,7 @@ typedef enum {
 	ACCOUNTING_UPDATE_MSG = 10001,
 	ACCOUNTING_FIRST_REG,
 	ACCOUNTING_REGISTER_CTLD,
+        REQUEST_RESOURCE_OFFER,
         RESOURCE_OFFER,
         RESPONSE_RESOURCE_OFFER,
 } slurm_msg_type_t;
@@ -1029,6 +1030,18 @@ typedef struct license_info_request_msg {
 	time_t last_update;
 	uint16_t show_flags;
 } license_info_request_msg_t;
+
+typedef struct {
+        uint16_t value; /* info */
+} request_resource_offer_msg_t;
+
+typedef struct {
+        uint16_t value; /* info */
+} resource_offer_msg_t;
+
+typedef struct {
+        uint16_t value; /* info */
+} resource_offer_resp_msg_t;
 
 /*****************************************************************************\
  * Slurm API Message Types

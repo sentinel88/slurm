@@ -680,6 +680,24 @@ static void _pack_job_array_resp_msg(job_array_resp_msg_t *msg, Buf buffer,
 static int  _unpack_job_array_resp_msg(job_array_resp_msg_t **msg, Buf buffer,
 				       uint16_t protocol_version);
 
+static void _pack_request_resource_offer_msg(request_resource_offer_msg_t *msg, Buf buffer,
+                                     uint16_t protocol_version);
+
+static void _pack_resource_offer_msg(resource_offer_msg_t *msg, Buf buffer,
+                                     uint16_t protocol_version);
+
+static void _pack_resource_offer_resp_msg(resource_offer_resp_msg_t * msg,
+                                         Buf buffer, uint16_t protocol_version);
+
+static int _unpack_request_resource_offer_msg(request_resource_offer_msg_t **msg, Buf buffer,
+                                     uint16_t protocol_version);
+
+static int _unpack_resource_offer_msg(resource_offer_msg_t **msg, Buf buffer,
+                                     uint16_t protocol_version);
+
+static int _unpack_resource_offer_resp_msg(resource_offer_resp_msg_t **msg, Buf buffer,
+                                     uint16_t protocol_version);
+
 /* pack_header
  * packs a slurm protocol header that precedes every slurm message
  * IN header - the header structure to pack
@@ -1325,11 +1343,15 @@ pack_msg(slurm_msg_t const *msg, Buf buffer)
 		_pack_job_array_resp_msg((job_array_resp_msg_t *) msg->data,
 					 buffer, msg->protocol_version);
 		break;
+	case REQUEST_RESOURCE_OFFER:
+		_pack_request_resource_offer_msg((request_resource_offer_msg_t *) msg->data,
+					 buffer, msg->protocol_version);
+		break;
 	case RESOURCE_OFFER:
 		_pack_resource_offer_msg((resource_offer_msg_t *) msg->data,
 					 buffer, msg->protocol_version);
 		break;
-	case RESOURCE_OFFER_RESP:
+	case RESPONSE_RESOURCE_OFFER:
 		_pack_resource_offer_resp_msg((resource_offer_resp_msg_t *) msg->data,
 					 buffer, msg->protocol_version);
 		break;
@@ -1972,12 +1994,17 @@ unpack_msg(slurm_msg_t * msg, Buf buffer)
 						&(msg->data), buffer,
 						msg->protocol_version);
 		break;
+	case REQUEST_RESOURCE_OFFER:
+		rc = _unpack_request_resource_offer_msg((request_resource_offer_msg_t **)
+						&(msg->data), buffer,
+						msg->protocol_version);
+		break;
 	case RESOURCE_OFFER:
 		rc = _unpack_resource_offer_msg((resource_offer_msg_t **)
 						&(msg->data), buffer,
 						msg->protocol_version);
 		break;
-	case RESOURCE_OFFER_RESP:
+	case RESPONSE_RESOURCE_OFFER:
 		rc = _unpack_resource_offer_resp_msg((resource_offer_resp_msg_t **)
 						&(msg->data), buffer,
 						msg->protocol_version);
@@ -12064,6 +12091,24 @@ unpack_error:
 }
 
 
+static void _pack_request_resource_offer_msg(request_resource_offer_msg_t *msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+	pack16(msg->value, buffer);
+}
+
+
+static int _unpack_request_resource_offer_msg(request_resource_offer_msg_t **msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+	*msg = xmalloc(sizeof(request_resource_offer_msg_t));
+	safe_unpack16(&((*msg)->value), buffer);
+        return SLURM_SUCCESS;
+unpack_error:
+        return SLURM_ERROR;
+}
+
+
 static void _pack_resource_offer_msg(resource_offer_msg_t *msg, Buf buffer,
 				     uint16_t protocol_version)
 {
@@ -12071,11 +12116,14 @@ static void _pack_resource_offer_msg(resource_offer_msg_t *msg, Buf buffer,
 }
 
 
-static void _unpack_resource_offer_msg(resource_offer_msg_t **msg, Buf buffer,
+static int _unpack_resource_offer_msg(resource_offer_msg_t **msg, Buf buffer,
 				     uint16_t protocol_version)
 {
 	*msg = xmalloc(sizeof(resource_offer_msg_t));
 	safe_unpack16(&((*msg)->value), buffer);
+        return SLURM_SUCCESS;
+unpack_error:
+        return SLURM_ERROR;
 }
 
 
@@ -12086,11 +12134,14 @@ static void _pack_resource_offer_resp_msg(resource_offer_resp_msg_t *msg, Buf bu
 }
 
 
-static void _unpack_resource_offer_resp_msg(resource_offer_resp_msg_t **msg, Buf buffer,
+static int _unpack_resource_offer_resp_msg(resource_offer_resp_msg_t **msg, Buf buffer,
 				     uint16_t protocol_version)
 {
 	*msg = xmalloc(sizeof(resource_offer_resp_msg_t));
 	safe_unpack16(&((*msg)->value), buffer);
+        return SLURM_SUCCESS;
+unpack_error:
+        return SLURM_ERROR;
 }
 
 
