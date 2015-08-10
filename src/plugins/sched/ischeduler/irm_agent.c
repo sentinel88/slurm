@@ -253,12 +253,14 @@ extern void *irm_agent(void *args)
 	//static time_t last_mapping_time = 0;
         slurm_fd_t fd = -1;
         //int log_fd = -1;
-        //int input = -1;
-        char *buf = NULL;
+        int input = 0;
+        char *buf = NULL; 
+        bool empty_queue = true;
         uint16_t buf_val = -1;
         int ret_val = 0;
         slurm_msg_t *msg = NULL;
-        int timeout = 30 * 1000;   // 30 secs converted to millisecs
+        resource_offer_msg_t res_off_msg;
+        //int timeout = 30 * 1000;   // 30 secs converted to millisecs
         //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
 	/*slurmctld_lock_t all_locks = {
@@ -266,6 +268,7 @@ extern void *irm_agent(void *args)
 
         buf = (char *)malloc(sizeof(uint16_t));
         msg = xmalloc(sizeof(slurm_msg_t));
+        msg->data = &res_off_msg;
 
         printf("\n[IRM_AGENT]: Entering irm_agent\n");
         printf("\n[IRM_AGENT]: Attempting to connect to iRM Daemon\n");
@@ -283,6 +286,7 @@ extern void *irm_agent(void *args)
 
 	//last_mapping_time = time(NULL);
 	while (!stop_agent) {
+                ret_val = SLURM_SUCCESS;
 		//_my_sleep(irm_interval);
 		if (stop_agent)
 			break;
@@ -295,9 +299,12 @@ extern void *irm_agent(void *args)
 		if ((wait_time < irm_interval))
 			continue;*/
 #ifdef DONT_EXECUTE
-                ret_val = slurm_request_resource_offer(fd);
+                if (empty_queue) {
+                   ret_val = slurm_request_resource_offer(fd);
+                   empty_queue = false;
+                }
                 if (ret_val == SLURM_SUCCESS)
-                   ret_val = isched_recv_rsrc_offer(fd);
+                   ret_val = isched_recv_rsrc_offer(fd, msg);
                 else {
                    printf("\nError in sending the request for resource offer to iRM. Shutting down the iRM agent.\n");
                    stop_irm_agent();
@@ -311,11 +318,14 @@ extern void *irm_agent(void *args)
                 printf("[IRM_AGENT]: Processing the offer\n");
                 ret_val = process_rsrc_offer(msg->data, &buf_val);
                 memcpy(buf, (char *)&buf_val, sizeof(buf_val)); 
+
+                if (buf_val == 500) empty_queue = true; 
                 //printf("\nbuf = %s\n", buf);
                 //slurm_msg_t_init(msg);
                 printf("\nBefore sending the response to the resource offer\n");
                 ret_val = 0;
-                ret_val = isched_send_irm_msg(msg, buf, timeout);
+                xfree(msg->data);
+                ret_val = isched_send_irm_msg(msg, buf);
                 if (ret_val != SLURM_SUCCESS) {
                    printf("\nError in sending the response for the resource offer.\n");
                    stop_irm_agent();
@@ -369,6 +379,7 @@ extern void *irm_agent(void *args)
 #endif
 	}
         free(buf);
+        xfree(msg->data);
         xfree(msg);
         close(fd);
         printf("\n[IRM_AGENT]: Exiting irm_agent\n");

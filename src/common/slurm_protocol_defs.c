@@ -2820,6 +2820,12 @@ extern void slurm_free_accounting_update_msg(accounting_update_msg_t *msg)
 }
 
 
+extern void slurm_free_request_resource_offer_msg(request_resource_offer_msg_t *msg)
+{
+        xfree(msg);
+}
+
+
 extern void slurm_free_resource_offer_msg(resource_offer_msg_t *msg)
 {
         xfree(msg);

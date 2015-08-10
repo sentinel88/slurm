@@ -27,6 +27,8 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/slurm_protocol_pack.h"
 #include "src/common/forward.h"
 
+#define timeout 30*1000
+
 static void _print_data(char *data, int len)
 {
         int i;
@@ -47,16 +49,21 @@ slurm_request_resource_offer (slurm_fd_t fd)
 {
         printf("\nInside slurm_request_resource_offer\n");
         int rc;
-        char ch;
+        int ch;
         slurm_msg_t req_msg;
         request_resource_offer_msg_t req;
         Buf buffer;
         header_t header;
-        char *buf = NULL;
+        //char *buf = NULL;
         size_t buflen = 0;
         //int timeout = 20 * 1000;
 
+        //msg->data = malloc(sizeof(request_resource_offer_msg_t));
+
         req.value = 1;   // For the time being the request resource offer is just a value of 1 being sent in the message.
+
+        printf("\nJust enter a number to start preparing to send a request for resource offer\n");
+        scanf("%d", &ch);
 
         slurm_msg_t_init(&req_msg);
 
@@ -88,9 +95,6 @@ slurm_request_resource_offer (slurm_fd_t fd)
          * Send message
          */
 
-        printf("\nPress enter\n");
-        scanf("%c", &ch);
-
         rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
                                 get_buf_offset(buffer),
                                 SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
@@ -100,6 +104,7 @@ slurm_request_resource_offer (slurm_fd_t fd)
            rc = errno;
         } else {
            printf("[IRM_AGENT]: Sent the request for a resource offer.\n");
+           rc = SLURM_SUCCESS;
         }
 
         free_buf(buffer);
@@ -120,10 +125,10 @@ slurm_request_resource_offer (slurm_fd_t fd)
  */
 //Similar to slurm_receive_msg
 int
-isched_recv_rsrc_offer (slurm_fd_t fd)/*resource_offer_msg_t *req,
-		        resource_offer_resp_msg_t **resp*/
+isched_recv_rsrc_offer (slurm_fd_t fd, slurm_msg_t *msg) 
 {
         printf("\nInside isched_recv_rsrc_offer\n");
+        //slurm_msg_t msg;
         char *buf = NULL;
         size_t buflen = 0;
         header_t header;
@@ -160,8 +165,7 @@ isched_recv_rsrc_offer (slurm_fd_t fd)/*resource_offer_msg_t *req,
                 goto total_return;
         }
 
-
-/*
+        /*
          * Unpack message body
          */
         msg->protocol_version = header.version;
@@ -176,11 +180,12 @@ isched_recv_rsrc_offer (slurm_fd_t fd)/*resource_offer_msg_t *req,
                      rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
                      //free_buf(buffer);
                 } else {
+                   //memcpy(res_off_msg, msg.data, sizeof(resource_offer_msg_t));
                    rc = SLURM_SUCCESS;
                 }
                 break;
            default:
-                slurm_seterrno_ret(SLURM_UNEXPECTED_MSGERROR);
+                slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
                 printf("\nUnexpected message\n");
                 rc = errno;
         }
@@ -207,25 +212,33 @@ process_rsrc_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
 		        
 {
         int input = -1;
-        printf("\nEnter your choice 1/0 on whether to accept/reject the resource offer\n");
-        scanf("%d", &input);
+        int choice = -1;
+        printf("\nIs the job queue empty?? if yes, then we send a negative response for the resource offer. Enter 1/0 for empty/non-empty job queue\n");
+        scanf("%d", &choice);
+ 
+        if (!choice) {
+           printf("\nEnter your choice 1/0 on whether to accept/reject the resource offer\n");
+           scanf("%d", &input);
 
-        if (input == 1) {
-           printf("\nSuccessfully mapped jobs to this offer and sending the list of jobs to be launched\n");
-          // *buf_val = htons(1);
-           *buf_val = 1;
-           //memcpy(buf, &buf_val, sizeof(buf_val));
+           if (input == 1) {
+              printf("\nSuccessfully mapped jobs to this offer and sending the list of jobs to be launched\n");
+              // *buf_val = htons(1);
+              *buf_val = 1;
+              //memcpy(buf, &buf_val, sizeof(buf_val));
+           } else {
+              printf("\nOffer not accepted. Sending back a negative response\n");
+              // *buf_val = htons(0);
+              *buf_val = 0;
+              //memcpy(buf, &buf_val, sizeof(buf_val));
+           }
         } else {
-           printf("\nOffer not accepted. Sending back a negative response\n");
-          // *buf_val = htons(0);
-           *buf_val = 0;
-           //memcpy(buf, &buf_val, sizeof(buf_val));
+           *buf_val = 500; 
         }
 
         return 0;
 }
 
-int isched_send_irm_msg(slurm_msg_t *msg, char *buf, int timeout) 
+int isched_send_irm_msg(slurm_msg_t *msg, char *buf) 
 {
         //char *buf = NULL;
         //size_t buflen = 0;
@@ -234,15 +247,16 @@ int isched_send_irm_msg(slurm_msg_t *msg, char *buf, int timeout)
         resource_offer_resp_msg_t offer_resp_msg;
         //void *auth_cred = NULL;
         Buf buffer;
+        slurm_msg_t resp_msg;
+        int choice = 1;
 
         printf("\nInside isched_send_irm_msg\n");
-
-        slurm_msg_t resp_msg;
 
         if (msg->conn_fd < 0) {
                 slurm_seterrno(ENOTCONN);
                 return SLURM_ERROR;
         }
+
 
         offer_resp_msg.value = *(uint16_t *)(buf);
 

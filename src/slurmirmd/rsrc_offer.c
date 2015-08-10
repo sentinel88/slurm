@@ -26,6 +26,8 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/forward.h"
 #include "src/common/slurm_protocol_pack.h"
 
+#define timeout (30 * 1000)
+
 
 
 static void _print_data(char *data, int len)
@@ -43,8 +45,7 @@ static void _print_data(char *data, int len)
 
 
 int
-wait_req_rsrc_offer (slurm_fd_t fd, slurm_msg_t *msg, int timeout)/*resource_offer_msg_t *req,
-                        resource_offer_resp_msg_t **resp*/
+wait_req_rsrc_offer (slurm_fd_t fd, slurm_msg_t *msg)
 {
         printf("\nInside wait_req_rsrc_offer\n");
         char *buf = NULL;
@@ -103,7 +104,7 @@ wait_req_rsrc_offer (slurm_fd_t fd, slurm_msg_t *msg, int timeout)/*resource_off
                 }
                 break;
            default:
-                slurm_seterrno_ret(SLURM_UNEXPECTED_MSGS_ERROR);
+                slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
                 printf("\nUnexpected message\n");
                 rc = errno;
         }
@@ -146,7 +147,7 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
         header_t header;
         char *buf = NULL;
         size_t buflen = 0;
-        int timeout = 20 * 1000;
+        //int timeout = 20 * 1000;
 
         req->value = 1;   // For the time being the resource offer is just a value of 1 being sent in the message.
 

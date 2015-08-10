@@ -36,14 +36,14 @@ static bool stop_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 //static bool config_flag = false;
-static int irm_interval = BACKFILL_INTERVAL;
+//static int irm_interval = BACKFILL_INTERVAL;
 //static int max_sched_job_cnt = 50;
 //static int sched_timeout = 0;
 
 /*********************** local functions *********************/
 //static void _compute_start_times(void);
 static void _load_config(void);
-static void _my_sleep(int secs);
+//static void _my_sleep(int secs);
 static int _init_comm(void);
 
 /* Terminate ischeduler_agent */
@@ -56,7 +56,7 @@ extern void stop_irm_agent(void)
 	pthread_mutex_unlock(&term_lock);
 }
 
-static void _my_sleep(int secs)
+/*static void _my_sleep(int secs)
 {
 	struct timespec ts = {0, 0};
 	struct timeval now;
@@ -68,7 +68,7 @@ static void _my_sleep(int secs)
 	if (!stop_agent)
 		pthread_cond_timedwait(&term_cond, &term_lock, &ts);
 	pthread_mutex_unlock(&term_lock);
-}
+}*/
 
 static void _load_config(void)
 {
@@ -143,14 +143,15 @@ int main(int argc, char *argv[])
         slurm_fd_t fd = -1;
         slurm_fd_t client_fd = -1;
         char *buf = NULL;
-        uint16_t buf_val = -1;
+        //uint16_t buf_val = -1;
         int ret_val;
         int attempts = 0;
-        int timeout = 30 * 1000;   // 30 secs converted to millisecs
+        //int timeout = 30 * 1000;   // 30 secs converted to millisecs
         slurm_addr_t cli_addr;
         int val = -1, input = -1;
         resource_offer_msg_t req;
         resource_offer_resp_msg_t resp;
+        bool no_jobs = true;
         //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
 	//slurmctld_lock_t all_locks = {
@@ -208,13 +209,17 @@ int main(int argc, char *argv[])
                 
                 input = -1;
                 //sleep(2);
-                printf("\nCreating a new resource offer to send to iScheduler\n");
-                sleep(5);
 #ifdef DONT_EXECUTE_NOW
-                ret_val = wait_req_rsrc_offer(fd, &msg, timeout);
-                if (ret_val == SLURM_SUCCESS)
+                if (no_jobs) {
+                   ret_val = wait_req_rsrc_offer(client_fd, &msg);
+                   no_jobs = false; 
+                }
+                if (ret_val == SLURM_SUCCESS) {
+                   xfree(msg.data);
+                   printf("\nCreating a new resource offer to send to iScheduler\n");
+                   sleep(5);
                    ret_val = slurm_submit_resource_offer(client_fd, &req, &resp);
-                else {
+                } else {
                    printf("\nHave not received any request for resource offer yet. Shutting down the daemon\n");
                    stop_irm_agent();
                    continue;
@@ -222,6 +227,7 @@ int main(int argc, char *argv[])
                 if (ret_val != SLURM_SUCCESS) {
                    printf("\niRM agent shutting down\n");
                    stop_irm_agent();
+                   continue;
                 }
 #else
                 buf_val = htons(1);   
@@ -257,6 +263,13 @@ int main(int argc, char *argv[])
                 val = resp.value;
                 //printf("\nval = %d, resp.value = %d\n", val, resp.value);
 #endif
+                if (val == 500) {
+                   printf("\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler to a resource offer\n");
+                   no_jobs = true;
+                   attempts = 0;
+                   continue;
+                }        
+
                 if (attempts == MAX_NEGOTIATION_ATTEMPTS) {
                    printf("\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
                    attempts = 0;

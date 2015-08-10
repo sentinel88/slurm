@@ -62,14 +62,14 @@ extern void stop_irm_agent(void);
 
 extern void *irm_agent(void *);
 
-extern int isched_recv_rsrc_offer (slurm_fd_t);
+extern int isched_recv_rsrc_offer (slurm_fd_t, slurm_msg_t *);
 
 extern int process_rsrc_offer (resource_offer_msg_t *, uint16_t *);
 
-extern int isched_send_irm_msg(slurm_msg_t *, char *, int); 
+extern int isched_send_irm_msg(slurm_msg_t *, char *); 
 
 extern int slurm_request_resource_offer(slurm_fd_t);
 
-#define timeout 20*1000
+#define timeout (20*1000)
 
 #endif	/* _SLURM_ISCHEDULER_H */
