@@ -245,10 +245,11 @@ int isched_send_irm_msg(slurm_msg_t *msg, char *buf)
         header_t header;
         int rc;
         resource_offer_resp_msg_t offer_resp_msg;
+        slurm_msg_t resp_msg;
         //void *auth_cred = NULL;
         Buf buffer;
-        slurm_msg_t resp_msg;
         int choice = 1;
+        char err_msg[256] = "Job queue is empty";
 
         printf("\nInside isched_send_irm_msg\n");
 
@@ -271,6 +272,13 @@ int isched_send_irm_msg(slurm_msg_t *msg, char *buf)
         resp_msg.ret_list = msg->ret_list;
         resp_msg.orig_addr = msg->orig_addr;
 
+        offer_resp_msg.error_code = 0; 
+        offer_resp_msg.error_msg = NULL;
+  
+        if (*(uint16_t *)(buf) == 500) {
+           offer_resp_msg.error_code = 500;
+           offer_resp_msg.error_msg = err_msg;
+        }
 
         init_header(&header, &resp_msg, msg->flags);
 

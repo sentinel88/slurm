@@ -1040,7 +1040,9 @@ typedef struct {
 } resource_offer_msg_t;
 
 typedef struct {
-        uint16_t value; /* info */
+        uint16_t value;         /* info */
+        uint32_t error_code;    /* error code on failure */
+        char   * error_msg;     /* error message on failure */
 } resource_offer_resp_msg_t;
 
 /*****************************************************************************\
@@ -1278,6 +1280,10 @@ extern void slurm_free_requeue_msg(requeue_msg_t *);
 extern int slurm_free_msg_data(slurm_msg_type_t type, void *data);
 extern void slurm_free_license_info_request_msg(license_info_request_msg_t *msg);
 extern uint32_t slurm_get_return_code(slurm_msg_type_t type, void *data);
+
+extern void slurm_free_request_resource_offer_msg (request_resource_offer_msg_t * request_resource_offer);
+extern void slurm_free_resource_offer_msg (resource_offer_msg_t * resource_offer);
+extern void slurm_free_resource_offer_resp_msg (resource_offer_resp_msg_t * resource_offer_resp);
 
 extern char *preempt_mode_string(uint16_t preempt_mode);
 extern uint16_t preempt_mode_num(const char *preempt_mode);

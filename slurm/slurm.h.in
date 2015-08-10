@@ -1865,6 +1865,7 @@ typedef struct job_alloc_info_response_msg {
 						 * to access contents */
 } job_alloc_info_response_msg_t;
 
+
 typedef struct partition_info_msg {
 	time_t last_update;	/* time of latest info */
 	uint32_t record_count;	/* number of records */

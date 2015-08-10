@@ -269,3 +269,7 @@ total_return:
         printf("\nExiting slurm_submit_resource_offer\n");
         return rc;
 }
+
+void process_rsrc_offer(resource_offer_resp_msg_t *resp) {
+/* Nothing as of now */
+}

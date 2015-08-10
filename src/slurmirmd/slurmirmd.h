@@ -13,6 +13,8 @@ extern int slurm_submit_resource_offer(slurm_fd_t fd, resource_offer_msg_t *, re
 
 extern int wait_req_rsrc_offer (slurm_fd_t, slurm_msg_t *);
 
+extern void process_rsrc_offer(resource_offer_resp_msg_t *);
+
 #define timeout (30*1000)
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
 //extern void *isched_agent(void *args);

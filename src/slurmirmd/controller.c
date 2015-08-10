@@ -226,6 +226,7 @@ int main(int argc, char *argv[])
                 }
                 if (ret_val != SLURM_SUCCESS) {
                    printf("\niRM agent shutting down\n");
+                   xfree(resp.error_msg);
                    stop_irm_agent();
                    continue;
                 }
@@ -265,14 +266,19 @@ int main(int argc, char *argv[])
 #endif
                 if (val == 500) {
                    printf("\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler to a resource offer\n");
+                   printf("\nError code = %d\n", resp.error_code);
+                   printf("\nError msg = %s\n", resp.error_msg);
                    no_jobs = true;
                    attempts = 0;
+                   xfree(resp.error_msg);
                    continue;
                 }        
 
                 if (attempts == MAX_NEGOTIATION_ATTEMPTS) {
                    printf("\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
                    attempts = 0;
+                   process_rsrc_offer(&resp);
+                   xfree(resp.error_msg);
                    continue;
                 }
 
@@ -281,12 +287,14 @@ int main(int argc, char *argv[])
                    attempts++;
                 } else if (val == 1) {
                    printf("\niScheduler accepted the offer\n");
+                   process_rsrc_offer(&resp);
                    printf("\nEnter 1/0 to accept/reject the Map:Jobs->offer sent by iScheduler\n");
                    scanf("%d", &input);
                 } else {
                    printf("\nInvalid response from iScheduler. Ignoring this.\n");
                    attempts++;
                 }  
+                xfree(resp.error_msg);
 //#endif
                 //printf("\nReceived a mapping from jobs to offer from iScheduler. Processing the same\n");
 		//_compute_start_times();
