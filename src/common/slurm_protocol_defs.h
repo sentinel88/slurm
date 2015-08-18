@@ -361,9 +361,14 @@ typedef enum {
 	ACCOUNTING_UPDATE_MSG = 10001,
 	ACCOUNTING_FIRST_REG,
 	ACCOUNTING_REGISTER_CTLD,
-        REQUEST_RESOURCE_OFFER,
+
+        REQUEST_RESOURCE_OFFER = 11001,
         RESOURCE_OFFER,
         RESPONSE_RESOURCE_OFFER,
+	NEGOTIATION_START,
+	RESPONSE_NEGOTIATION_START,
+	NEGOTIATION_END,
+	RESPONSE_NEGOTIATION_END
 } slurm_msg_type_t;
 
 typedef enum {
@@ -1045,6 +1050,27 @@ typedef struct {
         char   * error_msg;     /* error message on failure */
 } resource_offer_resp_msg_t;
 
+typedef struct {
+	uint16_t value;
+} negotiation_start_msg_t;
+
+typedef struct {
+	uint16_t value;		/* info */
+        uint32_t error_code;	/* error code on failure */
+        char   * error_msg;	/* error message on failure */
+} negotiation_start_resp_msg_t;
+
+
+typedef struct {
+	uint16_t value;
+} negotiation_end_msg_t;
+
+typedef struct {
+	uint16_t value;		/* info */
+        uint32_t error_code;	/* error code on failure */
+        char   * error_msg;	/* error message on failure */
+} negotiation_end_resp_msg_t;
+
 /*****************************************************************************\
  * Slurm API Message Types
 \*****************************************************************************/
@@ -1284,6 +1310,10 @@ extern uint32_t slurm_get_return_code(slurm_msg_type_t type, void *data);
 extern void slurm_free_request_resource_offer_msg (request_resource_offer_msg_t * request_resource_offer);
 extern void slurm_free_resource_offer_msg (resource_offer_msg_t * resource_offer);
 extern void slurm_free_resource_offer_resp_msg (resource_offer_resp_msg_t * resource_offer_resp);
+extern void slurm_free_negotiation_start_msg (negotiation_start_msg_t * negotiation_start);
+extern void slurm_free_negotiation_start_resp_msg (negotiation_start_resp_msg_t * negotiation_start_resp);
+extern void slurm_free_negotiation_end_msg (negotiation_end_msg_t * negotiation_end);
+extern void slurm_free_negotiation_end_resp_msg (negotiation_end_resp_msg_t * negotiation_end_resp);
 
 extern char *preempt_mode_string(uint16_t preempt_mode);
 extern uint16_t preempt_mode_num(const char *preempt_mode);

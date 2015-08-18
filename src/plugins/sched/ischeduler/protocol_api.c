@@ -25,6 +25,7 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/read_config.h"
 #include "src/common/slurm_protocol_api.h"
 #include "src/common/slurm_protocol_pack.h"
+#include "src/common/xmalloc.h"
 #include "src/common/forward.h"
 
 #define timeout 30*1000
@@ -44,8 +45,286 @@ static void _print_data(char *data, int len)
 
 
 
+int 
+protocol_init(slurm_fd_t fd) 
+{
+    printf("\nInside protocol_init\n");
+    int rc;
+    char ch;
+    slurm_msg_t req_msg;
+    slurm_msg_t resp_msg;
+    negotiation_start_msg_t req;
+
+    Buf buffer;
+    header_t header;
+    char *buf = NULL;
+    size_t buflen = 0;
+    //int timeout = 20 * 1000;
+
+    req.value = 1;   // For the time being the negotiation start is just a value of 1 being sent in the message.
+
+    slurm_msg_t_init(&req_msg);
+    slurm_msg_t_init(&resp_msg);
+
+    forward_init(&req_msg.forward, NULL);
+    req_msg.ret_list = NULL;
+    req_msg.forward_struct = NULL;
+
+
+    req_msg.msg_type = NEGOTIATION_START;
+    req_msg.data     = &req;
+
+    init_header(&header, &req_msg, req_msg.flags);
+
+    /*
+     * Pack header into buffer for transmission
+     */
+    buffer = init_buf(BUF_SIZE);
+    pack_header(&header, buffer);
+
+    /*
+     * Pack message into buffer
+     */
+    new_pack_msg(&req_msg, &header, buffer);
+
+//#if     _DEBUG
+    _print_data (get_buf_data(buffer),get_buf_offset(buffer));
+//#endif
+    /*
+     * Send message
+     */
+
+    printf("\nPress enter\n");
+    scanf("%c", &ch);
+
+    rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
+			    get_buf_offset(buffer),
+			    SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+
+    if (rc < 0) {
+       printf("\nProblem with sending the negotiation start message to iRM\n");
+       rc = errno;
+       free_buf(buffer);
+       goto total_return;
+    }
+
+    printf("[iSCHED]: Sent the start msg. Waiting for a response.\n");
+
+    free_buf(buffer);
+
+    resp_msg.conn_fd = fd;
+
+    /*
+     * Receive a msg. slurm_msg_recvfrom() will read the message
+     *  length and allocate space on the heap for a buffer containing
+     *  the message.
+     */
+    if (_slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0, timeout) < 0) {
+	forward_init(&header.forward, NULL);
+	printf("\n[iSCHED]: Did not receive the correct response to start negotiation.\n");
+	printf("\n[iSCHED]: Need to exit.\n");
+	rc = errno;
+	goto total_return;
+    }
+
+//#if     _DEBUG
+    _print_data (buf, buflen);
+//#endif
+    buffer = create_buf(buf, buflen);
+
+    if (unpack_header(&header, buffer) == SLURM_ERROR) {
+	    free_buf(buffer);
+	    rc = SLURM_COMMUNICATIONS_RECEIVE_ERROR;
+	    goto total_return;
+    }
+
+    /*
+     * Unpack message body
+     */
+    resp_msg.protocol_version = header.version;
+    resp_msg.msg_type = header.msg_type;
+    resp_msg.flags = header.flags;
+
+    if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(&resp_msg, buffer) != SLURM_SUCCESS)) {
+       rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
+       free_buf(buffer);
+       goto total_return;
+    }
+
+/*      if (rc == SLURM_SOCKET_ERROR)
+	    return SLURM_ERROR; */
+
+    switch (resp_msg.msg_type) {
+        /*case RESPONSE_SLURM_RC:
+                rc = ((return_code_msg_t *) resp_msg.data)->return_code;
+if (rc)
+		slurm_seterrno_ret(rc);
+	    *resp = NULL;
+	    break;*/
+       case RESPONSE_NEGOTIATION_START:
+	    printf("\nResponse received from iRM for the start of negotiation. Value is %d\n", ((negotiation_start_resp_msg_t *)(resp_msg.data))->value);
+	    //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
+	    slurm_free_negotiation_start_resp_msg(resp_msg.data);
+	    rc = SLURM_SUCCESS;
+	    //*resp = (resource_offer_response_msg_t *) resp_msg.data;
+	    break;
+       default:
+	    slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
+	    printf("\nUnexpected message.\n");
+	    rc = errno;
+    }
+
+    //return SLURM_PROTOCOL_SUCCESS;
+    //free_buf(buffer);
+
+
+    free_buf(buffer);
+total_return:
+    printf("\nExiting protocol_init\n");
+    return rc;
+}
+
+
+int 
+protocol_fini(slurm_fd_t fd) 
+{
+    printf("\nInside protocol_fini\n");
+    int rc;
+    int ch;
+    slurm_msg_t req_msg;
+    slurm_msg_t resp_msg;
+    negotiation_end_msg_t req;
+
+    Buf buffer;
+    header_t header;
+    char *buf = NULL;
+    size_t buflen = 0;
+    //int timeout = 20 * 1000;
+
+    req.value = 1;   // For the time being the negotiation start is just a value of 1 being sent in the message.
+
+    slurm_msg_t_init(&req_msg);
+    slurm_msg_t_init(&resp_msg);
+
+    forward_init(&req_msg.forward, NULL);
+    req_msg.ret_list = NULL;
+    req_msg.forward_struct = NULL;
+
+
+    req_msg.msg_type = NEGOTIATION_END;
+    req_msg.data     = &req;
+
+    init_header(&header, &req_msg, req_msg.flags);
+
+    /*
+     * Pack header into buffer for transmission
+     */
+    buffer = init_buf(BUF_SIZE);
+    pack_header(&header, buffer);
+
+    /*
+     * Pack message into buffer
+     */
+    new_pack_msg(&req_msg, &header, buffer);
+
+//#if     _DEBUG
+    _print_data (get_buf_data(buffer),get_buf_offset(buffer));
+//#endif
+    /*
+     * Send message
+     */
+
+    printf("\nEnter any number\n");
+    scanf("%d", &ch);
+
+    rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
+			    get_buf_offset(buffer),
+			    SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+
+    if (rc < 0) {
+       printf("\nProblem with sending the negotiation end message to iRM\n");
+       rc = errno;
+       free_buf(buffer);
+       goto total_return;
+    }
+
+    printf("[iSCHED]: Sent the end msg. Waiting for a response.\n");
+
+    free_buf(buffer);
+
+    resp_msg.conn_fd = fd;
+
+    /*
+     * Receive a msg. slurm_msg_recvfrom() will read the message
+     *  length and allocate space on the heap for a buffer containing
+     *  the message.
+     */
+    if (_slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0, timeout) < 0) {
+        forward_init(&header.forward, NULL);
+        printf("\n[iSCHED]: Did not receive the correct response to end negotiation.\n");
+        printf("\n[iSCHED]: Need to exit.\n");
+        rc = errno;
+        goto total_return;
+    }
+
+//#if     _DEBUG
+    _print_data (buf, buflen);
+//#endif
+    buffer = create_buf(buf, buflen);
+
+    if (unpack_header(&header, buffer) == SLURM_ERROR) {
+            free_buf(buffer);
+            rc = SLURM_COMMUNICATIONS_RECEIVE_ERROR;
+            goto total_return;
+    }
+
+    /*
+     * Unpack message body
+     */
+    resp_msg.protocol_version = header.version;
+    resp_msg.msg_type = header.msg_type;
+    resp_msg.flags = header.flags;
+
+    if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(&resp_msg, buffer) != SLURM_SUCCESS)) {
+       rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
+       free_buf(buffer);
+       goto total_return;
+    }
+
+/*      if (rc == SLURM_SOCKET_ERROR)
+            return SLURM_ERROR; */
+
+    switch (resp_msg.msg_type) {
+        /*case RESPONSE_SLURM_RC:
+                rc = ((return_code_msg_t *) resp_msg.data)->return_code;
+if (rc)
+                slurm_seterrno_ret(rc);
+            *resp = NULL;
+            break;*/
+       case RESPONSE_NEGOTIATION_END:
+            printf("\nResponse received from iRM for the end of negotiation. Value is %d\n", ((negotiation_end_resp_msg_t *)(resp_msg.data))->value);
+            //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
+	    slurm_free_negotiation_end_resp_msg(resp_msg.data);
+            rc = SLURM_SUCCESS;
+            //*resp = (resource_offer_response_msg_t *) resp_msg.data;
+            break;
+       default:
+            slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
+            printf("\nUnexpected message.\n");
+            rc = errno;
+    }
+
+    printf("[iSCHED]: Received the response for the end msg.\n");
+
+    free_buf(buffer);
+total_return:
+    printf("\nExiting protocol_fini\n");
+    return rc;
+}
+
+
 int
-slurm_request_resource_offer (slurm_fd_t fd)
+request_resource_offer (slurm_fd_t fd)
 {
         printf("\nInside slurm_request_resource_offer\n");
         int rc;
@@ -55,7 +334,7 @@ slurm_request_resource_offer (slurm_fd_t fd)
         Buf buffer;
         header_t header;
         //char *buf = NULL;
-        size_t buflen = 0;
+        //size_t buflen = 0;
         //int timeout = 20 * 1000;
 
         //msg->data = malloc(sizeof(request_resource_offer_msg_t));
@@ -125,7 +404,7 @@ slurm_request_resource_offer (slurm_fd_t fd)
  */
 //Similar to slurm_receive_msg
 int
-isched_recv_rsrc_offer (slurm_fd_t fd, slurm_msg_t *msg) 
+receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg) 
 {
         printf("\nInside isched_recv_rsrc_offer\n");
         //slurm_msg_t msg;
@@ -173,7 +452,7 @@ isched_recv_rsrc_offer (slurm_fd_t fd, slurm_msg_t *msg)
         msg->flags = header.flags;
 
         switch(msg->msg_type) {
-           case RESOURCE_OFFER:
+           case RESOURCE_OFFER:  // Do not free msg->data as we need the complete resource offer msg back in the caller for further processing
                 printf("\nReceived a resource offer from iRM daemon\n");
                 if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(msg, buffer) != SLURM_SUCCESS)) {
                      printf("\nError in buffer size and unpacking of buffer into the msg structure\n");
@@ -208,7 +487,7 @@ total_return:
 }
 
 int
-process_rsrc_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
+process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
 		        
 {
         int input = -1;
@@ -217,7 +496,7 @@ process_rsrc_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
         scanf("%d", &choice);
  
         if (!choice) {
-           printf("\nEnter your choice 1/0 on whether to accept/reject the resource offer\n");
+           printf("\nEnter your choice 1/0 on whether to accept/reject the resource offer and 2 to end the negotiation\n");
            scanf("%d", &input);
 
            if (input == 1) {
@@ -225,12 +504,18 @@ process_rsrc_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
               // *buf_val = htons(1);
               *buf_val = 1;
               //memcpy(buf, &buf_val, sizeof(buf_val));
-           } else {
+           } else if (input == 0){
               printf("\nOffer not accepted. Sending back a negative response\n");
               // *buf_val = htons(0);
               *buf_val = 0;
               //memcpy(buf, &buf_val, sizeof(buf_val));
-           }
+           } else if (input == 2) {
+	      printf("\nGoing to end this negotiation\n");
+              *buf_val = 400;
+           } else {
+	      printf("\nWrong choice. Sending back a positive response to the resource offer\n");
+              *buf_val = 1;
+	   }
         } else {
            *buf_val = 500; 
         }
@@ -238,7 +523,7 @@ process_rsrc_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
         return 0;
 }
 
-int isched_send_irm_msg(slurm_msg_t *msg, char *buf) 
+int send_resource_offer_resp(slurm_msg_t *msg, char *buf) 
 {
         //char *buf = NULL;
         //size_t buflen = 0;
@@ -248,7 +533,7 @@ int isched_send_irm_msg(slurm_msg_t *msg, char *buf)
         slurm_msg_t resp_msg;
         //void *auth_cred = NULL;
         Buf buffer;
-        int choice = 1;
+        //int choice = 1;
         char err_msg[256] = "Job queue is empty";
 
         printf("\nInside isched_send_irm_msg\n");
@@ -312,6 +597,7 @@ int isched_send_irm_msg(slurm_msg_t *msg, char *buf)
         }
 
         free_buf(buffer);
+	xfree(offer_resp_msg.error_msg);
         printf("\nExiting isched_send_irm_msg\n");
         return rc;
 }

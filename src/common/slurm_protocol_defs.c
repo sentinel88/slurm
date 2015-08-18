@@ -2834,7 +2834,39 @@ extern void slurm_free_resource_offer_msg(resource_offer_msg_t *msg)
 
 extern void slurm_free_resource_offer_resp_msg(resource_offer_resp_msg_t *msg)
 {
-        xfree(msg);
+	if (msg) {
+	   xfree(msg->error_msg);
+           xfree(msg);
+	}
+}
+
+extern void slurm_free_negotiation_start_msg(negotiation_start_msg_t *msg)
+{
+	xfree(msg);
+}
+
+
+extern void slurm_free_negotiation_start_resp_msg(negotiation_start_resp_msg_t *msg)
+{
+	if (msg) {
+	   xfree(msg->error_msg);
+	   xfree(msg);
+	}
+}
+
+
+extern void slurm_free_negotiation_end_msg(negotiation_end_msg_t *msg)
+{
+	xfree(msg);
+}
+
+
+extern void slurm_free_negotiation_end_resp_msg(negotiation_end_resp_msg_t *msg)
+{
+	if (msg) {
+	   xfree(msg->error_msg);
+	   xfree(msg);
+	}
 }
 
 
@@ -3076,6 +3108,18 @@ extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 		break;
 	case RESPONSE_RESOURCE_OFFER:
 		slurm_free_resource_offer_resp_msg(data);
+		break;
+        case NEGOTIATION_START:
+        	slurm_free_negotiation_start_msg(data);
+		break;
+        case RESPONSE_NEGOTIATION_START:
+        	slurm_free_negotiation_start_resp_msg(data);
+		break;
+        case NEGOTIATION_END:
+        	slurm_free_negotiation_end_msg(data);
+		break;
+        case RESPONSE_NEGOTIATION_END:
+        	slurm_free_negotiation_end_resp_msg(data);
 		break;
 	default:
 		error("invalid type trying to be freed %u", type);
@@ -3552,6 +3596,14 @@ rpc_num2string(uint16_t opcode)
 		return "RESOURCE_OFFER";
 	case RESPONSE_RESOURCE_OFFER:
 		return "RESPONSE_RESOURCE_OFFER";
+        case NEGOTIATION_START:
+		return "NEGOTIATION_START";
+        case RESPONSE_NEGOTIATION_START:
+		return "RESPONSE_NEGOTIATION_START";
+        case NEGOTIATION_END:
+		return "NEGOTIATION_END";
+        case RESPONSE_NEGOTIATION_END:
+		return "RESPONSE_NEGOTIATION_END";
 	default:
 		(void) snprintf(buf, sizeof(buf), "%u", opcode);
 		return buf;

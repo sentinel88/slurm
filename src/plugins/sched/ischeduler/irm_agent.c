@@ -44,6 +44,8 @@ static int irm_interval = BACKFILL_INTERVAL;
 //static int max_sched_job_cnt = 50;
 //static int sched_timeout = 0;
 
+typedef enum {UNINITIALIZED, PROTOCOL_INITIALIZED, PROTOCOL_IN_PROGRESS, PROTOCOL_TERMINATING} STATE;
+
 /*********************** local functions *********************/
 //static void _compute_start_times(void);
 static void _load_config(void);
@@ -253,13 +255,16 @@ extern void *irm_agent(void *args)
 	//static time_t last_mapping_time = 0;
         slurm_fd_t fd = -1;
         //int log_fd = -1;
-        int input = 0;
+        //int input = 0;
         char *buf = NULL; 
         bool empty_queue = true;
         uint16_t buf_val = -1;
         int ret_val = 0;
         slurm_msg_t *msg = NULL;
         resource_offer_msg_t res_off_msg;
+        bool initialized = false;
+	bool terminated = false;
+	STATE irm_state = UNINITIALIZED;
         //int timeout = 30 * 1000;   // 30 secs converted to millisecs
         //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
@@ -285,7 +290,18 @@ extern void *irm_agent(void *args)
         slurm_msg_t_init(msg);
 
 	//last_mapping_time = time(NULL);
+	if (irm_state == UNINITIALIZED) {
+	   ret_val = protocol_init(fd);
+	   irm_state = PROTOCOL_INITIALIZED;
+	}
+	if (ret_val != SLURM_SUCCESS) {
+	   printf("\nProtocol initialization falied\n");
+	   stop_irm_agent();
+	}
+	printf("\nstop_agent = %d\n", stop_agent);
 	while (!stop_agent) {
+	   	//initialized = true;
+		irm_state = PROTOCOL_IN_PROGRESS;
                 ret_val = SLURM_SUCCESS;
 		//_my_sleep(irm_interval);
 		if (stop_agent)
@@ -300,12 +316,12 @@ extern void *irm_agent(void *args)
 			continue;*/
 #ifdef DONT_EXECUTE
                 if (empty_queue) {
-                   ret_val = slurm_request_resource_offer(fd);
+                   ret_val = request_resource_offer(fd);
                    empty_queue = false;
                 }
-                if (ret_val == SLURM_SUCCESS)
-                   ret_val = isched_recv_rsrc_offer(fd, msg);
-                else {
+                if (ret_val == SLURM_SUCCESS) {
+                   ret_val = receive_resource_offer(fd, msg);
+                } else {
                    printf("\nError in sending the request for resource offer to iRM. Shutting down the iRM agent.\n");
                    stop_irm_agent();
                    continue;
@@ -316,16 +332,22 @@ extern void *irm_agent(void *args)
                    continue;
                 }
                 printf("[IRM_AGENT]: Processing the offer\n");
-                ret_val = process_rsrc_offer(msg->data, &buf_val);
+                ret_val = process_resource_offer(msg->data, &buf_val);
                 memcpy(buf, (char *)&buf_val, sizeof(buf_val)); 
 
                 if (buf_val == 500) empty_queue = true; 
+                if (buf_val == 400) {
+		   irm_state = PROTOCOL_TERMINATING;
+		   stop_irm_agent();
+		   continue;
+		}
                 //printf("\nbuf = %s\n", buf);
                 //slurm_msg_t_init(msg);
                 printf("\nBefore sending the response to the resource offer\n");
                 ret_val = 0;
-                xfree(msg->data);
-                ret_val = isched_send_irm_msg(msg, buf);
+                //xfree(msg->data);
+		slurm_free_resource_offer_resp_msg(msg->data);
+                ret_val = send_resource_offer_resp(msg, buf);
                 if (ret_val != SLURM_SUCCESS) {
                    printf("\nError in sending the response for the resource offer.\n");
                    stop_irm_agent();
@@ -378,9 +400,48 @@ extern void *irm_agent(void *args)
 		//unlock_slurmctld(all_locks);
 #endif
 	}
+/*	if (initialized && ret_val == SLURM_SUCCESS) {
+	   ret_val = receive_resource_offer(fd, msg);
+	   if (ret_val == SLURM_SUCCESS) {
+	      printf("\nReceived a resource offer from iRM. We are proceeding to terminate fo we ignore this message.\n");
+	   } 
+	   ret_val = protocol_fini(fd);
+	}
+	if (ret_val != SLURM_SUCCESS) {
+	   printf("\nProtocol termination falied\n");
+	} else {
+           printf("\nProtocol termination succeeded\n");
+        }*/
+        switch(irm_state) {
+	    case PROTOCOL_IN_PROGRESS:
+		 if (ret_val == SLURM_SUCCESS) {
+		    ret_val = receive_resource_offer(fd, msg);
+		    if (ret_val == SLURM_SUCCESS) {
+		       printf("\nReceived a resource offer from iRM. We are proceeding to terminate so we ignore this message.\n");
+		    }
+		    ret_val = protocol_fini(fd);
+		 }
+		 break;
+ 	    case PROTOCOL_TERMINATING:
+ 	    case PROTOCOL_INITIALIZED:
+		 if (ret_val == SLURM_SUCCESS) {
+		    ret_val = protocol_fini(fd);
+		 }
+		 break;
+ 	    default:
+		 ret_val = SLURM_ERROR;
+	}
+
+	if (ret_val == SLURM_SUCCESS) {
+	   printf("\nProtocol termination succeeded\n");
+        } else {
+           printf("\nProtocol termination failed\n");
+        }
+
         free(buf);
-        xfree(msg->data);
-        xfree(msg);
+        //xfree(msg->data);
+	slurm_free_resource_offer_resp_msg(msg->data);
+        slurm_free_msg(msg);
         close(fd);
         printf("\n[IRM_AGENT]: Exiting irm_agent\n");
 	return NULL;

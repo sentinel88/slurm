@@ -8,14 +8,27 @@
 #ifndef _SLURM_IRMD_H
 #define _SLURM_IRMD_H
 
+#include "src/common/xmalloc.h"
 
 extern int slurm_submit_resource_offer(slurm_fd_t fd, resource_offer_msg_t *, resource_offer_resp_msg_t *);
 
-extern int wait_req_rsrc_offer (slurm_fd_t, slurm_msg_t *);
+extern int wait_req_rsrc_offer (slurm_fd_t, /*slurm_msg_t **/request_resource_offer_msg_t *);
+
+extern int protocol_init(slurm_fd_t);
+
+extern int protocol_fini(slurm_fd_t);
+
+extern int send_custom_data(slurm_fd_t);
 
 extern void process_rsrc_offer(resource_offer_resp_msg_t *);
 
 #define timeout (30*1000)
+
+#define _TESTING 0
+
+extern bool initialized;
+
+extern bool terminated;
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
 //extern void *isched_agent(void *args);
 
