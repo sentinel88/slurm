@@ -491,9 +491,14 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
 		        
 {
         int input = -1;
-        int choice = -1;
-        printf("\nIs the job queue empty?? if yes, then we send a negative response for the resource offer. Enter 1/0 for empty/non-empty job queue\n");
-        scanf("%d", &choice);
+        int choice = 0;
+
+	if (msg->error_code == ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT) {
+	   printf("\niRM has reject the previous mapping and sent us a new resource offer for a fresh mapping.\n");
+        } else {
+           printf("\nIs the job queue empty?? if yes, then we send a negative response for the resource offer. Enter 1/0 for empty/non-empty job queue\n");
+           scanf("%d", &choice);
+	}
  
         if (!choice) {
            printf("\nEnter your choice 1/0 on whether to accept/reject the resource offer and 2 to end the negotiation\n");
@@ -561,9 +566,15 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         offer_resp_msg.error_msg = NULL;
   
         if (*(uint16_t *)(buf) == 500) {
-           offer_resp_msg.error_code = 500;
-           offer_resp_msg.error_msg = err_msg;
-        }
+           offer_resp_msg.error_code = ESLURM_INVASIVE_JOB_QUEUE_EMPTY;
+           offer_resp_msg.error_msg = slurm_strerror(ESLURM_INVASIVE_JOB_QUEUE_EMPTY);
+        } else if (*(uint16_t *)(buf) == 0) {
+	   offer_resp_msg.error_code = ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT;
+	   offer_resp_msg.error_msg = slurm_strerror(ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT);
+        } else {
+	   offer_resp_msg.error_code = SLURM_SUCCESS;
+	   offer_resp_msg.error_msg = NULL;
+	}
 
         init_header(&header, &resp_msg, msg->flags);
 
@@ -597,7 +608,7 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         }
 
         free_buf(buffer);
-	xfree(offer_resp_msg.error_msg);
+	//xfree(offer_resp_msg.error_msg);
         printf("\nExiting isched_send_irm_msg\n");
         return rc;
 }

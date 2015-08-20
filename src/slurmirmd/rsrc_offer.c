@@ -321,7 +321,7 @@ total_return:
 
 
 int
-wait_req_rsrc_offer (slurm_fd_t fd,/* slurm_msg_t *msg,*/ request_resource_offer_msg_t *req_msg)
+wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_msg_t *req_msg)*/
 {
         printf("\nInside wait_req_rsrc_offer\n");
         char *buf = NULL;
@@ -377,7 +377,7 @@ wait_req_rsrc_offer (slurm_fd_t fd,/* slurm_msg_t *msg,*/ request_resource_offer
                      rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
                      //free_buf(buffer);
                 } else {
-		   req_msg = (request_resource_offer_msg_t *)msg.data;
+		   //req_msg = (request_resource_offer_msg_t *)msg.data;
 		   slurm_free_request_resource_offer_msg(msg.data);
                    rc = SLURM_SUCCESS;
                 }
@@ -437,6 +437,8 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
         //int timeout = 20 * 1000;
 
         req->value = 1;   // For the time being the resource offer is just a value of 1 being sent in the message.
+	//req->error_code = 0;
+	//req->error_msg = (char *)NULL;
 
 	slurm_msg_t_init(&req_msg);
 	slurm_msg_t_init(&resp_msg);
@@ -538,8 +540,9 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 	   case RESPONSE_RESOURCE_OFFER:
                 printf("\nResponse received from iScheduler for the resource offer is %d\n", ((resource_offer_resp_msg_t *)(resp_msg.data))->value);
                 //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
-		resp = (resource_offer_resp_msg_t *)resp_msg.data;
-		slurm_free_resource_offer_resp_msg(resp_msg.data);
+		resp = (resource_offer_resp_msg_t *)(resp_msg.data);
+		printf("\nError code = %d, Error msg = %s\n", resp->error_code, resp->error_msg);
+		//slurm_free_resource_offer_resp_msg(resp_msg.data);
                 rc = SLURM_SUCCESS;
 		//*resp = (resource_offer_response_msg_t *) resp_msg.data;
 		break;
@@ -567,6 +570,15 @@ total_return:
         return rc;
 }
 
-void process_rsrc_offer(resource_offer_resp_msg_t *resp) {
-/* Nothing as of now */
+int 
+process_rsrc_offer_resp(resource_offer_resp_msg_t *resp, bool final_negotiation) 
+{
+   int input;
+   if (final_negotiation)
+      return SLURM_SUCCESS;
+   printf("\nEnter 1/0 to accept/reject the Map:Jobs->offer sent by iScheduler\n");
+   scanf("%d", &input);
+   if (!input) 
+      return ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT;
+   return SLURM_SUCCESS;
 }

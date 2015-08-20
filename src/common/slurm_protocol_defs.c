@@ -2828,7 +2828,10 @@ extern void slurm_free_request_resource_offer_msg(request_resource_offer_msg_t *
 
 extern void slurm_free_resource_offer_msg(resource_offer_msg_t *msg)
 {
-        xfree(msg);
+	if (msg) {
+	   xfree(msg->error_msg);
+           xfree(msg);
+	}
 }
 
 

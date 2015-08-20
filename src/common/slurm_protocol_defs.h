@@ -1042,6 +1042,8 @@ typedef struct {
 
 typedef struct {
         uint16_t value; /* info */
+        uint32_t error_code;    /* error code on failure */
+        char   * error_msg;     /* error message on failure */
 } resource_offer_msg_t;
 
 typedef struct {

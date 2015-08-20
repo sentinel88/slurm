@@ -250,12 +250,7 @@ extern void irm_reconfig(void)
 /* irm_agent */
 extern void *irm_agent(void *args)
 {
-	//time_t now;
-	//double wait_time;
-	//static time_t last_mapping_time = 0;
         slurm_fd_t fd = -1;
-        //int log_fd = -1;
-        //int input = 0;
         char *buf = NULL; 
         bool empty_queue = true;
         uint16_t buf_val = -1;
@@ -265,11 +260,6 @@ extern void *irm_agent(void *args)
         bool initialized = false;
 	bool terminated = false;
 	STATE irm_state = UNINITIALIZED;
-        //int timeout = 30 * 1000;   // 30 secs converted to millisecs
-        //pthread_attr_t attr;
-	/* Read config, nodes and partitions; Write jobs */
-	/*slurmctld_lock_t all_locks = {
-		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };*/
 
         buf = (char *)malloc(sizeof(uint16_t));
         msg = xmalloc(sizeof(slurm_msg_t));
@@ -289,7 +279,6 @@ extern void *irm_agent(void *args)
 
         slurm_msg_t_init(msg);
 
-	//last_mapping_time = time(NULL);
 	if (irm_state == UNINITIALIZED) {
 	   ret_val = protocol_init(fd);
 	   irm_state = PROTOCOL_INITIALIZED;
@@ -300,21 +289,14 @@ extern void *irm_agent(void *args)
 	}
 	printf("\nstop_agent = %d\n", stop_agent);
 	while (!stop_agent) {
-	   	//initialized = true;
 		irm_state = PROTOCOL_IN_PROGRESS;
                 ret_val = SLURM_SUCCESS;
-		//_my_sleep(irm_interval);
 		if (stop_agent)
 			break;
 		if (config_flag) {
 			config_flag = false;
 			_load_config();
 		}
-		/*now = time(NULL);
-		wait_time = difftime(now, last_mapping_time);
-		if ((wait_time < irm_interval))
-			continue;*/
-#ifdef DONT_EXECUTE
                 if (empty_queue) {
                    ret_val = request_resource_offer(fd);
                    empty_queue = false;
@@ -354,51 +336,6 @@ extern void *irm_agent(void *args)
                    continue;
                 }
                 printf("[IRM_AGENT]: Sent back a response to the resource offer\n");
-#else
-                ret_val = _slurm_recv_timeout(fd, buf, sizeof(uint16_t), 0, timeout);
-                printf("\nret_val = %d\n", ret_val);
-                printf("\nExited the recv timeout function\n");
-                if (ret_val < 2) {
-                   printf("\n[IRM_AGENT]: Did not receive correct number of bytes\n");
-                   printf("\n[IRM_AGENT]: iRM agent closing\n");
-                   stop_irm_agent();
-                   continue;
-                }
-
-                printf("\n[IRM_AGENT]: Received a resource offer from iRM daemon which is %d\n", ntohs(*(int *)(buf)));
-                printf("[IRM_AGENT]: Processing the offer\n");
-                printf("\nEnter your choice 1/0 to accept/reject the offer\n");
-                scanf("%d", &input);
-		//lock_slurmctld(all_locks);
-                
-                //printf("\n***************[iRM AGENT]****************\n");
-                //printf("\nReceived a resource offer from iRM\n");
-                //printf("\nProcessing the offer for mapping jobs in the Invasic queue to this offer\n");
-                if (input == 1) {
-                   printf("\nSuccessfully mapped jobs to this offer and sending the list of jobs to be launched\n"); 
-                   buf_val = htons(1);   
-                   memcpy(buf, &buf_val, sizeof(buf_val));
-                } else {
-                   printf("\nOffer not accepted. Sending back a negative response\n");
-                   buf_val = htons(0);   
-                   memcpy(buf, &buf_val, sizeof(buf_val));
-                }
-                 //  printf("\nNegotiation complete\n");
-                //printf("\n***************[iRM AGENT]****************\n");
-                //memset(buf, 0, sizeof(int));
-                //*buf = 0;
-                sleep(5);
-                ret_val = _slurm_send_timeout(fd, buf, sizeof(uint16_t), 0, timeout);
-                if (ret_val < 2) {
-                   printf("\n[IRM_AGENT]: Did not send correct number of bytes\n");
-                   printf("\n[IRM_AGENT]: iRM agent closing\n");
-                   stop_irm_agent();
-                   continue;
-                }
-		//_compute_start_times();
-		//last_mapping_time = time(NULL);
-		//unlock_slurmctld(all_locks);
-#endif
 	}
 /*	if (initialized && ret_val == SLURM_SUCCESS) {
 	   ret_val = receive_resource_offer(fd, msg);

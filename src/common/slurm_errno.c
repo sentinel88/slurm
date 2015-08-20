@@ -412,11 +412,35 @@ static slurm_errtab_t slurm_errtab[] = {
 	{ ESLURM_BAD_NAME,
 	  "Unacceptable name given. (No '.' in name allowed)"   },
 	{ ESLURM_OVER_ALLOCATE,
-	  "You can not allocate more than 100% of a resource"     },
+	  "You can not allocate more than 100% of a resource"   },
 
 	/* plugin and custom errors */
 	{ ESLURM_MISSING_TIME_LIMIT,
-	  "Time limit specification required, but not provided"  }
+	  "Time limit specification required, but not provided"  },
+
+	/* Communication failures to/from slurmirmd */
+	{ SLURMIRMD_COMMUNICATIONS_CONNECTION_ERROR,
+	  "Unable to contact iRM Daemon (Connection failure)"	},
+	{ SLURMIRMD_COMMUNICATIONS_SEND_ERROR,
+	  "Unable to contact iRM Daemon (Send failure)"		},
+	{ SLURMIRMD_COMMUNICATIONS_RECEIVE_ERROR,
+	  "Unable to contact iRM Daemon (Receive failure)"	},
+	{ SLURMIRMD_COMMUNICATIONS_SHUTDOWN_ERROR,
+	  "Unable to contact iRM Daemon (Shutdown failure)"	},
+
+	/* Negotiation protocol errors */
+	{ ESLURM_NEGOTIATION_PROTOCOL_INIT_ERROR,
+	  "Unable to start the negotiation protocol"		},
+	{ ESLURM_NEGOTIATION_PROTOCOL_TERM_ERROR,
+	  "Unable to terminate the negotiation protocol"	},
+	{ ESLURM_RESOURCE_OFFER_REJECT,
+	  "Resource offer has been rejected by the iScheduler"	},
+	{ ESLURM_STATUS_REPORT_MISSING,
+	  "Missing the periodic status report from the iRM"	},
+	{ ESLURM_INVASIVE_JOB_QUEUE_EMPTY,
+	  "iScheduler says -> Invasive job queue is empty"	},
+	{ ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT,
+	  "iRM has rejected the Map:Jobs->Offer"		}
 };
 
 /*

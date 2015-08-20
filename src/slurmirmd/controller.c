@@ -34,6 +34,8 @@
 bool initialized = false;
 bool terminated = false;
 
+typedef enum{UNINITIALIZED, PROTOCOL_INITIALIZED, PROTOCOL_IN_PROGRESS, PROTOCOL_TERMINATING} STATE;
+
 /*********************** local variables *********************/
 static bool stop_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -139,30 +141,28 @@ static int _init_comm(void) {
 /* irm daemon */
 int main(int argc, char *argv[])
 {
-	/*time_t now;
-	double wait_time;
-	static time_t last_mapping_time = 0;*/
         slurm_msg_t msg;
         slurm_fd_t fd = -1;
         slurm_fd_t client_fd = -1;
         char *buf = NULL;
         char *err_msg = NULL;
-        //uint16_t buf_val = -1;
+	uint16_t last_mapping_error_code = 0;
+	char *last_mapping_error_msg = NULL;
         int ret_val;
         int attempts = 0;
-        //int timeout = 30 * 1000;   // 30 secs converted to millisecs
         slurm_addr_t cli_addr;
         int val = -1, input = -1;
-	request_resource_offer_msg_t *req_msg = NULL;
+      //request_resource_offer_msg_t *req_msg = NULL;
         resource_offer_msg_t *req = NULL;
         resource_offer_resp_msg_t *resp = NULL;
         bool no_jobs = true;
-        //pthread_attr_t attr;
-	/* Read config, nodes and partitions; Write jobs */
-	//slurmctld_lock_t all_locks = {
-	//	READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
+	bool final_negotiation = false;
+	STATE irm_state = UNINITIALIZED;
 
         buf = (char *)malloc(sizeof(int));
+	//req_msg = xmalloc(sizeof(request_resource_offer_msg_t));
+	req = xmalloc(sizeof(resource_offer_msg_t));
+	//resp = xmalloc(sizeof(resource_offer_resp_msg_t));
 
         printf("\n[IRM_DAEMON]: Entering irm_agent\n");
         printf("\n[IRM_DAEMON]: Attempting to connect to iRM Daemon\n");
@@ -189,56 +189,54 @@ int main(int argc, char *argv[])
 	if (!initialized) {
            ret_val = protocol_init(client_fd);
            initialized = true;
+	   irm_state = PROTOCOL_INITIALIZED;
         }
         if (ret_val != SLURM_SUCCESS) {
            printf("\nProtocol initialization falied\n");
            stop_irm_agent();
         }
 
-	//last_mapping_time = time(NULL);
 	while (!stop_agent) {
-		slurm_free_request_resource_offer_msg(req_msg);
-		slurm_free_resource_offer_msg(req);
-		slurm_free_resource_offer_resp_msg(resp);
+		//slurm_free_request_resource_offer_msg(req_msg);
+		//slurm_free_resource_offer_msg(req);
+		//slurm_free_resource_offer_resp_msg(resp);
+		ret_val = SLURM_SUCCESS;
                 val = -1;
-		//_my_sleep(irm_interval);
+
 		if (stop_agent)
 			break;
-		/*if (config_flag) {
-			config_flag = false;
-			_load_config();
-		}*/
-		/*now = time(NULL);
-		wait_time = difftime(now, last_mapping_time);
-		if ((wait_time < irm_interval))
-			continue;*/
 
-                if (input == 0) {
+                //if (input == 0) {
+		/*if (last_mapping_error_code == ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT) {
                    printf("\niRM has not accepted the mapping from iScheduler. We will send a new offer now.\n");
                    attempts++;
                 } 
-                if (input == 1) {
+                //if (input == 1) {
+		if (last_mapping_error_code == SLURM_SUCCESS && irm_state == PROTOCOL_IN_PROGRESS) {
                    printf("\niRM has accepted the mapping from iScheduler. Will launch the submitted jobs shortly. After launch we will send further new offers.\n");
                    attempts = 0;
-                } /*else {
+                }*/ /*else {
                    if (attempts) {
                       printf("\nEither iScheduler did not accept the offer we sent or it was an invalid response.\n");
                    } 
                 }*/
                 
-                input = -1;
-                //sleep(2);
-#ifdef DONT_EXECUTE_NOW
+                //input = -1;
+
                 if (no_jobs) {
                    //ret_val = wait_req_rsrc_offer(client_fd, &msg);
-                   ret_val = wait_req_rsrc_offer(client_fd, req_msg);
-                   no_jobs = false; 
+                   ret_val = wait_req_rsrc_offer(client_fd);/*, req_msg);*/
+		   irm_state = PROTOCOL_IN_PROGRESS;
                 }
                 if (ret_val == SLURM_SUCCESS) {
+                   no_jobs = false; 
                    //xfree(msg.data);
-		   slurm_free_request_resource_offer_msg(req_msg);
+		   //slurm_free_request_resource_offer_msg(req_msg);
                    printf("\nCreating a new resource offer to send to iScheduler\n");
                    //ret_val = slurm_submit_resource_offer(client_fd, &req, &resp);
+		   //Populate the request message here with the error code and error msg for the previous mapping of jobs to offer
+		   req->error_code = last_mapping_error_code;
+		   req->error_msg = last_mapping_error_msg;
                    ret_val = slurm_submit_resource_offer(client_fd, req, resp);
                 } else {
                    printf("\nHave not received any request for resource offer yet. Shutting down the daemon\n");
@@ -251,6 +249,10 @@ int main(int argc, char *argv[])
                    stop_irm_agent();
                    continue;
                 } else {
+		   last_mapping_error_code = 0;
+		   last_mapping_error_msg = NULL;
+		   if (resp == NULL) { printf("\nNULL pointer\n"); }
+		   printf("\nError code = %d, Error msg = %s\n", resp->error_code, resp->error_msg);
 		   if (err_msg) {
 		      printf("\nFreeing the local memory allocation for an error msg\n");
 		      free(err_msg);
@@ -263,41 +265,11 @@ int main(int argc, char *argv[])
 		      //xfree(resp->error_msg);
 		   }
 		}
-#else
-                buf_val = htons(1);   
-                //buf_val = 1;
-                memcpy(buf, &buf_val, sizeof(buf_val));
-                //*buf = 1;
-                ret_val = _slurm_send_timeout(client_fd, buf, sizeof(uint16_t), 0, timeout);
-                if (ret_val < 2) {
-                   printf("\n[IRM_DAEMON]: Did not send correct number of bytes\n");
-                   printf("\n[IRM_DAEMON]: iRM Daemon closing\n");
-                   //stop_irm_agent();
-                   break;
-                }
 
-                printf("[IRM_DAEMON]: Sent the offer. Waiting for a mapping from jobs to this offer\n");
-		//lock_slurmctld(all_locks);
-                
-                //printf("\n***************[iRM AGENT]****************\n");
-                //printf("\nReceived a resource offer from iRM\n");
-                //printf("\nProcessing the offer for mapping jobs in the Invasic queue to this offer\n");
- 
-                ret_val = _slurm_recv_timeout(client_fd, buf, sizeof(uint16_t), 0, timeout);
-
-                if (ret_val < 2) {
-                   printf("\n[IRM_DAEMON]: Did not receive correct number of bytes\n");
-                   printf("\n[IRM_DAEMON]: iRM Daemon closing\n");
-                   break;
-                }
-                val = ntohs(*(int *)(buf));
-#endif
-
-#ifdef DONT_EXECUTE_NOW
                 val = resp->value;
-                //printf("\nval = %d, resp.value = %d\n", val, resp.value);
-#endif
-                if (val == 500) {
+
+                //if (val == 500) {
+		if (resp->error_code == ESLURM_INVASIVE_JOB_QUEUE_EMPTY) {
                    printf("\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler to a resource offer\n");
                    printf("\nError code = %d\n", resp->error_code);
                    printf("\nError msg = %s\n", resp->error_msg);
@@ -310,51 +282,47 @@ int main(int argc, char *argv[])
                 if (attempts == MAX_NEGOTIATION_ATTEMPTS) {
                    printf("\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
                    attempts = 0;
-                   process_rsrc_offer(resp);
+                   ret_val = process_rsrc_offer_resp(resp, true);
                //    xfree(resp.error_msg);
                    continue;
                 }
 
-                if (val == 0) {
+                //if (val == 0) {
+		if (resp->error_code == ESLURM_RESOURCE_OFFER_REJECT) {
                    printf("\niScheduler did not accept this offer.\n");
                    attempts++;
-                } else if (val == 1) {
+                //} else if (val == 1) {
+		} else if (resp->error_code == SLURM_SUCCESS) {
                    printf("\niScheduler accepted the offer\n");
-                   process_rsrc_offer(resp);
-                   printf("\nEnter 1/0 to accept/reject the Map:Jobs->offer sent by iScheduler\n");
-                   scanf("%d", &input);
+                   ret_val = process_rsrc_offer_resp(resp, false);
+		   if (ret_val != SLURM_SUCCESS) {
+		      last_mapping_error_code = ret_val;
+		      last_mapping_error_msg = slurm_strerror(last_mapping_error_code);
+		      printf("\niRM has rejected the mapping.\n");
+		      attempts++;
+		   } else {
+		      printf("\niRM has accepted the mapping.\n");
+		      attempts = 0;
+		   }
+                   //printf("\nEnter 1/0 to accept/reject the Map:Jobs->offer sent by iScheduler\n");
+                   //scanf("%d", &input);
                 } else {
                    printf("\nInvalid response from iScheduler. Ignoring this.\n");
+		   last_mapping_error_code = SLURM_UNEXPECTED_MSG_ERROR;
+		   last_mapping_error_msg = slurm_strerror(last_mapping_error_code);
                    attempts++;
                 }  
-            //    xfree(resp.error_msg);
-//#endif
-                //printf("\nReceived a mapping from jobs to offer from iScheduler. Processing the same\n");
-		//_compute_start_times();
-		//last_mapping_time = time(NULL);
-		//unlock_slurmctld(all_locks);
 	}
-/*	if (initialized && !terminated) {
-           ret_val = protocol_fini(fd);
-           terminated = true;
-        }
-        if (ret_val != SLURM_SUCCESS) {
-           printf("\nProtocol termination falied\n");
-        } else {
-           printf("\nProtocol termination succeeded\n");
-        }*/
+
 	if (err_msg) free(err_msg);
-	slurm_free_request_resource_offer_msg(req_msg);
+
+	//slurm_free_request_resource_offer_msg(req_msg);
 	slurm_free_resource_offer_msg(req);
-	slurm_free_resource_offer_resp_msg(resp);
+	slurm_free_resource_offer_resp_msg(resp);  // May not be required. Can be removed later after sufficient testing
         free(buf);
         close(client_fd);
         close(fd);
-	if (err_msg == NULL && resp->error_msg == NULL) {
-	   printf("\nNo memory leakage\n");
-	} else {
-	   printf("\nMemory is getting leaked\n");
-	}
+
         printf("\n[IRM_DAEMON]: Exiting iRM Daemon\n");
 	return 0;
 }
