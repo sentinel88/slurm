@@ -66,7 +66,7 @@ extern void *irm_agent(void *);
 
 extern int receive_resource_offer (slurm_fd_t, slurm_msg_t *);
 
-extern int process_resource_offer (resource_offer_msg_t *, uint16_t *);
+extern int process_resource_offer (resource_offer_msg_t *, uint16_t *, int *);
 
 extern int send_resource_offer_resp(slurm_msg_t *, char *); 
 

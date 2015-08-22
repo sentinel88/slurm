@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
         slurm_fd_t fd = -1;
         slurm_fd_t client_fd = -1;
         char *buf = NULL;
-        char *err_msg = NULL;
+        //char *err_msg = NULL;
 	uint16_t last_mapping_error_code = 0;
 	char *last_mapping_error_msg = NULL;
         int ret_val;
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 		//slurm_free_resource_offer_msg(req);
 		//slurm_free_resource_offer_resp_msg(resp);
 		ret_val = SLURM_SUCCESS;
-                val = -1;
+                //val = -1;
 
 		if (stop_agent)
 			break;
@@ -227,6 +227,8 @@ int main(int argc, char *argv[])
                    //ret_val = wait_req_rsrc_offer(client_fd, &msg);
                    ret_val = wait_req_rsrc_offer(client_fd);/*, req_msg);*/
 		   irm_state = PROTOCOL_IN_PROGRESS;
+		   attempts = 1;
+		   req->negotiation = 1;
                 }
                 if (ret_val == SLURM_SUCCESS) {
                    no_jobs = false; 
@@ -237,7 +239,8 @@ int main(int argc, char *argv[])
 		   //Populate the request message here with the error code and error msg for the previous mapping of jobs to offer
 		   req->error_code = last_mapping_error_code;
 		   req->error_msg = last_mapping_error_msg;
-                   ret_val = slurm_submit_resource_offer(client_fd, req, resp);
+                   ret_val = slurm_submit_resource_offer(client_fd, req, &resp);
+		   if (attempts == 0) attempts++;
                 } else {
                    printf("\nHave not received any request for resource offer yet. Shutting down the daemon\n");
                    stop_irm_agent();
@@ -248,33 +251,36 @@ int main(int argc, char *argv[])
                    //xfree(resp.error_msg); Not valid because this could be a negotiation end message. Need to handle this better
                    stop_irm_agent();
                    continue;
-                } else {
+                }/* else {
 		   last_mapping_error_code = 0;
-		   last_mapping_error_msg = NULL;
-		   if (resp == NULL) { printf("\nNULL pointer\n"); }
+		   last_mapping_error_msg = NULL;*/
+		   /*if (resp == NULL) { printf("\nNULL pointer\n"); }
 		   printf("\nError code = %d, Error msg = %s\n", resp->error_code, resp->error_msg);
 		   if (err_msg) {
 		      printf("\nFreeing the local memory allocation for an error msg\n");
 		      free(err_msg);
-		   }
-		   if (resp->error_msg != NULL) {
+		   }*/
+		   /*if (resp->error_msg != NULL) {
 		      printf("\nError message inside the response message is %s\n", resp->error_msg);
 		      err_msg = malloc(sizeof(char) * strlen(resp->error_msg));
 		      memcpy(err_msg, resp->error_msg, strlen(resp->error_msg));
 		      printf("\nTrying to free the error_msg inside response msg\n");
 		      //xfree(resp->error_msg);
-		   }
-		}
+		   }*/
+		//}
+		last_mapping_error_code = 0;
+		last_mapping_error_msg = NULL;
 
-                val = resp->value;
+                //val = resp->value;
 
                 //if (val == 500) {
 		if (resp->error_code == ESLURM_INVASIVE_JOB_QUEUE_EMPTY) {
-                   printf("\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler to a resource offer\n");
+                   printf("\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler for a resource offer\n");
                    printf("\nError code = %d\n", resp->error_code);
                    printf("\nError msg = %s\n", resp->error_msg);
                    no_jobs = true;
                    attempts = 0;
+		   req->negotiation = 0;
              //      xfree(resp.error_msg);
                    continue;
                 }        
@@ -283,6 +289,7 @@ int main(int argc, char *argv[])
                    printf("\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
                    attempts = 0;
                    ret_val = process_rsrc_offer_resp(resp, true);
+		   req->negotiation = 0;
                //    xfree(resp.error_msg);
                    continue;
                 }
@@ -291,6 +298,7 @@ int main(int argc, char *argv[])
 		if (resp->error_code == ESLURM_RESOURCE_OFFER_REJECT) {
                    printf("\niScheduler did not accept this offer.\n");
                    attempts++;
+		   req->negotiation = 1;
                 //} else if (val == 1) {
 		} else if (resp->error_code == SLURM_SUCCESS) {
                    printf("\niScheduler accepted the offer\n");
@@ -300,9 +308,11 @@ int main(int argc, char *argv[])
 		      last_mapping_error_msg = slurm_strerror(last_mapping_error_code);
 		      printf("\niRM has rejected the mapping.\n");
 		      attempts++;
+		      req->negotiation = 1;
 		   } else {
 		      printf("\niRM has accepted the mapping.\n");
 		      attempts = 0;
+		      req->negotiation = 0;
 		   }
                    //printf("\nEnter 1/0 to accept/reject the Map:Jobs->offer sent by iScheduler\n");
                    //scanf("%d", &input);
@@ -311,14 +321,18 @@ int main(int argc, char *argv[])
 		   last_mapping_error_code = SLURM_UNEXPECTED_MSG_ERROR;
 		   last_mapping_error_msg = slurm_strerror(last_mapping_error_code);
                    attempts++;
+		   req->negotiation = 1;
                 }  
 	}
 
-	if (err_msg) free(err_msg);
+	//if (err_msg) free(err_msg);
 
 	//slurm_free_request_resource_offer_msg(req_msg);
+	printf("\nStep 1\n");
 	slurm_free_resource_offer_msg(req);
+	printf("\nStep 2\n");
 	slurm_free_resource_offer_resp_msg(resp);  // May not be required. Can be removed later after sufficient testing
+	printf("\nStep 3\n");
         free(buf);
         close(client_fd);
         close(fd);

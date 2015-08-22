@@ -259,6 +259,8 @@ extern void *irm_agent(void *args)
         resource_offer_msg_t res_off_msg;
         bool initialized = false;
 	bool terminated = false;
+	//bool non_zero_attemtpts = false;
+	int attempts = 0;
 	STATE irm_state = UNINITIALIZED;
 
         buf = (char *)malloc(sizeof(uint16_t));
@@ -303,6 +305,7 @@ extern void *irm_agent(void *args)
                 }
                 if (ret_val == SLURM_SUCCESS) {
                    ret_val = receive_resource_offer(fd, msg);
+		   attempts++;
                 } else {
                    printf("\nError in sending the request for resource offer to iRM. Shutting down the iRM agent.\n");
                    stop_irm_agent();
@@ -314,12 +317,17 @@ extern void *irm_agent(void *args)
                    continue;
                 }
                 printf("[IRM_AGENT]: Processing the offer\n");
-                ret_val = process_resource_offer(msg->data, &buf_val);
+                ret_val = process_resource_offer(msg->data, &buf_val, &attempts);
                 memcpy(buf, (char *)&buf_val, sizeof(buf_val)); 
 
-                if (buf_val == 500) empty_queue = true; 
+                if (buf_val == 500) { 
+		   empty_queue = true; 
+		   attempts = 0;
+		}
                 if (buf_val == 400) {
 		   irm_state = PROTOCOL_TERMINATING;
+		   attempts = 0;
+		   slurm_free_resource_offer_resp_msg(msg->data);
 		   stop_irm_agent();
 		   continue;
 		}
@@ -355,6 +363,7 @@ extern void *irm_agent(void *args)
 		    ret_val = receive_resource_offer(fd, msg);
 		    if (ret_val == SLURM_SUCCESS) {
 		       printf("\nReceived a resource offer from iRM. We are proceeding to terminate so we ignore this message.\n");
+		       slurm_free_resource_offer_resp_msg(msg->data);
 		    }
 		    ret_val = protocol_fini(fd);
 		 }
@@ -377,7 +386,6 @@ extern void *irm_agent(void *args)
 
         free(buf);
         //xfree(msg->data);
-	slurm_free_resource_offer_resp_msg(msg->data);
         slurm_free_msg(msg);
         close(fd);
         printf("\n[IRM_AGENT]: Exiting irm_agent\n");

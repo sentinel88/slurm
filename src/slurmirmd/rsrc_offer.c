@@ -422,7 +422,7 @@ total_return:
  */
 int
 slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
-		        resource_offer_resp_msg_t *resp)
+		        resource_offer_resp_msg_t **resp)
 {
         printf("\nInside slurm_submit_resource_offer\n");
         int rc;
@@ -540,8 +540,8 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 	   case RESPONSE_RESOURCE_OFFER:
                 printf("\nResponse received from iScheduler for the resource offer is %d\n", ((resource_offer_resp_msg_t *)(resp_msg.data))->value);
                 //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
-		resp = (resource_offer_resp_msg_t *)(resp_msg.data);
-		printf("\nError code = %d, Error msg = %s\n", resp->error_code, resp->error_msg);
+		*resp = (resource_offer_resp_msg_t *)(resp_msg.data);
+		printf("\nError code = %d, Error msg = %s\n", (*resp)->error_code, (*resp)->error_msg);
 		//slurm_free_resource_offer_resp_msg(resp_msg.data);
                 rc = SLURM_SUCCESS;
 		//*resp = (resource_offer_response_msg_t *) resp_msg.data;

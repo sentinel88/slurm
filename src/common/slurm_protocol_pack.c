@@ -12178,6 +12178,7 @@ static void _pack_resource_offer_msg(resource_offer_msg_t *msg, Buf buffer,
 {
         xassert(msg != NULL);
 	pack16(msg->value, buffer);
+	pack8(msg->negotiation, buffer);
 	pack32((uint32_t)msg->error_code, buffer);
 	packstr(msg->error_msg, buffer);
 }
@@ -12226,6 +12227,7 @@ static int _unpack_resource_offer_msg(resource_offer_msg_t **msg, Buf buffer,
         xassert(msg != NULL);
 	*msg = xmalloc(sizeof(resource_offer_msg_t));
 	safe_unpack16(&((*msg)->value), buffer);
+	safe_unpack8(&((*msg)->negotiation), buffer);
         safe_unpack32(&((*msg)->error_code), buffer); 
         safe_unpackstr_xmalloc(&((*msg)->error_msg), &uint32_tmp, buffer);
         return SLURM_SUCCESS;

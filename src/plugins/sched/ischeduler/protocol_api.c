@@ -29,6 +29,7 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/forward.h"
 
 #define timeout 30*1000
+#define MAX_NEGOTIATION_ATTEMPTS 5
 
 static void _print_data(char *data, int len)
 {
@@ -487,20 +488,34 @@ total_return:
 }
 
 int
-process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
-		        
+process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attempts)
 {
         int input = -1;
         int choice = 0;
 
+	if (*attempts == MAX_NEGOTIATION_ATTEMPTS) {
+	   printf("\nThis is the final negotiation attempt hence we cannot reject this resource offer. Accepting the offer and sending back a mapping to iRM\n");
+	   *attempts = 0;
+	   *buf_val = 1;
+	   return 0;
+	}
 	if (msg->error_code == ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT) {
-	   printf("\niRM has reject the previous mapping and sent us a new resource offer for a fresh mapping.\n");
+	   printf("\niRM has rejected the previous mapping and sent us a new resource offer for a fresh mapping.\n");
+	//   *attempts++;
         } else {
-           printf("\nIs the job queue empty?? if yes, then we send a negative response for the resource offer. Enter 1/0 for empty/non-empty job queue\n");
-           scanf("%d", &choice);
+	 /*  if (*attempts) {
+	      *attempts = 0;
+	   } else {*/
+	   //if (!attempts) {
+	   if (!msg->negotiation) {
+	      *attempts = 1;
+              printf("\nIs the job queue empty?? if yes, then we send a negative response for the resource offer. Enter 1/0 for empty/non-empty job queue\n");
+              scanf("%d", &choice);
+	   } 
 	}
  
         if (!choice) {
+	//if (!(*attempts) ) {
            printf("\nEnter your choice 1/0 on whether to accept/reject the resource offer and 2 to end the negotiation\n");
            scanf("%d", &input);
 
@@ -513,6 +528,7 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
               printf("\nOffer not accepted. Sending back a negative response\n");
               // *buf_val = htons(0);
               *buf_val = 0;
+	      //*attempts++;
               //memcpy(buf, &buf_val, sizeof(buf_val));
            } else if (input == 2) {
 	      printf("\nGoing to end this negotiation\n");
@@ -523,6 +539,7 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val)
 	   }
         } else {
            *buf_val = 500; 
+	   //*attempts = 0;
         }
 
         return 0;
@@ -569,8 +586,8 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
            offer_resp_msg.error_code = ESLURM_INVASIVE_JOB_QUEUE_EMPTY;
            offer_resp_msg.error_msg = slurm_strerror(ESLURM_INVASIVE_JOB_QUEUE_EMPTY);
         } else if (*(uint16_t *)(buf) == 0) {
-	   offer_resp_msg.error_code = ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT;
-	   offer_resp_msg.error_msg = slurm_strerror(ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT);
+	   offer_resp_msg.error_code = ESLURM_RESOURCE_OFFER_REJECT;
+	   offer_resp_msg.error_msg = slurm_strerror(ESLURM_RESOURCE_OFFER_REJECT);
         } else {
 	   offer_resp_msg.error_code = SLURM_SUCCESS;
 	   offer_resp_msg.error_msg = NULL;
