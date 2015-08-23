@@ -30,6 +30,7 @@ extern pid_t getsid(pid_t pid);         /* missing from <unistd.h> */
 
 #define RANDOM 2345
 
+
 static void _print_data(char *data, int len)
 {
         int i;
@@ -63,8 +64,6 @@ send_custom_data(slurm_fd_t fd)
     char *buf = NULL;
     size_t buflen = 0;
     //int timeout = 20 * 1000;
-
-    req.value = 1;   // For the time being the negotiation start is just a value of 1 being sent in the message.
 
     slurm_msg_t_init(&msg);
 
@@ -135,10 +134,8 @@ send_custom_data(slurm_fd_t fd)
                             SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
 
     if (rc < 0) {
-       printf("\nProblem with sending the message to iRM\n");
+       printf("\nProblem with sending the message to iScheduler\n");
        rc = errno;
-       free_buf(buffer);
-       goto total_return;
     } else {
        printf("[iSCHED]: Sent the msg.\n");
        rc = SLURM_SUCCESS;

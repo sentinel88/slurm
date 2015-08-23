@@ -29,7 +29,9 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 
 #define timeout (30 * 1000)
 
+#define TESTING 1
 
+extern int send_custom_data(slurm_fd_t);
 
 static void _print_data(char *data, int len)
 {
@@ -116,6 +118,9 @@ protocol_init (slurm_fd_t fd)
 
         free_buf(buffer);
         //if (rc != SLURM_SUCCESS) goto total_return;
+#ifdef _TESTING
+	rc = send_custom_data(fd);
+#else
         slurm_msg_t_init(&resp_msg);
 
 	resp_msg.conn_fd = fd;
@@ -166,7 +171,7 @@ protocol_init (slurm_fd_t fd)
         }
 
 	free_buf(buffer);
-
+#endif
 total_return:
         destroy_forward(&header.forward);
         slurm_seterrno(rc);
@@ -174,6 +179,7 @@ total_return:
         } else {
                 rc = 0;
         }
+//#endif
         printf("\nExiting protocol_init\n");
         return rc;
 }
@@ -251,6 +257,9 @@ protocol_fini (slurm_fd_t fd)
 
         free_buf(buffer);*/
         //if (rc != SLURM_SUCCESS) goto total_return;
+#ifdef TESTING
+	rc = send_custom_data(fd);
+#else
         slurm_msg_t_init(&resp_msg);
         resp_msg.data     = &resp;
         forward_init(&resp_msg.forward, NULL);
@@ -307,6 +316,7 @@ protocol_fini (slurm_fd_t fd)
 
 	free_buf(buffer);
 	xfree(resp.error_msg);
+#endif
 total_return:
         destroy_forward(&header.forward);
         slurm_seterrno(rc);
@@ -474,9 +484,14 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
         printf("\nEnter any number\n");
         scanf("%d", &ch);
 
+#ifdef TESTING
+	rc = send_custom_data(fd);
+#else
+
         rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
                                 get_buf_offset(buffer),
                                 SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+#endif
     
         if (rc < 0) {
            printf("\nProblem with sending the resource offer to iScheduler\n");

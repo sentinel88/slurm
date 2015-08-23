@@ -167,6 +167,8 @@ int main(int argc, char *argv[])
         printf("\n[IRM_DAEMON]: Entering irm_agent\n");
         printf("\n[IRM_DAEMON]: Attempting to connect to iRM Daemon\n");
 
+	//slurm_conf_init(NULL);
+
         fd = _init_comm();
 
         if (fd == -1) { 
@@ -336,7 +338,8 @@ int main(int argc, char *argv[])
         free(buf);
         close(client_fd);
         close(fd);
-
+	slurm_conf_destroy();
+	log_fini();
         printf("\n[IRM_DAEMON]: Exiting iRM Daemon\n");
 	return 0;
 }

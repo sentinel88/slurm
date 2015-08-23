@@ -18,13 +18,9 @@ extern int protocol_init(slurm_fd_t);
 
 extern int protocol_fini(slurm_fd_t);
 
-extern int send_custom_data(slurm_fd_t);
-
 extern int process_rsrc_offer_resp(resource_offer_resp_msg_t *, bool);
 
 #define timeout (30*1000)
-
-#define _TESTING 0
 
 extern bool initialized;
 

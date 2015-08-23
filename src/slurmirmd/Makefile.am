@@ -10,6 +10,7 @@ AM_CXXFLAGS = -fexceptions
 slurmirmd_SOURCES =     \
 	controller.c  	\
         rsrc_offer.c    \
+	protocol_testing.c \
 	slurmirmd.h
 
 sbin_PROGRAMS = slurmirmd

@@ -421,6 +421,8 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
         slurm_msg_t_init(msg);
         msg->conn_fd = fd;
 
+	printf("\nStep 0\n");
+
         /*
          * Receive a msg. slurm_msg_recvfrom() will read the message
          *  length and allocate space on the heap for a buffer containing
@@ -433,6 +435,8 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
                 goto total_return;
         }
 
+	printf("\nStep 1\n");
+
 //#if     _DEBUG
         _print_data (buf, buflen);
 //#endif
@@ -444,6 +448,7 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
                 rc = SLURM_COMMUNICATIONS_RECEIVE_ERROR;
                 goto total_return;
         }
+	
 
         /*
          * Unpack message body
@@ -451,29 +456,33 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
         msg->protocol_version = header.version;
         msg->msg_type = header.msg_type;
         msg->flags = header.flags;
+	printf("\nStep 2\n");
 
         switch(msg->msg_type) {
            case RESOURCE_OFFER:  // Do not free msg->data as we need the complete resource offer msg back in the caller for further processing
+		printf("\nCase 1\n");
                 printf("\nReceived a resource offer from iRM daemon\n");
                 if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(msg, buffer) != SLURM_SUCCESS)) {
                      printf("\nError in buffer size and unpacking of buffer into the msg structure\n");
                      rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
                      //free_buf(buffer);
                 } else {
+		   printf("\nElse part\n");
                    //memcpy(res_off_msg, msg.data, sizeof(resource_offer_msg_t));
                    rc = SLURM_SUCCESS;
                 }
                 break;
            default:
+		printf("\nCase default\n");
                 slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
-                printf("\nUnexpected message\n");
-                rc = errno;
         }
 
         free_buf(buffer);
         //if (rc != SLURM_SUCCESS) goto total_return;
         if (rc == SLURM_SUCCESS)
            printf("\n[IRM_AGENT]: Received a resource offer from iRM daemon which is %d\n", ( (resource_offer_msg_t *) (msg->data))->value);
+
+	printf("\nStep 3\n");
 
 total_return:
         destroy_forward(&header.forward);
