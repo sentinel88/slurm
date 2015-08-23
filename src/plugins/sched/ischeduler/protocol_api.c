@@ -632,3 +632,94 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         printf("\nExiting isched_send_irm_msg\n");
         return rc;
 }
+
+int 
+receive_feedback(slurm_fd_t fd, slurm_msg_t *msg) 
+{
+    printf("\nInside receive_feedback\n");
+    //slurm_msg_t msg;
+    char *buf = NULL;
+    size_t buflen = 0;
+    header_t header;
+    int rc;
+    //void *auth_cred = NULL;
+    Buf buffer;
+
+    xassert(fd >= 0);
+
+    slurm_msg_t_init(msg);
+    msg->conn_fd = fd;
+
+    /*
+     * Receive a msg. slurm_msg_recvfrom() will read the message
+     *  length and allocate space on the heap for a buffer containing
+     *  the message.
+     */     
+    if (_slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0, timeout) < 0) {
+	    printf("\nError in receiving\n");
+	    forward_init(&header.forward, NULL);
+	    rc = errno;
+	    goto total_return;
+    }
+
+    //#if     _DEBUG
+    _print_data (buf, buflen);
+    //#endif
+    buffer = create_buf(buf, buflen);
+
+    if (unpack_header(&header, buffer) == SLURM_ERROR) {
+	    printf("\nError in unpacking header\n");
+	    free_buf(buffer);
+	    rc = SLURM_COMMUNICATIONS_RECEIVE_ERROR;
+	    goto total_return;
+    }
+
+
+    /*
+     * Unpack message body
+     */
+    msg->protocol_version = header.version;
+    msg->msg_type = header.msg_type;
+    msg->flags = header.flags;
+
+    switch(msg->msg_type) {
+       case STATUS_REPORT:  // Do not free msg->data as we need the complete status report msg back in the caller for further processing
+	    printf("\nReceived a status report from the feedback agent of iRM daemon\n");
+	    if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(msg, buffer) != SLURM_SUCCESS)) {
+		 printf("\nError in buffer size and unpacking of buffer into the msg structure\n");
+		 rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
+		 //free_buf(buffer);
+	    } else {
+	       //memcpy(res_off_msg, msg.data, sizeof(resource_offer_msg_t));
+	       rc = SLURM_SUCCESS;
+	    }
+	    break;
+       default:
+	    printf("\nUnexpected Message\n");
+	    slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
+    }
+
+    free_buf(buffer);
+    //if (rc != SLURM_SUCCESS) goto total_return;
+    if (rc == SLURM_SUCCESS)
+       printf("\n[FEEDBACK_AGENT]: Received a status report from the feedback agent of iRM daemon which is %d\n", ( (status_report_msg_t *) (msg->data))->value);
+
+total_return:
+    destroy_forward(&header.forward);
+
+    slurm_seterrno(rc);
+    if (rc != SLURM_SUCCESS) {
+    } else {
+	    rc = 0;
+    }
+    printf("\nExiting receive_feedback\n");
+    return rc;
+}
+
+int
+process_feedback(slurm_msg_t *msg)
+{
+    printf("\nEntering process_feedback\n");
+    printf("\nExiting process_feedback\n");
+    return SLURM_SUCCESS;
+}

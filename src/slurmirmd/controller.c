@@ -31,15 +31,13 @@
 
 #define DONT_EXECUTE_NOW 1
 
-bool initialized = false;
-bool terminated = false;
-
 typedef enum{UNINITIALIZED, PROTOCOL_INITIALIZED, PROTOCOL_IN_PROGRESS, PROTOCOL_TERMINATING} STATE;
 
 /*********************** local variables *********************/
 static bool stop_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
+static pthread_t feedback_thread = 0;
 //static bool config_flag = false;
 //static int irm_interval = BACKFILL_INTERVAL;
 //static int max_sched_job_cnt = 50;
@@ -157,6 +155,7 @@ int main(int argc, char *argv[])
         resource_offer_resp_msg_t *resp = NULL;
         bool no_jobs = true;
 	bool final_negotiation = false;
+	int flag = 0;
 	STATE irm_state = UNINITIALIZED;
 
         buf = (char *)malloc(sizeof(int));
@@ -205,9 +204,11 @@ int main(int argc, char *argv[])
 		ret_val = SLURM_SUCCESS;
                 //val = -1;
 
-		if (stop_agent)
-			break;
-
+		if (stop_agent) {
+		   if (flag)
+		      stop_feedback_agent();
+	 	   break;
+		}
                 //if (input == 0) {
 		/*if (last_mapping_error_code == ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT) {
                    printf("\niRM has not accepted the mapping from iScheduler. We will send a new offer now.\n");
@@ -233,6 +234,15 @@ int main(int argc, char *argv[])
 		   req->negotiation = 1;
                 }
                 if (ret_val == SLURM_SUCCESS) {
+		   if (!flag) {
+		      /* Create an attached thread for feedback agent */
+        	      slurm_attr_init(&attr);
+        	      if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
+                         error("pthread_create error %m");
+        	      }
+        	      slurm_attr_destroy(&attr);
+		      flag = 1;
+		   }
                    no_jobs = false; 
                    //xfree(msg.data);
 		   //slurm_free_request_resource_offer_msg(req_msg);
@@ -245,12 +255,14 @@ int main(int argc, char *argv[])
 		   if (attempts == 0) attempts++;
                 } else {
                    printf("\nHave not received any request for resource offer yet. Shutting down the daemon\n");
+		   stop_feedback_agent();
                    stop_irm_agent();
                    continue;
                 }
                 if (ret_val != SLURM_SUCCESS) {
                    printf("\niRM agent shutting down\n");
                    /*xfree(resp.error_msg); Not valid because this could be a negotiation end message. Need to handle this better */
+		   stop_feedback_agent();
                    stop_irm_agent();
                    continue;
                 }/* else {

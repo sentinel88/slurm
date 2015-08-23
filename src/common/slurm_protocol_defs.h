@@ -368,7 +368,8 @@ typedef enum {
 	NEGOTIATION_START,
 	RESPONSE_NEGOTIATION_START,
 	NEGOTIATION_END,
-	RESPONSE_NEGOTIATION_END
+	RESPONSE_NEGOTIATION_END,
+	STATUS_REPORT
 } slurm_msg_type_t;
 
 typedef enum {
@@ -1075,6 +1076,10 @@ typedef struct {
         char   * error_msg;	/* error message on failure */
 } negotiation_end_resp_msg_t;
 
+typedef struct {
+	uint16_t value;
+} status_report_msg_t;
+
 /*****************************************************************************\
  * Slurm API Message Types
 \*****************************************************************************/
@@ -1318,6 +1323,7 @@ extern void slurm_free_negotiation_start_msg (negotiation_start_msg_t * negotiat
 extern void slurm_free_negotiation_start_resp_msg (negotiation_start_resp_msg_t * negotiation_start_resp);
 extern void slurm_free_negotiation_end_msg (negotiation_end_msg_t * negotiation_end);
 extern void slurm_free_negotiation_end_resp_msg (negotiation_end_resp_msg_t * negotiation_end_resp);
+extern void slurm_free_status_report_msg (status_report_msg_t * status_report_msg);
 
 extern char *preempt_mode_string(uint16_t preempt_mode);
 extern uint16_t preempt_mode_num(const char *preempt_mode);

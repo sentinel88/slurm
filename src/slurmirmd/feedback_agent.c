@@ -27,7 +27,7 @@
 #include "src/slurmctld/preempt.h"
 #include "src/slurmctld/reservation.h"
 #include "src/slurmctld/slurmctld.h"
-#include "src/plugins/sched/ischeduler/ischeduler.h"
+#include "src/slurmirmd/slurmirmd.h"
 
 #ifndef BACKFILL_INTERVAL
 #  define BACKFILL_INTERVAL	30

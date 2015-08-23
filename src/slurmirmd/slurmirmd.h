@@ -22,9 +22,6 @@ extern int process_rsrc_offer_resp(resource_offer_resp_msg_t *, bool);
 
 #define timeout (30*1000)
 
-extern bool initialized;
-
-extern bool terminated;
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
 //extern void *isched_agent(void *args);
 

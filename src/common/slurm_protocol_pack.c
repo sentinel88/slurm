@@ -701,6 +701,9 @@ static void _pack_negotiation_end_msg(negotiation_end_msg_t *msg,
 static void _pack_negotiation_end_resp_msg(negotiation_end_resp_msg_t *msg,
 					 Buf buffer, uint16_t protocol_version);
 
+static void _pack_status_report_msg(status_report_msg_t *msg,
+					 Buf buffer, uint16_t protocol_version);
+
 static int _unpack_request_resource_offer_msg(request_resource_offer_msg_t **msg, Buf buffer,
                                      uint16_t protocol_version);
 
@@ -721,6 +724,9 @@ static int _unpack_negotiation_end_msg(negotiation_end_msg_t **msg, Buf buffer,
 
 static int _unpack_negotiation_end_resp_msg(negotiation_end_resp_msg_t **msg, Buf buffer,
                                      uint16_t protocol_version);
+
+static int _unpack_status_report_msg(status_report_msg_t **msg, Buf buffer, 
+				     uint16_t protocol_version);
 
 /* pack_header
  * packs a slurm protocol header that precedes every slurm message
@@ -1389,6 +1395,10 @@ pack_msg(slurm_msg_t const *msg, Buf buffer)
 		break;
 	case NEGOTIATION_END:
 		_pack_negotiation_end_msg((negotiation_end_msg_t *) msg->data,
+					 buffer, msg->protocol_version);
+		break;
+	case STATUS_REPORT:
+		_pack_status_report_msg((status_report_msg_t *) msg->data,
 					 buffer, msg->protocol_version);
 		break;
 	case RESPONSE_NEGOTIATION_END:
@@ -2068,6 +2078,11 @@ unpack_msg(slurm_msg_t * msg, Buf buffer)
 		rc = _unpack_negotiation_end_resp_msg((negotiation_end_resp_msg_t **)
 						&(msg->data), buffer,
 						msg->protocol_version);
+		break;
+	case STATUS_REPORT:
+		rc = _unpack_status_report_msg((status_report_msg_t **)
+					      &(msg->data), buffer, 
+					      msg->protocol_version);
 		break;
 	default:
 		debug("No unpack method for msg type %u", msg->msg_type);
@@ -12220,6 +12235,14 @@ static void _pack_negotiation_end_resp_msg(negotiation_end_resp_msg_t *msg, Buf 
 }
 
 
+static void _pack_status_report_msg(status_report_msg_t *msg, Buf buffer,
+				     uint16_t protocol_version)
+{ 
+        xassert(msg != NULL);
+	pack16(msg->value, buffer);
+}
+
+
 static int _unpack_resource_offer_msg(resource_offer_msg_t **msg, Buf buffer,
 				     uint16_t protocol_version)
 {
@@ -12326,6 +12349,20 @@ static int _unpack_negotiation_end_resp_msg(negotiation_end_resp_msg_t **msg, Bu
 unpack_error:
         xfree((*msg)->error_msg);
         slurm_free_negotiation_end_resp_msg(*msg);
+        *msg = NULL;
+        return SLURM_ERROR;
+}
+
+
+static int _unpack_status_report_msg(status_report_msg_t **msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+        xassert(msg != NULL);
+	*msg = xmalloc(sizeof(status_report_msg_t));
+	safe_unpack16(&((*msg)->value), buffer);
+        return SLURM_SUCCESS;
+unpack_error:
+        slurm_free_status_report_msg(*msg);
         *msg = NULL;
         return SLURM_ERROR;
 }

@@ -2873,6 +2873,12 @@ extern void slurm_free_negotiation_end_resp_msg(negotiation_end_resp_msg_t *msg)
 }
 
 
+extern void slurm_free_status_report_msg(status_report_msg_t *msg)
+{
+        xfree(msg);
+}
+
+
 extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 {
 	switch(type) {
