@@ -61,7 +61,7 @@ send_custom_data(slurm_fd_t fd)
 
     Buf buffer;
     header_t header;
-    char *buf = NULL;
+    //char *buf = NULL;
     size_t buflen = 0;
     //int timeout = 20 * 1000;
 
@@ -83,6 +83,8 @@ send_custom_data(slurm_fd_t fd)
 	case 1:
 	     msg.msg_type = RESOURCE_OFFER;
 	     msg1.value = 1;
+	     msg1.error_code = 0;
+	     msg1.error_msg = (char *) NULL;
 	     msg.data = &msg1;
 	     break;
 	case 2:

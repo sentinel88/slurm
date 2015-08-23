@@ -111,9 +111,8 @@ protocol_init (slurm_fd_t fd)
                 }
                 break;
            default:
-                slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
                 printf("\nUnexpected message\n");
-                rc = errno;
+                slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
         }
 
         free_buf(buffer);
@@ -401,9 +400,8 @@ wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_
                 rc = SLURM_ERROR; //To influence the caller back in controller.c to shut down irm agent based on this return value
                 break;
            default:
-                slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
                 printf("\nUnexpected message\n");
-                rc = errno;
+                slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
         }
 
         free_buf(buffer);
@@ -570,9 +568,8 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 		rc = SLURM_ERROR; //To influence the caller back in controller.c to shut down irm agent based on this return value
 		break;
 	   default:
-		slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
                 printf("\nUnexpected message.\n");
-                rc = errno;
+		slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
 	}
 
 	//return SLURM_PROTOCOL_SUCCESS;

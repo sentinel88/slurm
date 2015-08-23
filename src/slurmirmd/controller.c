@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
                 }
                 if (ret_val != SLURM_SUCCESS) {
                    printf("\niRM agent shutting down\n");
-                   //xfree(resp.error_msg); Not valid because this could be a negotiation end message. Need to handle this better
+                   /*xfree(resp.error_msg); Not valid because this could be a negotiation end message. Need to handle this better */
                    stop_irm_agent();
                    continue;
                 }/* else {
@@ -268,14 +268,14 @@ int main(int argc, char *argv[])
 		      memcpy(err_msg, resp->error_msg, strlen(resp->error_msg));
 		      printf("\nTrying to free the error_msg inside response msg\n");
 		      //xfree(resp->error_msg);
-		   }*/
-		//}
+		   }
+		}*/
 		last_mapping_error_code = 0;
 		last_mapping_error_msg = NULL;
 
-                //val = resp->value;
+                /*val = resp->value; */
 
-                //if (val == 500) {
+                /*if (val == 500) { */
 		if (resp->error_code == ESLURM_INVASIVE_JOB_QUEUE_EMPTY) {
                    printf("\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler for a resource offer\n");
                    printf("\nError code = %d\n", resp->error_code);
@@ -283,7 +283,7 @@ int main(int argc, char *argv[])
                    no_jobs = true;
                    attempts = 0;
 		   req->negotiation = 0;
-             //      xfree(resp.error_msg);
+             /*      xfree(resp.error_msg); */
                    continue;
                 }        
 
@@ -292,16 +292,16 @@ int main(int argc, char *argv[])
                    attempts = 0;
                    ret_val = process_rsrc_offer_resp(resp, true);
 		   req->negotiation = 0;
-               //    xfree(resp.error_msg);
+               /*    xfree(resp.error_msg); */
                    continue;
                 }
 
-                //if (val == 0) {
+                /*if (val == 0) {*/
 		if (resp->error_code == ESLURM_RESOURCE_OFFER_REJECT) {
                    printf("\niScheduler did not accept this offer.\n");
                    attempts++;
 		   req->negotiation = 1;
-                //} else if (val == 1) {
+                /*} else if (val == 1) {*/
 		} else if (resp->error_code == SLURM_SUCCESS) {
                    printf("\niScheduler accepted the offer\n");
                    ret_val = process_rsrc_offer_resp(resp, false);
@@ -331,6 +331,12 @@ int main(int argc, char *argv[])
 
 	//slurm_free_request_resource_offer_msg(req_msg);
 	printf("\nStep 1\n");
+/* Be careful when using slurm_strerror to initialize the error msg data member of messages. This function returns a pointer into a statically
+   allocated string array holding the string representations of these errors. Do not attempt slurm_xfree of the msg via slurm_free_.... call
+   without first setting the error_msg pointer to NULL. This will result in trying to free a statically allocated memory resulting in
+   segmentation fault */
+
+	req->error_msg = NULL;
 	slurm_free_resource_offer_msg(req);
 	printf("\nStep 2\n");
 	slurm_free_resource_offer_resp_msg(resp);  // May not be required. Can be removed later after sufficient testing
