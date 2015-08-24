@@ -266,7 +266,6 @@ extern void *feedback_agent(void *args)
 	while (!stop_agent) {
 		if (stop_agent)
 			break;
-		//lock_slurmctld(all_locks);
 		ret_val = receive_feedback(fd, msg);
 		if (ret_val != SLURM_SUCCESS) {
 		   printf("\nError in receiving the periodic feedback from iRM. Shutting down the feedback agent\n");
@@ -283,17 +282,14 @@ extern void *feedback_agent(void *args)
 		   continue;
 		}
                 printf("\nFinished updating history. Will sleep for sometime before processing the next feedback report\n");
-		//_compute_start_times();
 		idle: _my_sleep(feedback_interval);
 		now = time(NULL);
 		wait_time = difftime(now, last_feedback_time);
 		if ((wait_time < feedback_interval)) {
 		   goto idle;
-			//continue;
 		}
 		last_feedback_time = time(NULL);
 		slurm_free_status_report_msg(msg->data);
-		//unlock_slurmctld(all_locks);
 	}
 	slurm_free_msg(msg);
         printf("\n[FEEDBACK_AGENT]: Exiting feedback_agent\n");

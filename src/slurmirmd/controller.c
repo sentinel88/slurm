@@ -144,14 +144,12 @@ int main(int argc, char *argv[])
         slurm_fd_t fd = -1;
         slurm_fd_t client_fd = -1;
         char *buf = NULL;
-        //char *err_msg = NULL;
 	uint16_t last_mapping_error_code = 0;
 	char *last_mapping_error_msg = NULL;
         int ret_val;
         int attempts = 0;
         slurm_addr_t cli_addr;
         int val = -1, input = -1;
-      //request_resource_offer_msg_t *req_msg = NULL;
         resource_offer_msg_t *req = NULL;
         resource_offer_resp_msg_t *resp = NULL;
         bool no_jobs = true;
@@ -161,14 +159,10 @@ int main(int argc, char *argv[])
 	pthread_attr_t attr;
 
         buf = (char *)malloc(sizeof(int));
-	//req_msg = xmalloc(sizeof(request_resource_offer_msg_t));
 	req = xmalloc(sizeof(resource_offer_msg_t));
-	//resp = xmalloc(sizeof(resource_offer_resp_msg_t));
 
         printf("\n[IRM_DAEMON]: Entering irm_agent\n");
         printf("\n[IRM_DAEMON]: Attempting to connect to iRM Daemon\n");
-
-	//slurm_conf_init(NULL);
 
         fd = _init_comm();
 
@@ -200,11 +194,7 @@ int main(int argc, char *argv[])
         }
 
 	while (!stop_agent) {
-		//slurm_free_request_resource_offer_msg(req_msg);
-		//slurm_free_resource_offer_msg(req);
-		//slurm_free_resource_offer_resp_msg(resp);
 		ret_val = SLURM_SUCCESS;
-                //val = -1;
 
 		if (stop_agent) {
 		   if (flag)
@@ -332,8 +322,6 @@ int main(int argc, char *argv[])
 		      attempts = 0;
 		      req->negotiation = 0;
 		   }
-                   //printf("\nEnter 1/0 to accept/reject the Map:Jobs->offer sent by iScheduler\n");
-                   //scanf("%d", &input);
                 } else {
                    printf("\nInvalid response from iScheduler. Ignoring this.\n");
 		   last_mapping_error_code = SLURM_UNEXPECTED_MSG_ERROR;
@@ -343,10 +331,6 @@ int main(int argc, char *argv[])
                 }  
 	}
 
-	//if (err_msg) free(err_msg);
-
-	//slurm_free_request_resource_offer_msg(req_msg);
-	printf("\nStep 1\n");
 /* Be careful when using slurm_strerror to initialize the error msg data member of messages. This function returns a pointer into a statically
    allocated string array holding the string representations of these errors. Do not attempt slurm_xfree of the msg via slurm_free_.... call
    without first setting the error_msg pointer to NULL. This will result in trying to free a statically allocated memory resulting in
@@ -354,9 +338,7 @@ int main(int argc, char *argv[])
 
 	req->error_msg = NULL;
 	slurm_free_resource_offer_msg(req);
-	printf("\nStep 2\n");
 	slurm_free_resource_offer_resp_msg(resp);  // May not be required. Can be removed later after sufficient testing
-	printf("\nStep 3\n");
         free(buf);
         close(client_fd);
         close(fd);

@@ -62,7 +62,6 @@ send_custom_data(slurm_fd_t fd)
     header_t header;
     char *buf = NULL;
     size_t buflen = 0;
-    //int timeout = 20 * 1000;
 
     slurm_msg_t_init(&msg);
 

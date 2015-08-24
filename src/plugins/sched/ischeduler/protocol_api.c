@@ -60,7 +60,6 @@ protocol_init(slurm_fd_t fd)
     header_t header;
     char *buf = NULL;
     size_t buflen = 0;
-    //int timeout = 20 * 1000;
 
     req.value = 1;   // For the time being the negotiation start is just a value of 1 being sent in the message.
 
@@ -152,32 +151,18 @@ protocol_init(slurm_fd_t fd)
        goto total_return;
     }
 
-/*      if (rc == SLURM_SOCKET_ERROR)
-	    return SLURM_ERROR; */
 
     switch (resp_msg.msg_type) {
-        /*case RESPONSE_SLURM_RC:
-                rc = ((return_code_msg_t *) resp_msg.data)->return_code;
-if (rc)
-		slurm_seterrno_ret(rc);
-	    *resp = NULL;
-	    break;*/
        case RESPONSE_NEGOTIATION_START:
 	    printf("\nResponse received from iRM for the start of negotiation. Value is %d\n", ((negotiation_start_resp_msg_t *)(resp_msg.data))->value);
-	    //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
 	    slurm_free_negotiation_start_resp_msg(resp_msg.data);
 	    rc = SLURM_SUCCESS;
-	    //*resp = (resource_offer_response_msg_t *) resp_msg.data;
 	    break;
        default:
 	    printf("\nUnexpected message.\n");
        	    free_buf(buffer);
 	    slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
     }
-
-    //return SLURM_PROTOCOL_SUCCESS;
-    //free_buf(buffer);
-
 
     free_buf(buffer);
 total_return:
@@ -200,7 +185,6 @@ protocol_fini(slurm_fd_t fd)
     header_t header;
     char *buf = NULL;
     size_t buflen = 0;
-    //int timeout = 20 * 1000;
 
     req.value = 1;   // For the time being the negotiation start is just a value of 1 being sent in the message.
 
@@ -304,10 +288,8 @@ if (rc)
             break;*/
        case RESPONSE_NEGOTIATION_END:
             printf("\nResponse received from iRM for the end of negotiation. Value is %d\n", ((negotiation_end_resp_msg_t *)(resp_msg.data))->value);
-            //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
 	    slurm_free_negotiation_end_resp_msg(resp_msg.data);
             rc = SLURM_SUCCESS;
-            //*resp = (resource_offer_response_msg_t *) resp_msg.data;
             break;
        default:
             printf("\nUnexpected message.\n");
@@ -334,11 +316,6 @@ request_resource_offer (slurm_fd_t fd)
         request_resource_offer_msg_t req;
         Buf buffer;
         header_t header;
-        //char *buf = NULL;
-        //size_t buflen = 0;
-        //int timeout = 20 * 1000;
-
-        //msg->data = malloc(sizeof(request_resource_offer_msg_t));
 
         req.value = 1;   // For the time being the request resource offer is just a value of 1 being sent in the message.
 
@@ -396,12 +373,7 @@ request_resource_offer (slurm_fd_t fd)
 
 
 /*
- * slurm_submit_resource_offer - issue RPC to submit a resource offer
- *                               to iScheduler plugin.
- * NOTE: free the response using slurm_free_submit_response_response_msg
- * IN resource_offer_msg - description of resource offer
- * OUT 
- * RET 0 on success, otherwise return -1 and set errno to indicate the error
+ * receive_resource_offer - Receive a resource offer from iRM
  */
 //Similar to slurm_receive_msg
 int
@@ -459,9 +431,7 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
                 if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(msg, buffer) != SLURM_SUCCESS)) {
                      printf("\nError in buffer size and unpacking of buffer into the msg structure\n");
                      rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
-                     //free_buf(buffer);
                 } else {
-                   //memcpy(res_off_msg, msg.data, sizeof(resource_offer_msg_t));
                    rc = SLURM_SUCCESS;
                 }
                 break;
@@ -472,7 +442,6 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
         }
 
         free_buf(buffer);
-        //if (rc != SLURM_SUCCESS) goto total_return;
         if (rc == SLURM_SUCCESS)
            printf("\n[IRM_AGENT]: Received a resource offer from iRM daemon which is %d\n", ( (resource_offer_msg_t *) (msg->data))->value);
 
@@ -502,12 +471,7 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
 	}
 	if (msg->error_code == ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT) {
 	   printf("\niRM has rejected the previous mapping and sent us a new resource offer for a fresh mapping.\n");
-	//   *attempts++;
         } else {
-	 /*  if (*attempts) {
-	      *attempts = 0;
-	   } else {*/
-	   //if (!attempts) {
 	   if (!msg->negotiation) {
 	      *attempts = 1;
               printf("\nIs the job queue empty?? if yes, then we send a negative response for the resource offer. Enter 1/0 for empty/non-empty job queue\n");
@@ -516,21 +480,15 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
 	}
  
         if (!choice) {
-	//if (!(*attempts) ) {
            printf("\nEnter your choice 1/0 on whether to accept/reject the resource offer and 2 to end the negotiation\n");
            scanf("%d", &input);
 
            if (input == 1) {
               printf("\nSuccessfully mapped jobs to this offer and sending the list of jobs to be launched\n");
-              // *buf_val = htons(1);
               *buf_val = 1;
-              //memcpy(buf, &buf_val, sizeof(buf_val));
            } else if (input == 0){
               printf("\nOffer not accepted. Sending back a negative response\n");
-              // *buf_val = htons(0);
               *buf_val = 0;
-	      //*attempts++;
-              //memcpy(buf, &buf_val, sizeof(buf_val));
            } else if (input == 2) {
 	      printf("\nGoing to end this negotiation\n");
               *buf_val = 400;
@@ -540,7 +498,6 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
 	   }
         } else {
            *buf_val = 500; 
-	   //*attempts = 0;
         }
 
         return 0;
@@ -548,15 +505,11 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
 
 int send_resource_offer_resp(slurm_msg_t *msg, char *buf) 
 {
-        //char *buf = NULL;
-        //size_t buflen = 0;
         header_t header;
         int rc;
         resource_offer_resp_msg_t offer_resp_msg;
         slurm_msg_t resp_msg;
-        //void *auth_cred = NULL;
         Buf buffer;
-        //int choice = 1;
         char err_msg[256] = "Job queue is empty";
 
         printf("\nInside isched_send_irm_msg\n");
@@ -631,7 +584,6 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         }
 
         free_buf(buffer);
-	//xfree(offer_resp_msg.error_msg);
         printf("\nExiting isched_send_irm_msg\n");
         return rc;
 }
@@ -644,7 +596,6 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
     size_t buflen = 0;
     header_t header;
     int rc;
-    //void *auth_cred = NULL;
     Buf buffer;
 
     xassert(fd >= 0);
