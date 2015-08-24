@@ -71,8 +71,8 @@ static void _my_sleep(int secs)
 	pthread_mutex_unlock(&term_lock);
 }
 
-static void _load_config(void)
-{
+//static void _load_config(void)
+//{
 /*	char *sched_params, *select_type, *tmp_ptr;
 
 	sched_timeout = slurm_get_msg_timeout() / 2;
@@ -108,7 +108,7 @@ static void _load_config(void)
 		stop_builtin_agent();
 	}
 	xfree(select_type);*/
-}
+//}
 
 //static void _compute_start_times(void)
 //{
@@ -245,6 +245,9 @@ extern void feedback_agent_reconfig(void)
 extern void *feedback_agent(void *args)
 {
 	int ret_val = SLURM_SUCCESS;
+	static time_t last_feedback_time = 0;
+	time_t now;
+	double wait_time;
 	slurm_fd_t fd = -1;
 	slurm_msg_t *msg;
         printf("\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
@@ -257,18 +260,12 @@ extern void *feedback_agent(void *args)
         }
 
 	msg = xmalloc(sizeof(slurm_msg_t));
+	slurm_msg_t_init(msg);
 
 	last_feedback_time = time(NULL);
 	while (!stop_agent) {
-		_my_sleep(feedback_interval);
 		if (stop_agent)
 			break;
-		}
-		now = time(NULL);
-		wait_time = difftime(now, last_feedback_time);
-		if ((wait_time < feedback_interval))
-			continue;
-
 		//lock_slurmctld(all_locks);
 		ret_val = receive_feedback(fd, msg);
 		if (ret_val != SLURM_SUCCESS) {
@@ -278,18 +275,27 @@ extern void *feedback_agent(void *args)
 		}
                 printf("\nFeedback report received from iRM\n");
                 printf("\nProcessing the report now\n");
-		ret_val = process_feedback(msg);
+		ret_val = process_feedback(msg->data);
 		if (ret_val != SLURM_SUCCESS) {
 		   printf("\nError in processing the feedback from iRM. Shutting down the agent\n");
+		   slurm_free_status_report_msg(msg->data);
 		   stop_feedback_agent();
 		   continue;
 		}
                 printf("\nFinished updating history. Will sleep for sometime before processing the next feedback report\n");
 		//_compute_start_times();
+		idle: _my_sleep(feedback_interval);
+		now = time(NULL);
+		wait_time = difftime(now, last_feedback_time);
+		if ((wait_time < feedback_interval)) {
+		   goto idle;
+			//continue;
+		}
 		last_feedback_time = time(NULL);
+		slurm_free_status_report_msg(msg->data);
 		//unlock_slurmctld(all_locks);
 	}
-	slurm_free_status_report_msg(msg);
+	slurm_free_msg(msg);
         printf("\n[FEEDBACK_AGENT]: Exiting feedback_agent\n");
 	return NULL;
 }

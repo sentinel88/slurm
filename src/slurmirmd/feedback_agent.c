@@ -210,86 +210,82 @@ static void _load_config(void)
 	FREE_NULL_BITMAP(alloc_bitmap); */
 //} 
 
-//Connect to iRM daemon's feedback agent via a TCP connection
-static int _connect_to_irmd(void) {
+static int _init_comm(void) {
    slurm_fd_t fd = -1;
-   slurm_addr_t irm_address;
+   slurm_addr_t addr;
    uint16_t port = 12346;
    char *host = "127.0.0.1";
 
-   _slurm_set_addr_char(&irm_address, port, host);
+   slurm_set_addr(&addr, port, host);
+   fd = slurm_init_msg_engine(&addr);
 
-   while (!stop_agent) {
-      fd = slurm_open_msg_conn(&irm_address);
-      if (fd < 0) {
-         printf("\n[FEEDBACK_AGENT]: Failed to contact iRM daemon's feedback agent.\n");
-         //return -1;
-      } else {
-         printf("\n[FEEDBACK_AGENT]: Successfully connected with iRM daemon's feedback agent.\n");
-         break;
-      }
-      _my_sleep(feedback_interval);
+   if (fd < 0) {
+      printf("\n[FEEDBACK_AGENT]: Failed to initialize communication engine. Agent will shutdown shortly\n");
+      return -1;
    }
-   /*if (!stop_agent)
-      printf("\n[IRM_AGENT]: Successfully connected to iRM daemon\n");*/
+   printf("\n[FEEDBACK_AGENT]: Successfully initialized communication engine\n");
    return fd;
 }
 
+
 /* Note that slurm.conf has changed */
-extern void feedback_agent_reconfig(void)
+/*extern void feedback_agent_reconfig(void)
 {
 	config_flag = true;
-}
+}*/
 
 /* feedback_agent */
 extern void *feedback_agent(void *args)
 {
 	int ret_val = SLURM_SUCCESS;
 	slurm_fd_t fd = -1;
-	slurm_msg_t *msg;
+	slurm_fd_t client_fd = -1;
+	slurm_addr_t cli_addr;
+	status_report_msg_t msg;
+	static time_t last_feedback_time = 0;
+	time_t now;
+	double wait_time;
         printf("\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
-	printf("\n[FEEDBACK_AGENT]: Attempting to connect to the feedback agent of iRM daemon\n");
 
-	fd = _connect_to_irmd();
+	fd = _init_comm();
         if (fd == -1) {
-           printf("\n[FEEDBACK_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
+           printf("\n[FEEDBACK_AGENT]: Unsuccessful initialization of the communcation engine. Agent shutting down\n");
            return NULL;
         }
 
-	msg = xmalloc(sizeof(slurm_msg_t));
+	client_fd = slurm_accept_msg_conn(fd, &cli_addr);
+        if (client_fd != SLURM_SOCKET_ERROR) {
+           printf("\n[FEEDBACK_AGENT]: Accepted connection from iScheduler's feedback agent. Communications can now start\n");
+        } else {
+           printf("\n[FEEDBACK_AGENT]: Unable to receive any connection request from iScheduler's feedback agent. Shutting down the agent.\n");
+           stop_agent = true;
+        }
 
 	last_feedback_time = time(NULL);
 	while (!stop_agent) {
-		_my_sleep(feedback_interval);
-		if (stop_agent)
-			break;
-		}
-		now = time(NULL);
-		wait_time = difftime(now, last_feedback_time);
-		if ((wait_time < feedback_interval))
-			continue;
-
-		//lock_slurmctld(all_locks);
-		ret_val = receive_feedback(fd, msg);
-		if (ret_val != SLURM_SUCCESS) {
-		   printf("\nError in receiving the periodic feedback from iRM. Shutting down the feedback agent\n");
-		   stop_feedback_agent();
-		   continue;
-		}
-                printf("\nFeedback report received from iRM\n");
-                printf("\nProcessing the report now\n");
-		ret_val = process_feedback(msg);
-		if (ret_val != SLURM_SUCCESS) {
-		   printf("\nError in processing the feedback from iRM. Shutting down the agent\n");
-		   stop_feedback_agent();
-		   continue;
-		}
-                printf("\nFinished updating history. Will sleep for sometime before processing the next feedback report\n");
-		//_compute_start_times();
-		last_feedback_time = time(NULL);
-		//unlock_slurmctld(all_locks);
+	    if (stop_agent)
+	       break;
+	    //lock_slurmctld(all_locks);
+	    ret_val = compute_feedback(&msg);
+	    ret_val = send_feedback(client_fd, &msg);
+	    if (ret_val != SLURM_SUCCESS) {
+	       printf("\nError in sending the periodic feedback to iScheduler. Shutting down the feedback agent\n");
+	       stop_feedback_agent();
+	       continue;
+	    }
+	    idle: _my_sleep(feedback_interval);
+	    now = time(NULL);
+	    wait_time = difftime(now, last_feedback_time);
+	    if ((wait_time < feedback_interval)) {
+	       goto idle;
+		    //continue;
+	    }
+	    //_compute_start_times();
+	    last_feedback_time = time(NULL);
+	        //unlock_slurmctld(all_locks);
 	}
-	slurm_free_status_report_msg(msg);
+	close(client_fd);
+	close(fd);
         printf("\n[FEEDBACK_AGENT]: Exiting feedback_agent\n");
 	return NULL;
 }

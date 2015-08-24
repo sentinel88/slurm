@@ -309,11 +309,13 @@ extern void *irm_agent(void *args)
                 } else {
                    printf("\nError in sending the request for resource offer to iRM. Shutting down the iRM agent.\n");
                    stop_irm_agent();
+		   stop_feedback_agent();
                    continue;
                 }
                 if (ret_val != SLURM_SUCCESS) {
                    printf("\nError in receiving the resource offer. Stopping iRM agent.\n");
                    stop_irm_agent();
+		   stop_feedback_agent();
                    continue;
                 }
                 printf("[IRM_AGENT]: Processing the offer\n");
@@ -329,6 +331,7 @@ extern void *irm_agent(void *args)
 		   attempts = 0;
 		   slurm_free_resource_offer_resp_msg(msg->data);
 		   stop_irm_agent();
+		   stop_feedback_agent();
 		   continue;
 		}
                 //printf("\nbuf = %s\n", buf);
@@ -341,6 +344,7 @@ extern void *irm_agent(void *args)
                 if (ret_val != SLURM_SUCCESS) {
                    printf("\nError in sending the response for the resource offer.\n");
                    stop_irm_agent();
+		   stop_feedback_agent();
                    continue;
                 }
                 printf("[IRM_AGENT]: Sent back a response to the resource offer\n");

@@ -20,6 +20,14 @@ extern int protocol_fini(slurm_fd_t);
 
 extern int process_rsrc_offer_resp(resource_offer_resp_msg_t *, bool);
 
+extern int compute_feedback(status_report_msg_t *);
+
+extern int send_feedback(slurm_fd_t, status_report_msg_t *);
+
+extern void *feedback_agent(void *);
+
+extern void stop_feedback_agent(void);
+
 #define timeout (30*1000)
 
 /* ischeduler_agent - detached thread periodically when pending jobs can start */

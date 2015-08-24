@@ -145,7 +145,7 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(sbindir)"
 PROGRAMS = $(sbin_PROGRAMS)
 am_slurmirmd_OBJECTS = controller.$(OBJEXT) rsrc_offer.$(OBJEXT) \
-	protocol_testing.$(OBJEXT)
+	feedback_agent.$(OBJEXT) protocol_testing.$(OBJEXT)
 slurmirmd_OBJECTS = $(am_slurmirmd_OBJECTS)
 am__DEPENDENCIES_1 =
 slurmirmd_DEPENDENCIES = $(top_builddir)/src/api/libslurm.o \
@@ -463,6 +463,7 @@ AM_CXXFLAGS = -fexceptions
 slurmirmd_SOURCES = \
 	controller.c  	\
         rsrc_offer.c    \
+	feedback_agent.c \
 	protocol_testing.c \
 	slurmirmd.h
 
@@ -564,6 +565,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/controller.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/feedback_agent.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/protocol_testing.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rsrc_offer.Po@am__quote@
 

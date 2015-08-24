@@ -78,9 +78,9 @@ extern int protocol_fini(slurm_fd_t);
 
 extern int send_custom_data(slurm_fd_t);
 
-extern int receive_feedback(slurm_fd_t, status_report_msg_t **);
+extern int receive_feedback(slurm_fd_t, slurm_msg_t *);
 
-extern int process_feedback(status_report_msg *);
+extern int process_feedback(status_report_msg_t *);
 
 #define timeout (20*1000)
 

@@ -29,7 +29,7 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 
 #define timeout (30 * 1000)
 
-#define TESTING 1
+//#define TESTING 1
 
 extern int send_custom_data(slurm_fd_t);
 
@@ -59,7 +59,7 @@ protocol_init (slurm_fd_t fd)
         slurm_msg_t resp_msg;
         Buf buffer;
         negotiation_start_resp_msg_t resp;
-	char err_msg[256] = "Negotiation cannot be started";
+	//char err_msg[256] = "Negotiation cannot be started";
 
         xassert(fd >= 0);
 
@@ -112,6 +112,7 @@ protocol_init (slurm_fd_t fd)
                 break;
            default:
                 printf("\nUnexpected message\n");
+        	free_buf(buffer);
                 slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
         }
 
@@ -198,7 +199,7 @@ protocol_fini (slurm_fd_t fd)
         slurm_msg_t resp_msg;
         Buf buffer;
         negotiation_end_resp_msg_t resp;
-	char err_msg[256] = "Unable to terminate negotiation";
+	//char err_msg[256] = "Unable to terminate negotiation";
 
         xassert(fd >= 0);
 /*
@@ -401,6 +402,7 @@ wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_
                 break;
            default:
                 printf("\nUnexpected message\n");
+		free_buf(buffer);
                 slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
         }
 
@@ -494,6 +496,7 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
         if (rc < 0) {
            printf("\nProblem with sending the resource offer to iScheduler\n");
            rc = errno;
+           free_buf(buffer);
            goto total_return;           
         }
     
@@ -569,12 +572,12 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 		break;
 	   default:
                 printf("\nUnexpected message.\n");
+        	free_buf(buffer);
 		slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
 	}
 
 	//return SLURM_PROTOCOL_SUCCESS;
         //free_buf(buffer);
-
 
         free_buf(buffer);
 total_return:
@@ -594,3 +597,90 @@ process_rsrc_offer_resp(resource_offer_resp_msg_t *resp, bool final_negotiation)
       return ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT;
    return SLURM_SUCCESS;
 }
+
+int 
+compute_feedback(status_report_msg_t *msg) 
+{
+   printf("\nInside compute_feedback\n");
+   msg->value = 1;
+   printf("\nExiting compute_feedback\n");
+   return SLURM_SUCCESS;
+}
+
+
+int
+send_feedback(slurm_fd_t fd, status_report_msg_t *req)
+{
+    printf("\nInside send_feedback\n");
+    int rc;
+    slurm_msg_t req_msg;
+
+    Buf buffer;
+    header_t header;
+    char *buf = NULL;
+    size_t buflen = 0;
+    //int timeout = 20 * 1000;
+
+    //req->error_code = 0;
+    //req->error_msg = (char *)NULL;
+
+    slurm_msg_t_init(&req_msg);
+
+    forward_init(&req_msg.forward, NULL);
+    req_msg.ret_list = NULL;
+    req_msg.forward_struct = NULL;
+
+
+    req_msg.msg_type = STATUS_REPORT;
+    req_msg.data     = req;
+
+    init_header(&header, &req_msg, req_msg.flags);
+
+    /*
+     * Pack header into buffer for transmission
+     */
+        buffer = init_buf(BUF_SIZE);
+        pack_header(&header, buffer);
+
+        /*
+         * Pack message into buffer
+         */
+        new_pack_msg(&req_msg, &header, buffer);
+
+//#if     _DEBUG
+        _print_data (get_buf_data(buffer),get_buf_offset(buffer));
+//#endif
+        /*
+         * Send message
+         */
+
+        /*printf("\nEnter any number\n");
+        scanf("%d", &ch);*/
+
+#ifdef _TESTING
+        rc = send_custom_data(fd);
+#else
+
+        rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
+                                get_buf_offset(buffer),
+                                SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+#endif
+
+        if (rc < 0) {
+           printf("\nProblem with sending the periodic feedback to iScheduler\n");
+           rc = errno;
+        } else {
+           printf("\nSend was successful\n");
+           rc = SLURM_SUCCESS;
+        }
+
+   printf("[FEEDBACK_AGENT]: Sent the feedback\n");
+   free_buf(buffer);
+   if (rc != SLURM_SUCCESS) {
+   } else {
+      rc = 0;
+   }
+   printf("\nExiting send_feedback\n");
+   return rc;
+}
+

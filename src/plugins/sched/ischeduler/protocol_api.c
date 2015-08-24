@@ -171,6 +171,7 @@ if (rc)
 	    break;
        default:
 	    printf("\nUnexpected message.\n");
+       	    free_buf(buffer);
 	    slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
     }
 
@@ -310,6 +311,7 @@ if (rc)
             break;
        default:
             printf("\nUnexpected message.\n");
+       	    free_buf(buffer);
             slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
     }
 
@@ -465,6 +467,7 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
                 break;
            default:
 		printf("\nUnexpected Message\n");
+       	        free_buf(buffer);
                 slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
         }
 
@@ -637,7 +640,6 @@ int
 receive_feedback(slurm_fd_t fd, slurm_msg_t *msg) 
 {
     printf("\nInside receive_feedback\n");
-    //slurm_msg_t msg;
     char *buf = NULL;
     size_t buflen = 0;
     header_t header;
@@ -674,7 +676,6 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
 	    goto total_return;
     }
 
-
     /*
      * Unpack message body
      */
@@ -696,6 +697,7 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
 	    break;
        default:
 	    printf("\nUnexpected Message\n");
+	    free_buf(buffer);
 	    slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
     }
 
@@ -717,7 +719,7 @@ total_return:
 }
 
 int
-process_feedback(slurm_msg_t *msg)
+process_feedback(status_report_msg_t *msg)
 {
     printf("\nEntering process_feedback\n");
     printf("\nExiting process_feedback\n");

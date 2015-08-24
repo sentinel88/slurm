@@ -38,6 +38,7 @@ static bool stop_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static pthread_t feedback_thread = 0;
+static bool initialized = false;
 //static bool config_flag = false;
 //static int irm_interval = BACKFILL_INTERVAL;
 //static int max_sched_job_cnt = 50;
@@ -157,6 +158,7 @@ int main(int argc, char *argv[])
 	bool final_negotiation = false;
 	int flag = 0;
 	STATE irm_state = UNINITIALIZED;
+	pthread_attr_t attr;
 
         buf = (char *)malloc(sizeof(int));
 	//req_msg = xmalloc(sizeof(request_resource_offer_msg_t));
@@ -240,6 +242,7 @@ int main(int argc, char *argv[])
         	      if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
                          error("pthread_create error %m");
         	      }
+		      printf("\nSuccessfully created a thread for the feedback agent\n");
         	      slurm_attr_destroy(&attr);
 		      flag = 1;
 		   }
@@ -254,13 +257,14 @@ int main(int argc, char *argv[])
                    ret_val = slurm_submit_resource_offer(client_fd, req, &resp);
 		   if (attempts == 0) attempts++;
                 } else {
-                   printf("\nHave not received any request for resource offer yet. Shutting down the daemon\n");
-		   stop_feedback_agent();
+                   printf("\nHave not received any request for resource offer yet. Shutting down the daemon along with the feedback agent\n");
+		   if (flag)
+		      stop_feedback_agent();
                    stop_irm_agent();
                    continue;
                 }
                 if (ret_val != SLURM_SUCCESS) {
-                   printf("\niRM agent shutting down\n");
+                   printf("\niRM agent shutting down along with feedback agent\n");
                    /*xfree(resp.error_msg); Not valid because this could be a negotiation end message. Need to handle this better */
 		   stop_feedback_agent();
                    stop_irm_agent();
@@ -358,6 +362,7 @@ int main(int argc, char *argv[])
         close(fd);
 	slurm_conf_destroy();
 	log_fini();
+	pthread_join(feedback_thread,  NULL);
         printf("\n[IRM_DAEMON]: Exiting iRM Daemon\n");
 	return 0;
 }
