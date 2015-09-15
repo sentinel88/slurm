@@ -82,8 +82,13 @@ extern int receive_feedback(slurm_fd_t, slurm_msg_t *);
 
 extern int process_feedback(status_report_msg_t *);
 
+extern int _connect_to_irmd(char *host, uint16_t port, bool *flag, int sleep_interval, char *agent_name)
+
 #define timeout (20*1000)
 
 #define _TESTING 0
+
+extern bool urgent_jobs;
+extern pthread_mutex_t urgent_lock;
 
 #endif	/* _SLURM_ISCHEDULER_H */

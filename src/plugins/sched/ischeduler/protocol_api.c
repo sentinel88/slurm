@@ -46,6 +46,33 @@ static void _print_data(char *data, int len)
 
 
 
+//Connect to iRM daemon via a TCP connection
+int _connect_to_irmd(char *host, uint16_t port, bool *flag, int sleep_interval, char *agent_name) {
+   slurm_fd_t fd = -1;
+   slurm_addr_t irm_address;
+   //port = 12345;
+   //host = "127.0.0.1";
+
+   _slurm_set_addr_char(&irm_address, port, host);
+
+   while (!(*flag)) {
+      fd = slurm_open_msg_conn(&irm_address);
+      if (fd < 0) {
+         printf("\n[%s]: Failed to contact iRM daemon.\n", agent_name);
+         //return -1;
+      } else {
+         printf("\n[%s]: Successfully connected with iRM daemon.\n", agent_name);
+         break;
+      }
+      _my_sleep(sleep_interval);
+   }
+   /*if (!stop_agent)
+      printf("\n[IRM_AGENT]: Successfully connected to iRM daemon\n");*/
+   return fd;
+}
+
+
+
 int 
 protocol_init(slurm_fd_t fd) 
 {
@@ -307,11 +334,142 @@ total_return:
 
 
 int
-request_resource_offer (slurm_fd_t fd)
+send_urgent_job(slurm_fd_t fd, slurm_msg_t *req_msg)
 {
-        printf("\nInside slurm_request_resource_offer\n");
+        printf("\nInside send_urgent_job\n");
         int rc;
         int ch;
+	int ret_val = SLURM_SUCCESS;
+        slurm_msg_t req_msg;
+        Buf buffer;
+        header_t header;
+
+        msg->value = 1;   // For the time being the request resource offer is just a value of 1 being sent in the message.
+
+	sleep(5);
+
+        slurm_msg_t_init(&req_msg);
+
+        forward_init(&req_msg.forward, NULL);
+        req_msg.ret_list = NULL;
+        req_msg.forward_struct = NULL;
+
+
+        req_msg.msg_type = URGENT_JOB;
+        req_msg.data     = msg;
+
+        init_header(&header, &req_msg, req_msg.flags);
+
+        /*
+         * Pack header into buffer for transmission
+         */
+        buffer = init_buf(BUF_SIZE);
+        pack_header(&header, buffer);
+
+        /*
+         * Pack message into buffer
+         */
+        new_pack_msg(&req_msg, &header, buffer);
+
+//#if     _DEBUG
+        _print_data (get_buf_data(buffer),get_buf_offset(buffer));
+//#endif
+        /*
+         * Send message
+         */
+
+        rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
+                                get_buf_offset(buffer),
+                                SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+
+        if (rc < 0) {
+           printf("\nProblem with sending the urgent job to iRM\n");
+           rc = errno;
+        } else {
+           printf("\nSubmitted the urgent job to iRM.\n");
+           rc = SLURM_SUCCESS;
+        }
+
+        free_buf(buffer);
+
+        printf("\nExiting send_urgent_job\n");
+        return rc;
+}
+
+
+
+int
+receive_urgent_job_resp(slurm_fd_t fd)
+{
+        printf("\nInside send_urgent_job\n");
+        int rc;
+        int ch;
+	int ret_val = SLURM_SUCCESS;
+        slurm_msg_t req_msg;
+        Buf buffer;
+        header_t header;
+
+        msg->value = 1;   // For the time being the request resource offer is just a value of 1 being sent in the message.
+
+	sleep(5);
+
+        slurm_msg_t_init(&req_msg);
+
+        forward_init(&req_msg.forward, NULL);
+        req_msg.ret_list = NULL;
+        req_msg.forward_struct = NULL;
+
+
+        req_msg.msg_type = URGENT_JOB;
+        req_msg.data     = msg;
+
+        init_header(&header, &req_msg, req_msg.flags);
+
+        /*
+         * Pack header into buffer for transmission
+         */
+        buffer = init_buf(BUF_SIZE);
+        pack_header(&header, buffer);
+
+        /*
+         * Pack message into buffer
+         */
+        new_pack_msg(&req_msg, &header, buffer);
+
+//#if     _DEBUG
+        _print_data (get_buf_data(buffer),get_buf_offset(buffer));
+//#endif
+        /*
+         * Send message
+         */
+
+        rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
+                                get_buf_offset(buffer),
+                                SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+
+        if (rc < 0) {
+           printf("\nProblem with sending the urgent job to iRM\n");
+           rc = errno;
+        } else {
+           printf("\nSubmitted the urgent job to iRM.\n");
+           rc = SLURM_SUCCESS;
+        }
+
+        free_buf(buffer);
+
+        printf("\nExiting send_urgent_job\n");
+        return rc;
+}
+
+
+
+int
+request_resource_offer (slurm_fd_t fd)
+{
+        printf("\nInside request_resource_offer\n");
+        int rc;
+        int ch;
+	int ret_val = SLURM_SUCCESS;
         slurm_msg_t req_msg;
         request_resource_offer_msg_t req;
         Buf buffer;
@@ -366,7 +524,7 @@ request_resource_offer (slurm_fd_t fd)
 
         free_buf(buffer);
 
-        printf("\nExiting slurm_request_resource_offer\n");
+        printf("\nExiting request_resource_offer\n");
         return rc;
 }
 
@@ -675,4 +833,47 @@ process_feedback(status_report_msg_t *msg)
     printf("\nEntering process_feedback\n");
     printf("\nExiting process_feedback\n");
     return SLURM_SUCCESS;
+}
+
+int send_urgent_jobs()
+{
+    printf("\nThere are urgent jobs present in the invasive job queue\n");
+    printf("\nHere we will run a loop till there are urgent jobs left in the queue to be sent to iRM\n");
+    printf("\nThese urgent jobs will be sent one at a time to iRM by iScheduler. If for any of the previously sent jobs a negative response is received by iSched from iRM then no more urgent jobs will be sent. Those remaining will be discarded/cancelled since their request cannot be met\n");
+    printf("\nFor the purpose of making a prototype we send a single urgent job now\n");
+
+    req_msg.msg_type = URGENT_JOB;
+    req_msg.data = &req;
+
+    /*
+    * Pack header into buffer for transmission
+    */
+    buffer = init_buf(BUF_SIZE);
+    pack_header(&header, buffer);
+
+    /*
+    * Pack message into buffer
+    */
+    new_pack_msg(&req_msg, &header, buffer);
+
+    //#if     _DEBUG
+    _print_data (get_buf_data(buffer),get_buf_offset(buffer));
+    //#endif
+    /*
+    * Send message
+    */
+
+    rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
+			   get_buf_offset(buffer),
+			   SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+    if (rc < 0) {
+       printf("\nProblem with sending the request resource offer to iRM\n");
+       rc = errno;
+    } else {
+       printf("[IRM_AGENT]: Sent the request for a resource offer.\n");
+       rc = SLURM_SUCCESS;
+    }
+
+    free_buf(buffer);
+
 }

@@ -37,6 +37,8 @@
 
 /*********************** local variables *********************/
 static bool stop_agent = false;
+bool urgent_jobs = false;
+pthread_mutex_t urgent_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
@@ -52,7 +54,8 @@ static void _load_config(void);
 static void _my_sleep(int secs);
 static int _connect_to_irmd(void);
 
-/* Terminate ischeduler_agent */
+
+/* Terminate iScheduler_agent */
 extern void stop_irm_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
@@ -61,6 +64,17 @@ extern void stop_irm_agent(void)
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
 }
+
+
+/* Set the shared flag urgent_jobs to TRUE */
+extern void set_flag_urgent_jobs(void)
+{
+	pthread_mutex_lock(&urgent_lock);
+	urgent_jobs = true;
+        printf("\nSetting urgent jobs flag to TRUE\n");
+	pthread_mutex_unlock(&urgent_lock);
+}
+
 
 static void _my_sleep(int secs)
 {
@@ -217,7 +231,7 @@ static void _load_config(void)
 
 
 //Connect to iRM daemon via a TCP connection
-static int _connect_to_irmd(void) {
+/*static int _connect_to_irmd(void) {
    slurm_fd_t fd = -1;
    slurm_addr_t irm_address;
    uint16_t port = 12345;
@@ -235,11 +249,11 @@ static int _connect_to_irmd(void) {
          break;
       }
       _my_sleep(irm_interval);
-   }
+   }*/
    /*if (!stop_agent)
       printf("\n[IRM_AGENT]: Successfully connected to iRM daemon\n");*/
-   return fd;
-}
+   /*return fd;*/
+//}
 
 /* Note that slurm.conf has changed */
 extern void irm_reconfig(void)
@@ -270,7 +284,7 @@ extern void *irm_agent(void *args)
         printf("\n[IRM_AGENT]: Entering irm_agent\n");
         printf("\n[IRM_AGENT]: Attempting to connect to iRM Daemon\n");
 
-        fd = _connect_to_irmd();
+        fd = _connect_to_irmd("127.0.0.1", 12345, &stop_agent, irm_interval, "IRM_AGENT");
 
         if (fd == -1) { 
            printf("\n[IRM_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
@@ -300,6 +314,7 @@ extern void *irm_agent(void *args)
 			_load_config();
 		}
                 if (empty_queue) {
+		   printf("\nIn this state, the irm agent will request for a resource offer only when some jobs have been added to the queue. For this purpose, we will have to periodically inspect the invasive job queue for new jobs.\n");
                    ret_val = request_resource_offer(fd);
                    empty_queue = false;
                 }

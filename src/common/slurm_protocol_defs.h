@@ -369,7 +369,9 @@ typedef enum {
 	RESPONSE_NEGOTIATION_START,
 	NEGOTIATION_END,
 	RESPONSE_NEGOTIATION_END,
-	STATUS_REPORT
+	STATUS_REPORT,
+	URGENT_JOB,
+	RESPONSE_URGENT_JOB
 } slurm_msg_type_t;
 
 typedef enum {
@@ -1043,6 +1045,10 @@ typedef struct {
 
 typedef struct {
         uint16_t value; /* info */
+} urgent_job_msg_t;
+
+typedef struct {
+        uint16_t value; /* info */
 	uint8_t negotiation; /* if negotiation is ongoing then this value is 1 else it becomes 0 to indicate ischeduler that previous negotiat
 				ion is over */
         uint32_t error_code;    /* error code on failure */
@@ -1054,6 +1060,12 @@ typedef struct {
         uint32_t error_code;    /* error code on failure */
         char   * error_msg;     /* error message on failure */
 } resource_offer_resp_msg_t;
+
+typedef struct {
+        uint16_t value;         /* info */
+        uint32_t error_code;    /* error code on failure */
+        char   * error_msg;     /* error message on failure */
+} urgent_job_resp_msg_t;
 
 typedef struct {
 	uint16_t value;

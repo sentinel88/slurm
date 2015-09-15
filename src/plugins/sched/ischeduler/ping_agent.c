@@ -218,19 +218,55 @@ extern void ping_agent_reconfig(void)
 /* ping_agent */
 extern void *ping_agent(void *args)
 {
-	time_t now;
-	double wait_time;
-	static time_t last_ping_time = 0;
+	//time_t now;
+	//double wait_time;
+	//static time_t last_ping_time = 0;
+	slurm_fd_t fd = -1;
+	int ret_val = SLURM_SUCCESS;
+	slurm_msg_t msg = NULL;
+	urgent_job_msg_t urgent_job_msg;
+
         //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
 	/*slurmctld_lock_t all_locks = {
 		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };*/
 
+	msg = xmalloc(sizeof(slurm_msg_t));
+	msg->data = &urgent_job_msg;
+
+	slurm_msg_t_init(msg);
+
         printf("\n[PING_AGENT]: Entering ping_agent\n");
+	printf("\n[PING_AGENT]: Attempting to connect to iRM Daemon\n");
+
+	fd = _connect_to_irmd("127.0.0.1", 12435, &stop_agent, ping_interval, "PING_AGENT");
+
+	if (fd == -1) {
+	   printf("\n[PING_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
+	   return NULL;
+	}
 
 	_load_config();
 
-	last_ping_time = time(NULL);
+	ret_val = send_urgent_job(fd, msg);
+
+	if (ret_val == SLURM_SUCCESS) {
+	   printf("\nSubmitted the urgent job successfully to iRM\n");
+	   printf("\nWill wait to receive the response from iRM\n");
+	   ret_val = receive_urgent_job_resp(fd);
+	   if (ret_val != SLURM_SUCCESS) {
+	      printf("\nDid not receive the response successfully for the previously submitted urgent job.\n");
+	   } else {
+	      printf("\nReceived successfully the response for the previously submitted urgent job\n");
+	   }
+	} else {
+	   printf("\nUnable to submit the urgent job to iRM successfully\n");
+	}
+
+	slurm_free_msg(msg);
+	close(fd);	
+
+	/*last_ping_time = time(NULL);
 	while (!stop_agent) {
 		_my_sleep(ping_interval);
 		if (stop_agent)
@@ -254,7 +290,7 @@ extern void *ping_agent(void *args)
 		//_compute_start_times();
 		last_ping_time = time(NULL);
 		//unlock_slurmctld(all_locks);
-	}
+	}*/
         printf("\n[PING_AGENT]: Exiting ping_agent\n");
 	return NULL;
 }

@@ -2864,7 +2864,23 @@ extern void slurm_free_negotiation_end_msg(negotiation_end_msg_t *msg)
 }
 
 
+extern void slurm_free_urgent_job_msg(urgent_job_msg_t *msg)
+{
+	xfree(msg);
+}
+
+
 extern void slurm_free_negotiation_end_resp_msg(negotiation_end_resp_msg_t *msg)
+{
+	if (msg) {
+	   xfree(msg->error_msg);
+	   xfree(msg);
+	}
+}
+
+
+
+extern void slurm_free_urgent_job_resp_msg(urgent_job_resp_msg_t *msg)
 {
 	if (msg) {
 	   xfree(msg->error_msg);
@@ -3129,6 +3145,12 @@ extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)
 		break;
         case RESPONSE_NEGOTIATION_END:
         	slurm_free_negotiation_end_resp_msg(data);
+		break;
+	case URGENT_JOB:
+		slurm_free_urgent_job_msg(data);
+		break;
+	case RESPONSE_URGENT_JOB:
+		slurm_free_urgent_job_resp_msg(data);
 		break;
 	default:
 		error("invalid type trying to be freed %u", type);
@@ -3613,6 +3635,10 @@ rpc_num2string(uint16_t opcode)
 		return "NEGOTIATION_END";
         case RESPONSE_NEGOTIATION_END:
 		return "RESPONSE_NEGOTIATION_END";
+	case URGENT_JOB:
+		return "URGENT_JOB";
+	case RESPONSE_URGENT_JOB
+		return "RESPONSE_URGENT_JOB";
 	default:
 		(void) snprintf(buf, sizeof(buf), "%u", opcode);
 		return buf;

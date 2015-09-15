@@ -704,6 +704,12 @@ static void _pack_negotiation_end_resp_msg(negotiation_end_resp_msg_t *msg,
 static void _pack_status_report_msg(status_report_msg_t *msg,
 					 Buf buffer, uint16_t protocol_version);
 
+static void _pack_urgent_job_msg(urgent_job_msg_t *msg,
+					 Buf buffer, uint16_t protocol_version);
+
+static void _pack_urgent_job_resp_msg(urgent_job_resp_msg_t *msg,
+					 Buf buffer, uint16_t protocol_version);
+
 static int _unpack_request_resource_offer_msg(request_resource_offer_msg_t **msg, Buf buffer,
                                      uint16_t protocol_version);
 
@@ -726,6 +732,12 @@ static int _unpack_negotiation_end_resp_msg(negotiation_end_resp_msg_t **msg, Bu
                                      uint16_t protocol_version);
 
 static int _unpack_status_report_msg(status_report_msg_t **msg, Buf buffer, 
+				     uint16_t protocol_version);
+
+static int _unpack_urgent_job_msg(urgent_job_msg_t **msg, Buf buffer,
+				     uint16_t protocol_version);
+
+static int _unpack_urgent_job_resp_msg(urgent_job_resp_msg_t **msg, Buf buffer,
 				     uint16_t protocol_version);
 
 /* pack_header
@@ -1403,6 +1415,14 @@ pack_msg(slurm_msg_t const *msg, Buf buffer)
 		break;
 	case RESPONSE_NEGOTIATION_END:
 		_pack_negotiation_end_resp_msg((negotiation_end_resp_msg_t *) msg->data,
+					 buffer, msg->protocol_version);
+		break;
+	case URGENT_JOB:
+		_pack_urgent_job_msg((urgent_job_msg_t *) msg->data, 
+					 buffer, msg->protocol_version);
+		break;
+	case RESPONSE_URGENT_JOB:
+		_pack_urgent_job_resp_msg((urgent_job_resp_msg_t *) msg->data,
 					 buffer, msg->protocol_version);
 		break;
 	default:
@@ -2083,6 +2103,16 @@ unpack_msg(slurm_msg_t * msg, Buf buffer)
 		rc = _unpack_status_report_msg((status_report_msg_t **)
 					      &(msg->data), buffer, 
 					      msg->protocol_version);
+		break;
+	case URGENT_JOB:
+		rc = _unpack_urgent_job_msg((urgent_job_msg_t **)
+					      &(msg->data), buffer,
+					      msg->protocol_version);
+		break;
+	case RESPONSE_URGENT_JOB:
+		rc = _unpack_urgent_job_resp_msg((urgent_job_resp_msg_t **)
+						   &(msg->data), buffer,
+						   msg->protocol_version);
 		break;
 	default:
 		debug("No unpack method for msg type %u", msg->msg_type);
@@ -12366,6 +12396,58 @@ unpack_error:
         *msg = NULL;
         return SLURM_ERROR;
 }
+
+
+static void _pack_urgent_job_msg(urgent_job_msg_t *msg, Buf buffer,
+				     uint16_t protocol_version)
+{ 
+        xassert(msg != NULL);
+	pack16(msg->value, buffer);
+}
+
+
+static int _unpack_urgent_job_msg(urgent_job_msg_t **msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+        xassert(msg != NULL);
+	*msg = xmalloc(sizeof(urgent_job_msg_t));
+	safe_unpack16(&((*msg)->value), buffer);
+        return SLURM_SUCCESS;
+unpack_error:
+        slurm_free_urgent_job_msg(*msg);
+        *msg = NULL;
+        return SLURM_ERROR;
+}
+
+
+static void _pack_urgent_job_resp_msg(urgent_job_resp_msg_t *msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+        xassert(msg != NULL);
+	pack16(msg->value, buffer);
+	pack32((uint32_t)msg->error_code, buffer);
+	packstr(msg->error_msg, buffer);
+}
+
+
+
+static int _unpack_urgent_job_resp_msg(urgent_job_resp_msg_t **msg, Buf buffer,
+				     uint16_t protocol_version)
+{
+	uint32_t uint32_tmp;
+        xassert(msg != NULL);
+	*msg = xmalloc(sizeof(urgent_job_resp_msg_t));
+	safe_unpack16(&((*msg)->value), buffer);
+        safe_unpack32(&((*msg)->error_code), buffer); 
+        safe_unpackstr_xmalloc(&((*msg)->error_msg), &uint32_tmp, buffer);
+        return SLURM_SUCCESS;
+unpack_error:
+        xfree((*msg)->error_msg);
+        slurm_free_urgent_job_resp_msg(*msg);
+        *msg = NULL;
+        return SLURM_ERROR;
+}
+
 
 /* template
    void pack_ ( * msg , Buf buffer )
