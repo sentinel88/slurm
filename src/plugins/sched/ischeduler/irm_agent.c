@@ -273,6 +273,8 @@ extern void *irm_agent(void *args)
         resource_offer_msg_t res_off_msg;
         bool initialized = false;
 	bool terminated = false;
+	pthread_t urgent_job_agent = 0;
+	pthread_attr_t attr;
 	//bool non_zero_attemtpts = false;
 	int attempts = 0;
 	STATE irm_state = UNINITIALIZED;
@@ -280,6 +282,7 @@ extern void *irm_agent(void *args)
         buf = (char *)malloc(sizeof(uint16_t));
         msg = xmalloc(sizeof(slurm_msg_t));
         msg->data = &res_off_msg;
+	slurm_attr_init(&attr);
 
         printf("\n[IRM_AGENT]: Entering irm_agent\n");
         printf("\n[IRM_AGENT]: Attempting to connect to iRM Daemon\n");
@@ -302,7 +305,14 @@ extern void *irm_agent(void *args)
 	if (ret_val != SLURM_SUCCESS) {
 	   printf("\nProtocol initialization failed\n");
 	   stop_irm_agent();
+	} else {
+           if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
+              error("\nUnable to start a thread to execute a schedule loop for urgent jobs\n");
+           } else {
+	      printf("\nSuccessfully created a thread which serves as an agent to dispatch urgent jobs immediately to iRM\n");
+	   }
 	}
+
 	printf("\nstop_agent = %d\n", stop_agent);
 	while (!stop_agent) {
 		irm_state = PROTOCOL_IN_PROGRESS;

@@ -28,7 +28,13 @@ extern void *feedback_agent(void *);
 
 extern void stop_feedback_agent(void);
 
+extern void *schedule_loop(void *);
+
+extern int _init_comm(char *host, uint16_t port, char *agent_name);
+
 #define timeout (30*1000)
+
+extern bool stop_urgent_job_agent;
 
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
 //extern void *isched_agent(void *args);

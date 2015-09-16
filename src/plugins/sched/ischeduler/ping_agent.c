@@ -33,7 +33,7 @@
 #endif
 
 /*********************** local variables *********************/
-static bool stop_agent = false;
+bool stop_ping_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
@@ -50,7 +50,7 @@ static void _my_sleep(int secs);
 extern void stop_ping_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
-	stop_agent = true;
+	stop_ping_agent = true;
         printf("\nStopping PING agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -65,7 +65,7 @@ static void _my_sleep(int secs)
 	ts.tv_sec = now.tv_sec + secs;
 	ts.tv_nsec = now.tv_usec * 1000;
 	pthread_mutex_lock(&term_lock);
-	if (!stop_agent)
+	if (!stop_ping_agent)
 		pthread_cond_timedwait(&term_cond, &term_lock, &ts);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -224,7 +224,6 @@ extern void *ping_agent(void *args)
 	slurm_fd_t fd = -1;
 	int ret_val = SLURM_SUCCESS;
 	slurm_msg_t msg = NULL;
-	urgent_job_msg_t urgent_job_msg;
 
         //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
@@ -232,35 +231,27 @@ extern void *ping_agent(void *args)
 		READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };*/
 
 	msg = xmalloc(sizeof(slurm_msg_t));
-	msg->data = &urgent_job_msg;
 
 	slurm_msg_t_init(msg);
 
         printf("\n[PING_AGENT]: Entering ping_agent\n");
 	printf("\n[PING_AGENT]: Attempting to connect to iRM Daemon\n");
 
-	fd = _connect_to_irmd("127.0.0.1", 12435, &stop_agent, ping_interval, "PING_AGENT");
+	fd = _connect_to_irmd("127.0.0.1", 12435, &stop_ping_agent, ping_interval, "PING_AGENT");
 
 	if (fd == -1) {
 	   printf("\n[PING_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
 	   return NULL;
 	}
 
-	_load_config();
+	//_load_config();
 
-	ret_val = send_urgent_job(fd, msg);
+	ret_val = send_recv_urgent_job(fd, msg);
 
 	if (ret_val == SLURM_SUCCESS) {
 	   printf("\nSubmitted the urgent job successfully to iRM\n");
-	   printf("\nWill wait to receive the response from iRM\n");
-	   ret_val = receive_urgent_job_resp(fd);
-	   if (ret_val != SLURM_SUCCESS) {
-	      printf("\nDid not receive the response successfully for the previously submitted urgent job.\n");
-	   } else {
-	      printf("\nReceived successfully the response for the previously submitted urgent job\n");
-	   }
 	} else {
-	   printf("\nUnable to submit the urgent job to iRM successfully\n");
+	   printf("\nUnable to submit the urgent job to iRM\n");
 	}
 
 	slurm_free_msg(msg);

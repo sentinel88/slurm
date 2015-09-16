@@ -334,21 +334,61 @@ total_return:
 
 
 int
-send_urgent_job(slurm_fd_t fd, slurm_msg_t *req_msg)
+schedule_urgent_jobs(void) 
 {
-        printf("\nInside send_urgent_job\n");
+   printf("\nInside schedule_urgent_jobs\n");
+   int sleep_interval = 20*1000;
+   pthread_t thread_id;
+   pthread_attr_t thread_attr;
+
+   slurm_attr_init(&thread_attr);
+   if (pthread_attr_setdetachstate
+            (&thread_attr, PTHREAD_CREATE_DETACHED))
+                fatal("pthread_attr_setdetachstate %m");
+   
+   while(!stop_ping_agent) {
+      sleep(sleep_interval);
+      if (pthread_create(&thread_id, &thread_attr, ping_agent, NULL)) {
+           error("pthread_create error %m");
+      } 
+   }   
+
+   slurm_attr_destroy(&thread_attr);
+   printf("\nExiting schedule_urgent_jobs\n");
+   return SLURM_SUCCESS;
+}
+
+
+void 
+*schedule_loop(void *args) 
+{
+   printf("\nInside the schedule_loop routine of the agent for urgent jobs\n");
+   int ret_val = SLURM_SUCCESS;
+   ret_val = schedule_urgent_jobs(); 
+   printf("\nExiting the routine schedule_loop of the agent for urgent jobs\n");
+   return NULL;
+}
+
+
+
+int
+send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *req_msg)
+{
+        printf("\nInside send_recv_urgent_job\n");
         int rc;
-        int ch;
 	int ret_val = SLURM_SUCCESS;
         slurm_msg_t req_msg;
+	slurm_msg_t resp_msg;
+	urgent_job_msg_t msg;
         Buf buffer;
         header_t header;
 
-        msg->value = 1;   // For the time being the request resource offer is just a value of 1 being sent in the message.
+        msg.value = 1;   // For the time being the request resource offer is just a value of 1 being sent in the message.
 
 	sleep(5);
 
         slurm_msg_t_init(&req_msg);
+        slurm_msg_t_init(&resp_msg);
 
         forward_init(&req_msg.forward, NULL);
         req_msg.ret_list = NULL;
@@ -356,7 +396,7 @@ send_urgent_job(slurm_fd_t fd, slurm_msg_t *req_msg)
 
 
         req_msg.msg_type = URGENT_JOB;
-        req_msg.data     = msg;
+        req_msg.data     = &msg;
 
         init_header(&header, &req_msg, req_msg.flags);
 
@@ -382,17 +422,84 @@ send_urgent_job(slurm_fd_t fd, slurm_msg_t *req_msg)
                                 get_buf_offset(buffer),
                                 SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
 
-        if (rc < 0) {
+	if (rc < 0) {
            printf("\nProblem with sending the urgent job to iRM\n");
            rc = errno;
-        } else {
-           printf("\nSubmitted the urgent job to iRM.\n");
-           rc = SLURM_SUCCESS;
+           free_buf(buffer);
+           goto total_return;
         }
 
-        free_buf(buffer);
+        printf("[PING_AGENT]: Sent the start msg. Waiting for a response.\n");
 
-        printf("\nExiting send_urgent_job\n");
+    	free_buf(buffer);
+
+    	resp_msg.conn_fd = fd;
+
+    	/*
+     	 * Receive a msg. slurm_msg_recvfrom() will read the message
+     	 *  length and allocate space on the heap for a buffer containing
+     	 *  the message.
+     	 */
+    	if (_slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0, timeout) < 0) {
+           forward_init(&header.forward, NULL);
+           printf("\n[PING_AGENT]: Did not receive the correct response for the urgent job.\n");
+           printf("\n[PING_AGENT]: Need to exit.\n");
+           rc = errno;
+           goto total_return;
+    	}
+
+//#if     _DEBUG
+    	_print_data (buf, buflen);
+//#endif
+    	buffer = create_buf(buf, buflen);
+
+    	if (unpack_header(&header, buffer) == SLURM_ERROR) {
+           free_buf(buffer);
+           rc = SLURM_COMMUNICATIONS_RECEIVE_ERROR;
+           goto total_return;
+    	}
+
+    	/*
+	 * Unpack message body
+     	 */
+    	resp_msg.protocol_version = header.version;
+    	resp_msg.msg_type = header.msg_type;
+    	resp_msg.flags = header.flags;
+
+    	if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(&resp_msg, buffer) != SLURM_SUCCESS)) {
+           rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
+           free_buf(buffer);
+           goto total_return;
+    	}
+
+/*      if (rc == SLURM_SOCKET_ERROR)
+            return SLURM_ERROR; */
+
+    	switch (resp_msg.msg_type) {
+        /*case RESPONSE_SLURM_RC:
+                rc = ((return_code_msg_t *) resp_msg.data)->return_code;
+if (rc)
+                slurm_seterrno_ret(rc);
+            *resp = NULL;
+            break;*/
+           case RESPONSE_URGENT_JOB:
+              printf("\nResponse received from iRM for the urgent job. Value is %d\n", ((urgent_job_resp_msg_t *)(resp_msg.data))->value);
+              slurm_free_urgent_job_resp_msg(resp_msg.data);
+              rc = SLURM_SUCCESS;
+              break;
+           default:
+              printf("\nUnexpected message.\n");
+              free_buf(buffer);
+              slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
+    	}
+
+    	printf("[PING_AGENT]: Received the response for the urgent job msg.\n");
+
+    	free_buf(buffer);
+total_return:
+
+
+        printf("\nExiting send_recv_urgent_job\n");
         return rc;
 }
 

@@ -35,9 +35,11 @@ typedef enum{UNINITIALIZED, PROTOCOL_INITIALIZED, PROTOCOL_IN_PROGRESS, PROTOCOL
 
 /*********************** local variables *********************/
 static bool stop_agent = false;
+bool stop_urgent_job_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static pthread_t feedback_thread = 0;
+static pthread_t urgent_job_agent = 0;
 static bool initialized = false;
 //static bool config_flag = false;
 //static int irm_interval = BACKFILL_INTERVAL;
@@ -55,6 +57,7 @@ extern void stop_irm_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
 	stop_agent = true;
+	stop_urgent_job_agent = true;
         printf("\nStopping IRM agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -114,7 +117,7 @@ static void _load_config(void)
 }
 
 //Connect to iRM daemon via a TCP connection
-static int _init_comm(void) {
+/*static int _init_comm(void) {
    slurm_fd_t fd = -1;
    slurm_addr_t addr;
    uint16_t port = 12345;
@@ -129,7 +132,7 @@ static int _init_comm(void) {
    }
    printf("\n[IRM_DAEMON]: Successfully initialized communication engine\n");
    return fd;
-}
+}*/
 
 /* Note that slurm.conf has changed */
 /*extern void irm_reconfig(void)
@@ -162,9 +165,8 @@ int main(int argc, char *argv[])
 	req = xmalloc(sizeof(resource_offer_msg_t));
 
         printf("\n[IRM_DAEMON]: Entering irm_agent\n");
-        printf("\n[IRM_DAEMON]: Attempting to connect to iRM Daemon\n");
 
-        fd = _init_comm();
+        fd = _init_comm("127.0.0.1", 12345, "IRM_DAEMON");
 
         if (fd == -1) { 
            printf("\n[IRM_DAEMON]: Unsuccessful initialization of communication engine. Agent shutting down\n");
@@ -191,8 +193,14 @@ int main(int argc, char *argv[])
         if (ret_val != SLURM_SUCCESS) {
            printf("\nProtocol initialization falied\n");
            stop_irm_agent();
-        }
-
+        } else {
+	   slurm_t_init(&attr);
+	   if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
+	      error("\nUnable to start the agent to handle urgent jobs\n");
+	   } else {
+	      printf("\nSuccessfully created a thread to handle urgent jobs\n");
+	   }
+	}
 	while (!stop_agent) {
 		ret_val = SLURM_SUCCESS;
 

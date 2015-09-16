@@ -57,7 +57,7 @@ extern void stop_isched_agent(void)
         stop_ping_agent();
         stop_feedback_agent();
         stop_irm_agent();
-        pthread_join(ping_thread,  NULL);
+        //pthread_join(ping_thread,  NULL);
         pthread_join(feedback_thread,  NULL);
         pthread_join(irm_thread,  NULL);
         printf("\nPing, Feedback and iRM threads have shutdown successfully\n");
@@ -255,11 +255,11 @@ extern void *isched_agent(void *args)
         slurm_attr_destroy(&attr);
 
         /* Create an attached thread for ping agent */
-        slurm_attr_init(&attr);
+    /*    slurm_attr_init(&attr);
         if (pthread_create(&ping_thread, &attr, ping_agent, NULL)) {
            error("pthread_create error %m");
         }
-        slurm_attr_destroy(&attr);
+        slurm_attr_destroy(&attr);*/
 
 	last_sched_time = time(NULL);
 	while (!stop_isched) {

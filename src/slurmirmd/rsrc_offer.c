@@ -33,6 +33,26 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 
 extern int send_custom_data(slurm_fd_t);
 
+
+//Connect to iRM daemon via a TCP connection
+int _init_comm(char *host, uint16_t port, char *agent_name) {
+   slurm_fd_t fd = -1;
+   slurm_addr_t addr;
+   //uint16_t port = 12345;
+   //char *host = "127.0.0.1";
+
+   slurm_set_addr(&addr, port, host);
+   fd = slurm_init_msg_engine(&addr);
+
+   if (fd < 0) {
+      printf("\n[%s]: Failed to initialize communication engine. Daemon will shutdown shortly\n", agent_name);
+      return -1;
+   }
+   printf("\n[%s]: Successfully initialized communication engine\n", agent_name);
+   return fd;
+}
+
+
 static void _print_data(char *data, int len)
 {
         int i;
@@ -684,3 +704,175 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
    return rc;
 }
 
+
+void 
+*schedule_loop(void *args) 
+{
+   printf("\nInside schedule_loop\n");
+   slurm_fd_t fd = -1;
+   slurm_fd_t client_fd = -1;
+   slurm_addr_t cli_addr;
+   
+   fd = _init_comm("127.0.0.1", 12543, "URGENT_JOBS_AGENT");
+
+   if (fd == -1) {
+      printf("\n[URGENT_JOBS_AGENT]: Unsuccessful initialization of communication engine\n");
+      return NULL;
+   }
+
+   while(!stop_urgent_job_agent) {
+      client_fd = slurm_accept_msg_conn(fd, &cli_addr);
+
+      if (client_fd != SLURM_SOCKET_ERROR) {
+         printf("\n[URGENT_JOBS_AGENT]: Accepted a connection from iScheduler's urgent jobs agent. Communications can now start\n");
+      } else {
+         printf("\n[URGENT_JOBS_AGENT]: Unable to receive any connection request from iScheduler's urgent jobs agent. Shutting down the daemon.\n");
+         return NULL;
+      }
+
+      ret_val = recv_send_urgent_job(client_fd);
+      if (stop_urgent_job_agent) { 
+         printf("\nStopping the agent for processing urgent jobs\n");
+         break;
+      }
+      printf("\nFinished the transaction for this urgent job successfully\n");
+   }
+
+   printf("\nExiting schedule_loop\n");
+   return NULL;
+}
+
+
+int
+recv_send_urgent_job(slurm_fd_t fd)
+{
+        printf("\nInside recv_send_urgent_job\n");
+        char *buf = NULL;
+        size_t buflen = 0;
+        header_t header;
+        int rc;
+        //void *auth_cred = NULL;
+	slurm_msg_t msg;
+	slurm_msg_t resp_msg;
+	urgent_job_resp_msg_t resp;
+        Buf buffer;
+
+        xassert(fd >= 0);
+
+        slurm_msg_t_init(&msg);
+        msg.conn_fd = fd;
+
+        /*
+         * Receive a msg. slurm_msg_recvfrom() will read the message
+         *  length and allocate space on the heap for a buffer containing
+         *  the message.
+         */
+        if (_slurm_msg_recvfrom_timeout(fd, &buf, &buflen, 0, timeout) < 0) {
+                printf("\nError in receiving\n");
+                forward_init(&header.forward, NULL);
+                rc = errno;
+                goto total_return;
+        }
+
+//#if     _DEBUG
+        _print_data (buf, buflen);
+//#endif
+        buffer = create_buf(buf, buflen);
+
+        if (unpack_header(&header, buffer) == SLURM_ERROR) {
+                printf("\nError in unpacking header\n");
+                free_buf(buffer);
+                rc = SLURM_COMMUNICATIONS_RECEIVE_ERROR;
+                goto total_return;
+        }
+
+
+        /*
+         * Unpack message body
+         */
+        msg.protocol_version = header.version;
+        msg.msg_type = header.msg_type;
+        msg.flags = header.flags;
+
+        switch(msg.msg_type) {
+           case URGENT_JOB:
+                printf("\nReceived an urgent job from iScheduler.\n");
+                if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(&msg, buffer) != SLURM_SUCCESS)) {
+                     printf("\nError in buffer size and unpacking of buffer into the msg structure\n");
+                     rc = ESLURM_PROTOCOL_INCOMPLETE_PACKET;
+                     //free_buf(buffer);
+                } else {
+		   //req_msg = (request_resource_offer_msg_t *)msg.data;
+		   printf("\nLaunching the urgent job now\n");
+		   slurm_free_urgent_job_msg(msg.data);
+                   rc = SLURM_SUCCESS;
+                }
+                break;
+           default:
+                printf("\nUnexpected message\n");
+		free_buf(buffer);
+                slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
+        }
+
+        free_buf(buffer);
+        if (rc != SLURM_SUCCESS) goto total_return;
+
+	slurm_msg_t_init(&resp_msg);
+	resp_msg.conn_fd = fd;
+
+	forward_init(&resp_msg.forward, NULL);
+        resp_msg.ret_list = NULL;
+        resp_msg.forward_struct = NULL;
+
+
+        resp_msg.msg_type = RESPONSE_URGENT_JOB;
+        resp_msg.data     = &resp;
+
+	resp.error_code = 0;
+	resp.error_msg = (char *)NULL;
+
+        init_header(&header, &resp_msg, resp_msg.flags);
+
+        /*
+         * Pack header into buffer for transmission
+         */
+        buffer = init_buf(BUF_SIZE);
+        pack_header(&header, buffer);
+
+        /*
+         * Pack message into buffer
+         */
+        new_pack_msg(&resp_msg, &header, buffer);
+
+//#if     _DEBUG
+        _print_data (get_buf_data(buffer),get_buf_offset(buffer));	
+
+ /*
+         * Send message
+         */
+        rc = _slurm_msg_sendto( resp_msg.conn_fd, get_buf_data(buffer),
+                                get_buf_offset(buffer),
+                                SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+
+        if (rc < 0) {
+           printf("\nProblem with sending the response for urgent job msg to iScheduler\n");
+           rc = SLURM_ERROR;
+        } else {
+           printf("\nSend was successful\n");
+           rc = SLURM_SUCCESS;
+        }
+
+        free_buf(buffer);
+        xfree(resp.error_msg);
+
+total_return:
+        destroy_forward(&header.forward);
+
+        slurm_seterrno(rc);
+        if (rc != SLURM_SUCCESS) {
+        } else {
+                rc = 0;
+        }
+        printf("\nExiting recv_send_urgent_job\n");
+        return rc;
+}

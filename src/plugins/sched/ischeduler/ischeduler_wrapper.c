@@ -23,7 +23,6 @@ const uint32_t		plugin_version	= 110;
 
 /* A plugin-global errno. */
 static int plugin_errno = SLURM_SUCCESS;
-
 static pthread_t isched_thread = 0;
 static pthread_mutex_t thread_flag_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -46,8 +45,9 @@ int init( void )
 
 	slurm_attr_init( &attr ); 
 	/* since we do a join on this later we don't make it detached */
-	if (pthread_create( &isched_thread, &attr, isched_agent, NULL))
-		error("Unable to start iScheduler thread: %m");
+	if (pthread_create( &isched_thread, &attr, isched_agent, NULL)) {
+	   error("\nUnable to start iScheduler thread: %m\n");
+        } 
 	pthread_mutex_unlock( &thread_flag_mutex );
 	slurm_attr_destroy( &attr );
 
