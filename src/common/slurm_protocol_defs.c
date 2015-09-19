@@ -3637,7 +3637,7 @@ rpc_num2string(uint16_t opcode)
 		return "RESPONSE_NEGOTIATION_END";
 	case URGENT_JOB:
 		return "URGENT_JOB";
-	case RESPONSE_URGENT_JOB
+	case RESPONSE_URGENT_JOB:
 		return "RESPONSE_URGENT_JOB";
 	default:
 		(void) snprintf(buf, sizeof(buf), "%u", opcode);

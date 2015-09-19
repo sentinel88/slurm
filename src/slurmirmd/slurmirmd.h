@@ -32,6 +32,8 @@ extern void *schedule_loop(void *);
 
 extern int _init_comm(char *host, uint16_t port, char *agent_name);
 
+extern int recv_send_urgent_job(slurm_fd_t);
+
 #define timeout (30*1000)
 
 extern bool stop_urgent_job_agent;

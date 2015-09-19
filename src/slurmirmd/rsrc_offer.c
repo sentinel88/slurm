@@ -26,8 +26,7 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/forward.h"
 #include "src/common/slurm_protocol_pack.h"
 #include "src/common/xmalloc.h"
-
-#define timeout (30 * 1000)
+#include "slurmirmd.h"
 
 //#define TESTING 1
 
@@ -712,6 +711,7 @@ void
    slurm_fd_t fd = -1;
    slurm_fd_t client_fd = -1;
    slurm_addr_t cli_addr;
+   int ret_val = SLURM_SUCCESS;
    
    fd = _init_comm("127.0.0.1", 12543, "URGENT_JOBS_AGENT");
 

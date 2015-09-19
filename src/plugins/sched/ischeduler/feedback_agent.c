@@ -71,8 +71,8 @@ static void _my_sleep(int secs)
 	pthread_mutex_unlock(&term_lock);
 }
 
-//static void _load_config(void)
-//{
+static void _load_config(void)
+{
 /*	char *sched_params, *select_type, *tmp_ptr;
 
 	sched_timeout = slurm_get_msg_timeout() / 2;
@@ -108,7 +108,7 @@ static void _my_sleep(int secs)
 		stop_builtin_agent();
 	}
 	xfree(select_type);*/
-//}
+}
 
 //static void _compute_start_times(void)
 //{
@@ -211,7 +211,7 @@ static void _my_sleep(int secs)
 //} 
 
 //Connect to iRM daemon's feedback agent via a TCP connection
-static int _connect_to_irmd(void) {
+/*static int _connect_to_irmd(void) {
    slurm_fd_t fd = -1;
    slurm_addr_t irm_address;
    uint16_t port = 12346;
@@ -229,11 +229,11 @@ static int _connect_to_irmd(void) {
          break;
       }
       _my_sleep(feedback_interval);
-   }
+   }*/
    /*if (!stop_agent)
       printf("\n[IRM_AGENT]: Successfully connected to iRM daemon\n");*/
-   return fd;
-}
+   /*return fd;
+}*/
 
 /* Note that slurm.conf has changed */
 extern void feedback_agent_reconfig(void)
@@ -253,7 +253,7 @@ extern void *feedback_agent(void *args)
         printf("\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
 	printf("\n[FEEDBACK_AGENT]: Attempting to connect to the feedback agent of iRM daemon\n");
 
-	fd = _connect_to_irmd();
+	fd = _connect_to_irmd("127.0.0.1", 12346, &stop_agent, feedback_interval, "FEEDBACK_AGENT");
         if (fd == -1) {
            printf("\n[FEEDBACK_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
            return NULL;

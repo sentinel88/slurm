@@ -95,7 +95,7 @@ extern void *schedule_loop(void *);
 #define _TESTING 0
 
 //extern bool urgent_jobs;
-extern bool stop_ping_agent;
+extern bool stop_ug_agent;
 extern pthread_mutex_t urgent_lock;
 
 #endif	/* _SLURM_ISCHEDULER_H */

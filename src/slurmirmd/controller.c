@@ -50,7 +50,7 @@ static bool initialized = false;
 //static void _compute_start_times(void);
 static void _load_config(void);
 //static void _my_sleep(int secs);
-static int _init_comm(void);
+//static int _init_comm(void);
 
 /* Terminate ischeduler_agent */
 extern void stop_irm_agent(void)
@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
            printf("\nProtocol initialization falied\n");
            stop_irm_agent();
         } else {
-	   slurm_t_init(&attr);
+	   slurm_attr_init(&attr);
 	   if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
 	      error("\nUnable to start the agent to handle urgent jobs\n");
 	   } else {

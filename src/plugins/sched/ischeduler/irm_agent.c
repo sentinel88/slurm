@@ -38,6 +38,7 @@
 /*********************** local variables *********************/
 static bool stop_agent = false;
 bool urgent_jobs = false;
+bool stop_ug_agent = false;
 pthread_mutex_t urgent_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
@@ -52,7 +53,7 @@ typedef enum {UNINITIALIZED, PROTOCOL_INITIALIZED, PROTOCOL_IN_PROGRESS, PROTOCO
 //static void _compute_start_times(void);
 static void _load_config(void);
 static void _my_sleep(int secs);
-static int _connect_to_irmd(void);
+//static int _connect_to_irmd(void);
 
 
 /* Terminate iScheduler_agent */
@@ -60,6 +61,7 @@ extern void stop_irm_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
 	stop_agent = true;
+	stop_ug_agent = true;
         printf("\nStopping IRM agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -402,6 +404,7 @@ extern void *irm_agent(void *args)
         free(buf);
         slurm_free_msg(msg);
         close(fd);
+	pthread_join(urgent_job_agent, NULL);
         printf("\n[IRM_AGENT]: Exiting irm_agent\n");
 	return NULL;
 }

@@ -210,7 +210,7 @@ static void _load_config(void)
 	FREE_NULL_BITMAP(alloc_bitmap); */
 //} 
 
-static int _init_comm(void) {
+/*static int _init_comm(void) {
    slurm_fd_t fd = -1;
    slurm_addr_t addr;
    uint16_t port = 12346;
@@ -225,7 +225,7 @@ static int _init_comm(void) {
    }
    printf("\n[FEEDBACK_AGENT]: Successfully initialized communication engine\n");
    return fd;
-}
+}*/
 
 
 /* Note that slurm.conf has changed */
@@ -247,7 +247,7 @@ extern void *feedback_agent(void *args)
 	double wait_time;
         printf("\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
 
-	fd = _init_comm();
+	fd = _init_comm("127.0.0.1", 12346, "FEEDBACK_AGENT");
         if (fd == -1) {
            printf("\n[FEEDBACK_AGENT]: Unsuccessful initialization of the communcation engine. Agent shutting down\n");
            return NULL;

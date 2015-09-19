@@ -33,7 +33,7 @@
 #endif
 
 /*********************** local variables *********************/
-bool stop_ping_agent = false;
+bool stop_agent = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
@@ -50,7 +50,7 @@ static void _my_sleep(int secs);
 extern void stop_ping_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
-	stop_ping_agent = true;
+	stop_agent = true;
         printf("\nStopping PING agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -65,7 +65,7 @@ static void _my_sleep(int secs)
 	ts.tv_sec = now.tv_sec + secs;
 	ts.tv_nsec = now.tv_usec * 1000;
 	pthread_mutex_lock(&term_lock);
-	if (!stop_ping_agent)
+	if (!stop_agent)
 		pthread_cond_timedwait(&term_cond, &term_lock, &ts);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -223,7 +223,7 @@ extern void *ping_agent(void *args)
 	//static time_t last_ping_time = 0;
 	slurm_fd_t fd = -1;
 	int ret_val = SLURM_SUCCESS;
-	slurm_msg_t msg = NULL;
+	slurm_msg_t *msg = NULL;
 
         //pthread_attr_t attr;
 	/* Read config, nodes and partitions; Write jobs */
@@ -237,7 +237,7 @@ extern void *ping_agent(void *args)
         printf("\n[PING_AGENT]: Entering ping_agent\n");
 	printf("\n[PING_AGENT]: Attempting to connect to iRM Daemon\n");
 
-	fd = _connect_to_irmd("127.0.0.1", 12435, &stop_ping_agent, ping_interval, "PING_AGENT");
+	fd = _connect_to_irmd("127.0.0.1", 12435, &stop_agent, ping_interval, "PING_AGENT");
 
 	if (fd == -1) {
 	   printf("\n[PING_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");

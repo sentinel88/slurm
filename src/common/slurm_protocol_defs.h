@@ -1336,6 +1336,8 @@ extern void slurm_free_negotiation_start_resp_msg (negotiation_start_resp_msg_t 
 extern void slurm_free_negotiation_end_msg (negotiation_end_msg_t * negotiation_end);
 extern void slurm_free_negotiation_end_resp_msg (negotiation_end_resp_msg_t * negotiation_end_resp);
 extern void slurm_free_status_report_msg (status_report_msg_t * status_report_msg);
+extern void slurm_free_urgent_job_msg (urgent_job_msg_t * urgent_job_msg);
+extern void slurm_free_urgent_job_resp_msg (urgent_job_resp_msg_t * urgent_job_resp_msg);
 
 extern char *preempt_mode_string(uint16_t preempt_mode);
 extern uint16_t preempt_mode_num(const char *preempt_mode);
