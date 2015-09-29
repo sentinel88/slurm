@@ -68,6 +68,15 @@ extern void stop_irm_agent(void)
 }
 
 
+extern void stop_urgent_job_agent(void)
+{
+	pthread_mutex_lock(&term_lock);
+	stop_ug_agent = true;
+        printf("\nStopping urgent job agent\n");
+	pthread_mutex_unlock(&term_lock);
+}
+
+
 /* Set the shared flag urgent_jobs to TRUE */
 extern void set_flag_urgent_jobs(void)
 {
@@ -404,6 +413,7 @@ extern void *irm_agent(void *args)
         free(buf);
         slurm_free_msg(msg);
         close(fd);
+	stop_urgent_job_agent();
 	pthread_join(urgent_job_agent, NULL);
         printf("\n[IRM_AGENT]: Exiting irm_agent\n");
 	return NULL;

@@ -713,7 +713,7 @@ void
    slurm_addr_t cli_addr;
    int ret_val = SLURM_SUCCESS;
    
-   fd = _init_comm("127.0.0.1", 12543, "URGENT_JOBS_AGENT");
+   fd = _init_comm("127.0.0.1", 12435, "URGENT_JOBS_AGENT");
 
    if (fd == -1) {
       printf("\n[URGENT_JOBS_AGENT]: Unsuccessful initialization of communication engine\n");

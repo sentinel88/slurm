@@ -221,6 +221,7 @@ extern void *ping_agent(void *args)
 	//time_t now;
 	//double wait_time;
 	//static time_t last_ping_time = 0;
+	printf("\nInside ping agent\n");
 	slurm_fd_t fd = -1;
 	int ret_val = SLURM_SUCCESS;
 	slurm_msg_t *msg = NULL;

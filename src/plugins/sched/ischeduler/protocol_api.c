@@ -338,7 +338,7 @@ int
 schedule_urgent_jobs(void) 
 {
    printf("\nInside schedule_urgent_jobs\n");
-   int sleep_interval = 20*1000;
+   int sleep_interval = 20;
    pthread_t thread_id;
    pthread_attr_t thread_attr;
 
@@ -348,10 +348,12 @@ schedule_urgent_jobs(void)
                 fatal("pthread_attr_setdetachstate %m");
    
    while(!stop_ug_agent) {
-      sleep(sleep_interval);
+      printf("\nInside the threading loop\n");
+      printf("\nstop_ug_agent = %d\n", stop_ug_agent);
       if (pthread_create(&thread_id, &thread_attr, ping_agent, NULL)) {
            error("pthread_create error %m");
       } 
+      sleep(sleep_interval);
    }   
 
    slurm_attr_destroy(&thread_attr);
