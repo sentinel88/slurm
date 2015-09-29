@@ -54,13 +54,12 @@ extern void stop_isched_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
         printf("\nBeginning to stop all agents\n");
-        stop_ping_agent();
         stop_feedback_agent();
         stop_irm_agent();
         //pthread_join(ping_thread,  NULL);
         pthread_join(feedback_thread,  NULL);
         pthread_join(irm_thread,  NULL);
-        printf("\nPing, Feedback and iRM threads have shutdown successfully\n");
+        printf("\nFeedback and iRM threads have shutdown successfully\n");
 	stop_isched = true;
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);

@@ -36,11 +36,12 @@
 #define DONT_EXECUTE 1
 
 /*********************** local variables *********************/
-static bool stop_agent = false;
+bool stop_agent_irm = false;
 bool urgent_jobs = false;
 bool stop_ug_agent = false;
-pthread_mutex_t urgent_lock = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t urgent_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t urgent_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
 static int irm_interval = BACKFILL_INTERVAL;
@@ -60,8 +61,9 @@ static void _my_sleep(int secs);
 extern void stop_irm_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
-	stop_agent = true;
-	stop_ug_agent = true;
+	stop_agent_irm = true;
+	stop_ping_agent();
+	stop_urgent_job_agent();
         printf("\nStopping IRM agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -70,10 +72,10 @@ extern void stop_irm_agent(void)
 
 extern void stop_urgent_job_agent(void)
 {
-	pthread_mutex_lock(&term_lock);
+	pthread_mutex_lock(&urgent_lock);
 	stop_ug_agent = true;
         printf("\nStopping urgent job agent\n");
-	pthread_mutex_unlock(&term_lock);
+	pthread_mutex_unlock(&urgent_lock);
 }
 
 
@@ -96,7 +98,7 @@ static void _my_sleep(int secs)
 	ts.tv_sec = now.tv_sec + secs;
 	ts.tv_nsec = now.tv_usec * 1000;
 	pthread_mutex_lock(&term_lock);
-	if (!stop_agent)
+	if (!stop_agent_irm)
 		pthread_cond_timedwait(&term_cond, &term_lock, &ts);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -298,7 +300,7 @@ extern void *irm_agent(void *args)
         printf("\n[IRM_AGENT]: Entering irm_agent\n");
         printf("\n[IRM_AGENT]: Attempting to connect to iRM Daemon\n");
 
-        fd = _connect_to_irmd("127.0.0.1", 12345, &stop_agent, irm_interval, "IRM_AGENT");
+        fd = _connect_to_irmd("127.0.0.1", 12345, &stop_agent_irm, irm_interval, "IRM_AGENT");
 
         if (fd == -1) { 
            printf("\n[IRM_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
@@ -324,11 +326,11 @@ extern void *irm_agent(void *args)
 	   }
 	}
 
-	printf("\nstop_agent = %d\n", stop_agent);
-	while (!stop_agent) {
+	printf("\nstop_agent_irm = %d\n", stop_agent_irm);
+	while (!stop_agent_irm) {
 		irm_state = PROTOCOL_IN_PROGRESS;
                 ret_val = SLURM_SUCCESS;
-		if (stop_agent)
+		if (stop_agent_irm)
 			break;
 		if (config_flag) {
 			config_flag = false;
