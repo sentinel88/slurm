@@ -52,6 +52,7 @@ extern void stop_ping_agent(void)
 	pthread_mutex_lock(&term_lock);
 	stop_agent_ping = true;
         printf("\nStopping PING agent\n");
+	if (!stop_agent_sleep) stop_sleep_agent();
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -234,10 +235,10 @@ extern void *ping_agent(void *args)
 	msg = xmalloc(sizeof(slurm_msg_t));
 
 	slurm_msg_t_init(msg);
-
+#ifdef ISCHED_DEBUG
         printf("\n[PING_AGENT]: Entering ping_agent\n");
 	printf("\n[PING_AGENT]: Attempting to connect to iRM Daemon\n");
-
+#endif
 	fd = _connect_to_irmd("127.0.0.1", 12435, &stop_agent_ping, ping_interval, "PING_AGENT");
 
 	if (fd < 0) {

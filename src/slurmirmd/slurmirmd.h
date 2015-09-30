@@ -36,7 +36,7 @@ extern int recv_send_urgent_job(slurm_fd_t);
 
 #define timeout (30*1000)
 
-extern bool stop_urgent_job_agent;
+extern bool stop_agent_urgent_job;
 
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
 //extern void *isched_agent(void *args);

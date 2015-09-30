@@ -35,8 +35,9 @@ typedef enum{UNINITIALIZED, PROTOCOL_INITIALIZED, PROTOCOL_IN_PROGRESS, PROTOCOL
 
 /*********************** local variables *********************/
 static bool stop_agent = false;
-bool stop_urgent_job_agent = false;
+bool stop_agent_urgent_job = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t urgent_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static pthread_t feedback_thread = 0;
 static pthread_t urgent_job_agent = 0;
@@ -57,10 +58,18 @@ extern void stop_irm_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
 	stop_agent = true;
-	stop_urgent_job_agent = true;
+	stop_agent_urgent_job = true;
         printf("\nStopping IRM agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
+}
+
+extern void stop_urgent_job_agent(void)
+{
+	pthread_mutex_lock(&urgent_lock);
+	stop_agent_urgent_job = true;
+	printf("\nStopping urgent job agent\n");
+	pthread_mutex_unlock(&urgent_lock);
 }
 
 /*static void _my_sleep(int secs)
@@ -198,7 +207,9 @@ int main(int argc, char *argv[])
 	   if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
 	      error("\nUnable to start the agent to handle urgent jobs\n");
 	   } else {
+#ifdef IRM_DEBUG
 	      printf("\nSuccessfully created a thread to handle urgent jobs\n");
+#endif
 	   }
 	}
 	while (!stop_agent) {
@@ -247,7 +258,9 @@ int main(int argc, char *argv[])
                    no_jobs = false; 
                    //xfree(msg.data);
 		   //slurm_free_request_resource_offer_msg(req_msg);
+#ifdef IRM_DEBUG
                    printf("\nCreating a new resource offer to send to iScheduler\n");
+#endif
                    //ret_val = slurm_submit_resource_offer(client_fd, &req, &resp);
 		   //Populate the request message here with the error code and error msg for the previous mapping of jobs to offer
 		   req->error_code = last_mapping_error_code;

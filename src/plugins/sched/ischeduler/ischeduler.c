@@ -35,7 +35,7 @@
 /*********************** local variables *********************/
 static bool stop_isched = false;
 static pthread_t irm_thread = 0;
-static pthread_t feedback_thread = 0;
+//static pthread_t feedback_thread = 0;
 static pthread_t ping_thread = 0;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
@@ -53,13 +53,17 @@ static void _my_sleep(int secs);
 extern void stop_isched_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
+#ifdef ISCHED_DEBUG
         printf("\nBeginning to stop all agents\n");
-        stop_feedback_agent();
-        stop_irm_agent();
+#endif
+        //stop_feedback_agent();
+	if (!stop_agent_irm) stop_irm_agent();
         //pthread_join(ping_thread,  NULL);
-        pthread_join(feedback_thread,  NULL);
+        //pthread_join(feedback_thread,  NULL);
         pthread_join(irm_thread,  NULL);
+#ifdef ISCHED_DEBUG
         printf("\nFeedback and iRM threads have shutdown successfully\n");
+#endif
 	stop_isched = true;
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -247,11 +251,11 @@ extern void *isched_agent(void *args)
         slurm_attr_destroy(&attr);
 
         /* Create an attached thread for feedback agent */
-        slurm_attr_init(&attr);
+        /*slurm_attr_init(&attr);
         if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
            error("pthread_create error %m");
         }
-        slurm_attr_destroy(&attr);
+        slurm_attr_destroy(&attr);*/
 
         /* Create an attached thread for ping agent */
     /*    slurm_attr_init(&attr);
@@ -276,9 +280,11 @@ extern void *isched_agent(void *args)
 
 		//lock_slurmctld(all_locks);
 		//_compute_start_times();
+#ifdef ISCHED_DEBUG
                 printf("\n***************[iScheduler AGENT]****************\n");
                 printf("\nThis is the main control loop. All agents running.\n");
                 printf("\n***************[iScheduler AGENT]****************\n");
+#endif
 		last_sched_time = time(NULL);
 		//unlock_slurmctld(all_locks);
 	}

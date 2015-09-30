@@ -276,7 +276,7 @@ extern void *feedback_agent(void *args)
 	    idle: _my_sleep(feedback_interval);
 	    now = time(NULL);
 	    wait_time = difftime(now, last_feedback_time);
-	    if ((wait_time < feedback_interval)) {
+	    if (!stop_agent && (wait_time < feedback_interval)) {
 	       goto idle;
 		    //continue;
 	    }

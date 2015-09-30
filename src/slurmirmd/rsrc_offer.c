@@ -84,7 +84,9 @@ protocol_init (slurm_fd_t fd)
 
         slurm_msg_t_init(&msg);
         msg.conn_fd = fd;
+#ifdef IRM_DEBUG
 	printf("\nWaiting to receive a negotiation start msg\n");
+#endif
         /*
          * Receive a msg. slurm_msg_recvfrom() will read the message
          *  length and allocate space on the heap for a buffer containing
@@ -98,8 +100,9 @@ protocol_init (slurm_fd_t fd)
         }
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (buf, buflen);
-//#endif
+#endif
         buffer = create_buf(buf, buflen);
 
         if (unpack_header(&header, buffer) == SLURM_ERROR) {
@@ -172,8 +175,9 @@ protocol_init (slurm_fd_t fd)
         new_pack_msg(&resp_msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
         /*
          * Send message
          */
@@ -316,8 +320,9 @@ protocol_fini (slurm_fd_t fd)
         new_pack_msg(&resp_msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
         /*
          * Send message
          */
@@ -379,8 +384,9 @@ wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_
         }
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (buf, buflen);
-//#endif
+#endif
         buffer = create_buf(buf, buflen);
 
         if (unpack_header(&header, buffer) == SLURM_ERROR) {
@@ -494,8 +500,9 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
         new_pack_msg(&req_msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
         /*
          * Send message
          */
@@ -539,8 +546,9 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
         }
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (buf, buflen);
-//#endif
+#endif
         buffer = create_buf(buf, buflen);
 
         if (unpack_header(&header, buffer) == SLURM_ERROR) {
@@ -667,8 +675,9 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
         new_pack_msg(&req_msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
         /*
          * Send message
          */
@@ -720,18 +729,18 @@ void
       return NULL;
    }
 
-   while(!stop_urgent_job_agent) {
+   while(!stop_agent_urgent_job) {
       client_fd = slurm_accept_msg_conn(fd, &cli_addr);
 
       if (client_fd != SLURM_SOCKET_ERROR) {
          printf("\n[URGENT_JOBS_AGENT]: Accepted a connection from iScheduler's urgent jobs agent. Communications can now start\n");
       } else {
-         printf("\n[URGENT_JOBS_AGENT]: Unable to receive any connection request from iScheduler's urgent jobs agent. Shutting down the daemon.\n");
-         return NULL;
+         printf("\n[URGENT_JOBS_AGENT]: Unable to receive any connection request from iScheduler's urgent jobs agent. Shutting down this agent.\n");
+	 break;
       }
 
       ret_val = recv_send_urgent_job(client_fd);
-      if (stop_urgent_job_agent) { 
+      if (stop_agent_urgent_job) { 
          printf("\nStopping the agent for processing urgent jobs\n");
          break;
       }
@@ -775,8 +784,9 @@ recv_send_urgent_job(slurm_fd_t fd)
         }
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (buf, buflen);
-//#endif
+#endif
         buffer = create_buf(buf, buflen);
 
         if (unpack_header(&header, buffer) == SLURM_ERROR) {
@@ -845,8 +855,9 @@ recv_send_urgent_job(slurm_fd_t fd)
         new_pack_msg(&resp_msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));	
-
+#endif
  /*
          * Send message
          */

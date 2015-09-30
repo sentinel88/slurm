@@ -34,7 +34,7 @@
 #endif
 
 /*********************** local variables *********************/
-static bool stop_agent = false;
+bool stop_agent_feedback = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static bool config_flag = false;
@@ -51,8 +51,9 @@ static void _my_sleep(int secs);
 extern void stop_feedback_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
-	stop_agent = true;
+	stop_agent_feedback = true;
         printf("\nStopping FEEDBACK AGENT\n");
+	if (!stop_agent_sleep) stop_sleep_agent();
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -66,7 +67,7 @@ static void _my_sleep(int secs)
 	ts.tv_sec = now.tv_sec + secs;
 	ts.tv_nsec = now.tv_usec * 1000;
 	pthread_mutex_lock(&term_lock);
-	if (!stop_agent)
+	if (!stop_agent_feedback)
 		pthread_cond_timedwait(&term_cond, &term_lock, &ts);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -250,11 +251,12 @@ extern void *feedback_agent(void *args)
 	double wait_time;
 	slurm_fd_t fd = -1;
 	slurm_msg_t *msg;
+#ifdef ISCHED_DEBUG
         printf("\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
 	printf("\n[FEEDBACK_AGENT]: Attempting to connect to the feedback agent of iRM daemon\n");
-
-	fd = _connect_to_irmd("127.0.0.1", 12346, &stop_agent, feedback_interval, "FEEDBACK_AGENT");
-        if (fd == -1) {
+#endif
+	fd = _connect_to_irmd("127.0.0.1", 12346, &stop_agent_feedback, feedback_interval, "FEEDBACK_AGENT");
+        if (fd < 0) {
            printf("\n[FEEDBACK_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
            return NULL;
         }
@@ -263,25 +265,29 @@ extern void *feedback_agent(void *args)
 	slurm_msg_t_init(msg);
 
 	last_feedback_time = time(NULL);
-	while (!stop_agent) {
-		if (stop_agent)
+	while (!stop_agent_feedback) {
+		if (stop_agent_feedback)
 			break;
 		ret_val = receive_feedback(fd, msg);
 		if (ret_val != SLURM_SUCCESS) {
 		   printf("\nError in receiving the periodic feedback from iRM. Shutting down the feedback agent\n");
-		   stop_feedback_agent();
+		   if (!stop_agent_feedback) stop_feedback_agent();
 		   continue;
 		}
+#ifdef ISCHED_DEBUG
                 printf("\nFeedback report received from iRM\n");
                 printf("\nProcessing the report now\n");
+#endif
 		ret_val = process_feedback(msg->data);
 		if (ret_val != SLURM_SUCCESS) {
 		   printf("\nError in processing the feedback from iRM. Shutting down the agent\n");
 		   slurm_free_status_report_msg(msg->data);
-		   stop_feedback_agent();
+		   if (!stop_agent_feedback) stop_feedback_agent();
 		   continue;
 		}
+#ifdef ISCHED_DEBUG
                 printf("\nFinished updating history. Will sleep for sometime before processing the next feedback report\n");
+#endif
 		idle: _my_sleep(feedback_interval);
 		now = time(NULL);
 		wait_time = difftime(now, last_feedback_time);

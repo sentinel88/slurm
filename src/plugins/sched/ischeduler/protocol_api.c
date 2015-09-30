@@ -31,6 +31,11 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 
 #define MAX_NEGOTIATION_ATTEMPTS 5
 
+bool stop_agent_sleep = false;
+static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
+
+
 static void _print_data(char *data, int len)
 {
         int i;
@@ -46,6 +51,34 @@ static void _print_data(char *data, int len)
 
 
 
+void stop_sleep_agent(void)
+{
+        pthread_mutex_lock(&term_lock);
+        stop_agent_sleep = true;
+#ifdef ISCHED_DEBUG
+	printf("\nStopping timer agent\n");
+#endif
+        pthread_cond_signal(&term_cond);
+        pthread_mutex_unlock(&term_lock);
+}
+
+
+static void _my_sleep(int secs)
+{
+        struct timespec ts = {0, 0};
+        struct timeval now;
+
+        gettimeofday(&now, NULL);
+        ts.tv_sec = now.tv_sec + secs;
+        ts.tv_nsec = now.tv_usec * 1000;
+        pthread_mutex_lock(&term_lock);
+        if (!stop_agent_sleep)
+                pthread_cond_timedwait(&term_cond, &term_lock, &ts);
+        pthread_mutex_unlock(&term_lock);
+}
+
+
+
 //Connect to iRM daemon via a TCP connection
 int _connect_to_irmd(char *host, uint16_t port, bool *flag, int sleep_interval, char *agent_name) {
    slurm_fd_t fd = -1;
@@ -55,7 +88,8 @@ int _connect_to_irmd(char *host, uint16_t port, bool *flag, int sleep_interval, 
 
    _slurm_set_addr_char(&irm_address, port, host);
 
-   while (!(*flag)) {
+   //while (!(*flag)) {
+   while (!stop_agent_sleep) {
       fd = slurm_open_msg_conn(&irm_address);
       if (fd < 0) {
          printf("\n[%s]: Failed to contact iRM daemon.\n", agent_name);
@@ -64,8 +98,8 @@ int _connect_to_irmd(char *host, uint16_t port, bool *flag, int sleep_interval, 
          printf("\n[%s]: Successfully connected with iRM daemon.\n", agent_name);
          break;
       }
-      //_my_sleep(sleep_interval);
-      sleep(sleep_interval);
+      _my_sleep(sleep_interval);
+      //sleep(sleep_interval);
    }
    /*if (!stop_agent)
       printf("\n[IRM_AGENT]: Successfully connected to iRM daemon\n");*/
@@ -116,8 +150,9 @@ protocol_init(slurm_fd_t fd)
     new_pack_msg(&req_msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef ISCHED_DEBUG
     _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
     /*
      * Send message
      */
@@ -155,9 +190,10 @@ protocol_init(slurm_fd_t fd)
 	goto total_return;
     }
 
-//#if     _DEBUG
+////#if     _DEBUG
+#ifdef ISCHED_DEBUG
     _print_data (buf, buflen);
-//#endif
+#endif
     buffer = create_buf(buf, buflen);
 
     if (unpack_header(&header, buffer) == SLURM_ERROR) {
@@ -241,8 +277,9 @@ protocol_fini(slurm_fd_t fd)
     new_pack_msg(&req_msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef ISCHED_DEBUG
     _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
     /*
      * Send message
      */
@@ -280,9 +317,10 @@ protocol_fini(slurm_fd_t fd)
         goto total_return;
     }
 
-//#if     _DEBUG
+///#if     _DEBUG
+#ifdef ISCHED_DEBUG
     _print_data (buf, buflen);
-//#endif
+#endif
     buffer = create_buf(buf, buflen);
 
     if (unpack_header(&header, buffer) == SLURM_ERROR) {
@@ -416,9 +454,10 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
          */
         new_pack_msg(&req_msg, &header, buffer);
 
-//#if     _DEBUG
+//#if    / _DEBUG
+#ifdef ISCHED_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
         /*
          * Send message
          */
@@ -434,7 +473,7 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
            goto total_return;
         }
 
-        printf("[PING_AGENT]: Sent the start msg. Waiting for a response.\n");
+        printf("[PING_AGENT]: Sent the urgent job. Waiting for a response.\n");
 
     	free_buf(buffer);
 
@@ -453,9 +492,10 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
            goto total_return;
     	}
 
-//#if     _DEBUG
+//#if    / _DEBUG
+#ifdef ISCHED_DEBUG
     	_print_data (buf, buflen);
-//#endif
+#endif
     	buffer = create_buf(buf, buflen);
 
     	if (unpack_header(&header, buffer) == SLURM_ERROR) {
@@ -550,9 +590,10 @@ request_resource_offer (slurm_fd_t fd)
          */
         new_pack_msg(&req_msg, &header, buffer);
 
-//#if     _DEBUG
+//#if    / _DEBUG
+#ifdef ISCHED_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
         /*
          * Send message
          */
@@ -610,9 +651,10 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
                 goto total_return;
         }
 
-//#if     _DEBUG
+///#if     _DEBUG
+#ifdef ISCHED_DEBUG
         _print_data (buf, buflen);
-//#endif
+#endif
         buffer = create_buf(buf, buflen);
 
         if (unpack_header(&header, buffer) == SLURM_ERROR) {
@@ -771,8 +813,9 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         new_pack_msg(&resp_msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef ISCHED_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
         /*
          * Send message
          */
@@ -821,8 +864,9 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
     }
 
     //#if     _DEBUG
+#ifdef ISCHED_DEBUG
     _print_data (buf, buflen);
-    //#endif
+#endif
     buffer = create_buf(buf, buflen);
 
     if (unpack_header(&header, buffer) == SLURM_ERROR) {
