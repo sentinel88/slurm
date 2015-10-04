@@ -50,6 +50,7 @@ static bool initialized = false;
 /*********************** local functions *********************/
 //static void _compute_start_times(void);
 static void _load_config(void);
+extern void stop_urgent_job_agent(void);
 //static void _my_sleep(int secs);
 //static int _init_comm(void);
 
@@ -58,7 +59,8 @@ extern void stop_irm_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
 	stop_agent = true;
-	stop_agent_urgent_job = true;
+	stop_urgent_job_agent();
+	//stop_agent_urgent_job = true;
         printf("\nStopping IRM agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -172,9 +174,9 @@ int main(int argc, char *argv[])
 
         buf = (char *)malloc(sizeof(int));
 	req = xmalloc(sizeof(resource_offer_msg_t));
-
+#ifdef IRM_DEBUG
         printf("\n[IRM_DAEMON]: Entering irm_agent\n");
-
+#endif
         fd = _init_comm("127.0.0.1", 12345, "IRM_DAEMON");
 
         if (fd == -1) { 
@@ -251,7 +253,9 @@ int main(int argc, char *argv[])
         	      if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
                          error("pthread_create error %m");
         	      }
+		#ifdef IRM_DEBUG
 		      printf("\nSuccessfully created a thread for the feedback agent\n");
+		#endif
         	      slurm_attr_destroy(&attr);
 		      flag = 1;
 		   }

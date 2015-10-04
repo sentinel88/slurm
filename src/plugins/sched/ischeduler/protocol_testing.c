@@ -56,7 +56,8 @@ send_custom_data(slurm_fd_t fd)
     resource_offer_resp_msg_t msg2;
     negotiation_start_msg_t msg3;
     negotiation_end_msg_t msg4;
-    return_code_msg_t msg5;
+    urgent_job_msg_t msg5;
+    return_code_msg_t msg6;
 
     Buf buffer;
     header_t header;
@@ -74,7 +75,8 @@ send_custom_data(slurm_fd_t fd)
     printf("2. RESPONSE_RESOURCE_OFFER\n");
     printf("3. NEGOTIATION_START\n");
     printf("4. NEGOTIATION_END\n");
-    printf("5. RANDOM MSG\n"); 
+    printf("5. URGENT_JOB\n");
+    printf("6. RANDOM MSG\n"); 
     printf("\nEnter your choice of the message from the below options\n");
     scanf("%d", &choice);
 
@@ -102,10 +104,15 @@ send_custom_data(slurm_fd_t fd)
 	     msg.data = &msg4;
 	     break;
 	case 5:
+	     msg.msg_type = URGENT_JOB;
+	     msg5.value = 0;
+	     msg.data = &msg5;
+	     break;
+	case 6:
 	default:
 	     msg.msg_type = RESPONSE_SLURM_RC;
-	     msg5.return_code = 100;
-	     msg.data = &msg5;
+	     msg6.return_code = 100;
+	     msg.data = &msg6;
     }
 
     init_header(&header, &msg, msg.flags);
@@ -129,8 +136,8 @@ send_custom_data(slurm_fd_t fd)
      * Send message
      */
 
-    printf("\nPress enter\n");
-    scanf("%c", &ch);
+   /* printf("\nPress enter\n");
+    scanf("%c", &ch);*/
 
     rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
                             get_buf_offset(buffer),
@@ -138,7 +145,7 @@ send_custom_data(slurm_fd_t fd)
 
     if (rc < 0) {
        printf("\nProblem with sending the message to iRM\n");
-       rc = errno;
+       rc = SLURM_ERROR;
        free_buf(buffer);
        goto total_return;
     } else {

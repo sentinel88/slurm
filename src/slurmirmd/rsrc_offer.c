@@ -47,7 +47,9 @@ int _init_comm(char *host, uint16_t port, char *agent_name) {
       printf("\n[%s]: Failed to initialize communication engine. Daemon will shutdown shortly\n", agent_name);
       return -1;
    }
+#ifdef IRM_DEBUG
    printf("\n[%s]: Successfully initialized communication engine\n", agent_name);
+#endif
    return fd;
 }
 
@@ -69,7 +71,9 @@ static void _print_data(char *data, int len)
 int
 protocol_init (slurm_fd_t fd)
 {
+#ifdef IRM_DEBUG
         printf("\nInside protocol_init\n");
+#endif
         char *buf = NULL;
         size_t buflen = 0;
         header_t header;
@@ -141,6 +145,7 @@ protocol_init (slurm_fd_t fd)
         free_buf(buffer);
         //if (rc != SLURM_SUCCESS) goto total_return;
 #ifdef _TESTING
+	printf("\nCalling send_custom_data from the routine for protocol initialization\n");
 	rc = send_custom_data(fd);
 #else
         slurm_msg_t_init(&resp_msg);
@@ -203,7 +208,9 @@ total_return:
                 rc = 0;
         }
 //#endif
+#ifdef IRM_DEBUG
         printf("\nExiting protocol_init\n");
+#endif
         return rc;
 }
 
@@ -213,7 +220,9 @@ total_return:
 int
 protocol_fini (slurm_fd_t fd)
 {
+#ifdef IRM_DEBUG
         printf("\nInside protocol_fini\n");
+#endif
         char *buf = NULL;
         size_t buflen = 0;
         header_t header;
@@ -280,7 +289,8 @@ protocol_fini (slurm_fd_t fd)
 
         free_buf(buffer);*/
         //if (rc != SLURM_SUCCESS) goto total_return;
-#ifdef TESTING
+#ifdef _TESTING
+	printf("\nCalling send_custom_data from the routine for protocol finalization\n");
 	rc = send_custom_data(fd);
 #else
         slurm_msg_t_init(&resp_msg);
@@ -334,7 +344,7 @@ protocol_fini (slurm_fd_t fd)
            printf("\nProblem with sending the response for negotiation end msg to iScheduler\n");
            rc = SLURM_ERROR;
         } else {
-           printf("\nSend was successful\n");
+           printf("\nSent the response to negotiation end msg successfully\n");
            rc = SLURM_SUCCESS;
         }
 
@@ -348,7 +358,9 @@ total_return:
         } else {
                 rc = 0;
         }
+#ifdef IRM_DEBUG
         printf("\nExiting protocol_fini\n");
+#endif
         return rc;
 }
 
@@ -357,7 +369,9 @@ total_return:
 int
 wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_msg_t *req_msg)*/
 {
+#ifdef IRM_DEBUG
         printf("\nInside wait_req_rsrc_offer\n");
+#endif
         char *buf = NULL;
         size_t buflen = 0;
         header_t header;
@@ -442,7 +456,9 @@ total_return:
         } else {
                 rc = 0;
         }
+#ifdef IRM_DEBUG
         printf("\nExiting wait_req_rsrc_offer\n");
+#endif
         return rc;
 }
 
@@ -459,7 +475,9 @@ int
 slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 		        resource_offer_resp_msg_t **resp)
 {
+#ifdef IRM_DEBUG
         printf("\nInside slurm_submit_resource_offer\n");
+#endif
         int rc;
         int ch;
         slurm_msg_t req_msg;
@@ -507,10 +525,11 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
          * Send message
          */
 
-        printf("\nEnter any number\n");
-        scanf("%d", &ch);
+/*        printf("\nEnter any number\n");
+        scanf("%d", &ch);*/
 
-#ifdef TESTING
+#ifdef _TESTING
+	printf("\nCalling send_custom_data from the routine for submitting resource offer\n");
 	rc = send_custom_data(fd);
 #else
 
@@ -608,7 +627,9 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 
         free_buf(buffer);
 total_return:
+#ifdef IRM_DEBUG
         printf("\nExiting slurm_submit_resource_offer\n");
+#endif
         return rc;
 }
 
@@ -628,9 +649,13 @@ process_rsrc_offer_resp(resource_offer_resp_msg_t *resp, bool final_negotiation)
 int 
 compute_feedback(status_report_msg_t *msg) 
 {
+#ifdef IRM_DEBUG
    printf("\nInside compute_feedback\n");
+#endif
    msg->value = 1;
+#ifdef IRM_DEBUG
    printf("\nExiting compute_feedback\n");
+#endif
    return SLURM_SUCCESS;
 }
 
@@ -638,7 +663,9 @@ compute_feedback(status_report_msg_t *msg)
 int
 send_feedback(slurm_fd_t fd, status_report_msg_t *req)
 {
+#ifdef IRM_DEBUG
     printf("\nInside send_feedback\n");
+#endif
     int rc;
     slurm_msg_t req_msg;
 
@@ -685,7 +712,8 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
         /*printf("\nEnter any number\n");
         scanf("%d", &ch);*/
 
-#ifdef _TESTING
+#ifdef TESTING
+	printf("\nCalling send_custom_data from the routine to send feedback/status report\n");
         rc = send_custom_data(fd);
 #else
 
@@ -698,7 +726,9 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
            printf("\nProblem with sending the periodic feedback to iScheduler\n");
            rc = errno;
         } else {
+	#ifdef IRM_DEBUG
            printf("\nSend was successful\n");
+	#endif
            rc = SLURM_SUCCESS;
         }
 
@@ -708,7 +738,9 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
    } else {
       rc = 0;
    }
+#ifdef IRM_DEBUG
    printf("\nExiting send_feedback\n");
+#endif
    return rc;
 }
 
@@ -716,7 +748,9 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
 void 
 *schedule_loop(void *args) 
 {
+#ifdef IRM_DEBUG
    printf("\nInside schedule_loop\n");
+#endif
    slurm_fd_t fd = -1;
    slurm_fd_t client_fd = -1;
    slurm_addr_t cli_addr;
@@ -733,7 +767,9 @@ void
       client_fd = slurm_accept_msg_conn(fd, &cli_addr);
 
       if (client_fd != SLURM_SOCKET_ERROR) {
+#ifdef IRM_DEBUG
          printf("\n[URGENT_JOBS_AGENT]: Accepted a connection from iScheduler's urgent jobs agent. Communications can now start\n");
+#endif
       } else {
          printf("\n[URGENT_JOBS_AGENT]: Unable to receive any connection request from iScheduler's urgent jobs agent. Shutting down this agent.\n");
 	 break;
@@ -744,10 +780,13 @@ void
          printf("\nStopping the agent for processing urgent jobs\n");
          break;
       }
+#ifdef IRM_DEBUG
       printf("\nFinished the transaction for this urgent job successfully\n");
+#endif
    }
-
+#ifdef IRM_DEBUG
    printf("\nExiting schedule_loop\n");
+#endif
    return NULL;
 }
 
@@ -755,7 +794,9 @@ void
 int
 recv_send_urgent_job(slurm_fd_t fd)
 {
+#ifdef IRM_DEBUG
         printf("\nInside recv_send_urgent_job\n");
+#endif
         char *buf = NULL;
         size_t buflen = 0;
         header_t header;
@@ -826,7 +867,10 @@ recv_send_urgent_job(slurm_fd_t fd)
 
         free_buf(buffer);
         if (rc != SLURM_SUCCESS) goto total_return;
-
+#ifdef _TESTING
+	printf("\nCalling send_custom_data from the routine to send back response for urgent job\n");
+        rc = send_custom_data(fd);
+#else
 	slurm_msg_t_init(&resp_msg);
 	resp_msg.conn_fd = fd;
 
@@ -838,6 +882,7 @@ recv_send_urgent_job(slurm_fd_t fd)
         resp_msg.msg_type = RESPONSE_URGENT_JOB;
         resp_msg.data     = &resp;
 
+	resp.value = 0;
 	resp.error_code = 0;
 	resp.error_msg = (char *)NULL;
 
@@ -869,13 +914,15 @@ recv_send_urgent_job(slurm_fd_t fd)
            printf("\nProblem with sending the response for urgent job msg to iScheduler\n");
            rc = SLURM_ERROR;
         } else {
+#ifdef IRM_DEBUG
            printf("\nSend was successful\n");
+#endif
            rc = SLURM_SUCCESS;
         }
 
         free_buf(buffer);
         xfree(resp.error_msg);
-
+#endif
 total_return:
         destroy_forward(&header.forward);
 
@@ -884,6 +931,8 @@ total_return:
         } else {
                 rc = 0;
         }
+#ifdef IRM_DEBUG
         printf("\nExiting recv_send_urgent_job\n");
+#endif
         return rc;
 }

@@ -31,6 +31,8 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 
 #define MAX_NEGOTIATION_ATTEMPTS 5
 
+//#define TESTING 1
+
 bool stop_agent_sleep = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
@@ -111,7 +113,9 @@ int _connect_to_irmd(char *host, uint16_t port, bool *flag, int sleep_interval, 
 int 
 protocol_init(slurm_fd_t fd) 
 {
+#ifdef ISCHED_DEBUG
     printf("\nInside protocol_init\n");
+#endif
     int rc;
     char ch;
     slurm_msg_t req_msg;
@@ -157,13 +161,16 @@ protocol_init(slurm_fd_t fd)
      * Send message
      */
 
-    printf("\nPress enter\n");
-    scanf("%c", &ch);
+    /*printf("\nPress enter\n");
+    scanf("%c", &ch);*/
 
+#ifdef _TESTING1
+    rc = send_custom_data(fd);
+#else
     rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
 			    get_buf_offset(buffer),
 			    SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
-
+#endif
     if (rc < 0) {
        printf("\nProblem with sending the negotiation start message to iRM\n");
        rc = errno;
@@ -171,7 +178,7 @@ protocol_init(slurm_fd_t fd)
        goto total_return;
     }
 
-    printf("[iSCHED]: Sent the start msg. Waiting for a response.\n");
+    printf("[iSCHED]: Sent the negotiation start msg. Waiting for a response.\n");
 
     free_buf(buffer);
 
@@ -219,8 +226,12 @@ protocol_init(slurm_fd_t fd)
     switch (resp_msg.msg_type) {
        case RESPONSE_NEGOTIATION_START:
 	    printf("\nResponse received from iRM for the start of negotiation. Value is %d\n", ((negotiation_start_resp_msg_t *)(resp_msg.data))->value);
+	    if ( ((negotiation_start_resp_msg_t *)(resp_msg.data))->value == 500) {
+	       rc = SLURM_ERROR;
+	    } else {
+	       rc = SLURM_SUCCESS;
+	    }
 	    slurm_free_negotiation_start_resp_msg(resp_msg.data);
-	    rc = SLURM_SUCCESS;
 	    break;
        default:
 	    printf("\nUnexpected message.\n");
@@ -230,7 +241,9 @@ protocol_init(slurm_fd_t fd)
 
     free_buf(buffer);
 total_return:
+#ifdef ISCHED_DEBUG
     printf("\nExiting protocol_init\n");
+#endif
     return rc;
 }
 
@@ -238,7 +251,9 @@ total_return:
 int 
 protocol_fini(slurm_fd_t fd) 
 {
+#ifdef ISCHED_DEBUG
     printf("\nInside protocol_fini\n");
+#endif
     int rc;
     int ch;
     slurm_msg_t req_msg;
@@ -284,13 +299,16 @@ protocol_fini(slurm_fd_t fd)
      * Send message
      */
 
-    printf("\nEnter any number\n");
-    scanf("%d", &ch);
+   /* printf("\nEnter any number\n");
+    scanf("%d", &ch);*/
 
+#ifdef _TESTING1
+    rc = send_custom_data(fd);
+#else
     rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
 			    get_buf_offset(buffer),
 			    SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
-
+#endif
     if (rc < 0) {
        printf("\nProblem with sending the negotiation end message to iRM\n");
        rc = errno;
@@ -354,8 +372,12 @@ if (rc)
             break;*/
        case RESPONSE_NEGOTIATION_END:
             printf("\nResponse received from iRM for the end of negotiation. Value is %d\n", ((negotiation_end_resp_msg_t *)(resp_msg.data))->value);
+	    if ( ((negotiation_end_resp_msg_t *)(resp_msg.data))->value == 500) {
+               rc = SLURM_ERROR;
+            } else {
+               rc = SLURM_SUCCESS;
+            }
 	    slurm_free_negotiation_end_resp_msg(resp_msg.data);
-            rc = SLURM_SUCCESS;
             break;
        default:
             printf("\nUnexpected message.\n");
@@ -367,7 +389,9 @@ if (rc)
 
     free_buf(buffer);
 total_return:
+#ifdef ISCHED_DEBUG
     printf("\nExiting protocol_fini\n");
+#endif
     return rc;
 }
 
@@ -375,27 +399,34 @@ total_return:
 int
 schedule_urgent_jobs(void) 
 {
+#ifdef ISCHED_DEBUG
    printf("\nInside schedule_urgent_jobs\n");
+#endif
    int sleep_interval = 20;
    pthread_t thread_id;
    pthread_attr_t thread_attr;
 
-   slurm_attr_init(&thread_attr);
-   if (pthread_attr_setdetachstate
+   /*if (pthread_attr_setdetachstate
             (&thread_attr, PTHREAD_CREATE_DETACHED))
                 fatal("pthread_attr_setdetachstate %m");
-   
+   */
    while(!stop_ug_agent) {
+#ifdef ISCHED_DEBUG
       printf("\nInside the threading loop\n");
       printf("\nstop_ug_agent = %d\n", stop_ug_agent);
+#endif
+      slurm_attr_init(&thread_attr);
       if (pthread_create(&thread_id, &thread_attr, ping_agent, NULL)) {
            error("pthread_create error %m");
       } 
-      sleep(sleep_interval);
+      pthread_join(thread_id, NULL);
+      slurm_attr_destroy(&thread_attr);
+      _my_sleep(sleep_interval);
    }   
 
-   slurm_attr_destroy(&thread_attr);
+#ifdef ISCHED_DEBUG
    printf("\nExiting schedule_urgent_jobs\n");
+#endif
    return SLURM_SUCCESS;
 }
 
@@ -415,7 +446,9 @@ void
 int
 send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
 {
+#ifdef ISCHED_DEBUG
         printf("\nInside send_recv_urgent_job\n");
+#endif
         int rc;
 	int ret_val = SLURM_SUCCESS;
         slurm_msg_t req_msg;
@@ -462,19 +495,22 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
          * Send message
          */
 
+#ifdef TESTING
+        rc = send_custom_data(fd);
+#else
         rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
                                 get_buf_offset(buffer),
                                 SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
-
+#endif
 	if (rc < 0) {
            printf("\nProblem with sending the urgent job to iRM\n");
            rc = errno;
            free_buf(buffer);
            goto total_return;
         }
-
+#ifdef ISCHED_DEBUG
         printf("[PING_AGENT]: Sent the urgent job. Waiting for a response.\n");
-
+#endif
     	free_buf(buffer);
 
     	resp_msg->conn_fd = fd;
@@ -528,7 +564,9 @@ if (rc)
             *resp = NULL;
             break;*/
            case RESPONSE_URGENT_JOB:
+#ifdef ISCHED_DEBUG
               printf("\nResponse received from iRM for the urgent job. Value is %d\n", ((urgent_job_resp_msg_t *)(resp_msg->data))->value);
+#endif
               slurm_free_urgent_job_resp_msg(resp_msg->data);
               rc = SLURM_SUCCESS;
               break;
@@ -543,8 +581,9 @@ if (rc)
     	free_buf(buffer);
 total_return:
 
-
+#ifdef ISCHED_DEBUG
         printf("\nExiting send_recv_urgent_job\n");
+#endif
         return rc;
 }
 
@@ -553,7 +592,9 @@ total_return:
 int
 request_resource_offer (slurm_fd_t fd)
 {
+#ifdef ISCHED_DEBUG
         printf("\nInside request_resource_offer\n");
+#endif
         int rc;
         int ch;
 	int ret_val = SLURM_SUCCESS;
@@ -611,8 +652,9 @@ request_resource_offer (slurm_fd_t fd)
         }
 
         free_buf(buffer);
-
+#ifdef ISCHED_DEBUG
         printf("\nExiting request_resource_offer\n");
+#endif
         return rc;
 }
 
@@ -625,7 +667,9 @@ request_resource_offer (slurm_fd_t fd)
 int
 receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg) 
 {
+#ifdef ISCHED_DEBUG
         printf("\nInside isched_recv_rsrc_offer\n");
+#endif
         //slurm_msg_t msg;
         char *buf = NULL;
         size_t buflen = 0;
@@ -700,7 +744,9 @@ total_return:
         } else {
                 rc = 0;
         }
+#ifdef ISCHED_DEBUG
         printf("\nExiting isched_recv_rsrc_offer\n");
+#endif
         return rc;
 }
 
@@ -758,9 +804,9 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         slurm_msg_t resp_msg;
         Buf buffer;
         char err_msg[256] = "Job queue is empty";
-
+#ifdef ISCHED_DEBUG
         printf("\nInside isched_send_irm_msg\n");
-
+#endif
         if (msg->conn_fd < 0) {
                 slurm_seterrno(ENOTCONN);
                 return SLURM_ERROR;
@@ -832,14 +878,18 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         }
 
         free_buf(buffer);
+#ifdef ISCHED_DEBUG
         printf("\nExiting isched_send_irm_msg\n");
+#endif
         return rc;
 }
 
 int 
 receive_feedback(slurm_fd_t fd, slurm_msg_t *msg) 
 {
+#ifdef ISCHED_DEBUG
     printf("\nInside receive_feedback\n");
+#endif
     char *buf = NULL;
     size_t buflen = 0;
     header_t header;
@@ -904,7 +954,9 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
     free_buf(buffer);
     //if (rc != SLURM_SUCCESS) goto total_return;
     if (rc == SLURM_SUCCESS)
+#ifdef ISCHED_DEBUG
        printf("\n[FEEDBACK_AGENT]: Received a status report from the feedback agent of iRM daemon which is %d\n", ( (status_report_msg_t *) (msg->data))->value);
+#endif
 
 total_return:
     destroy_forward(&header.forward);
@@ -914,14 +966,18 @@ total_return:
     } else {
 	    rc = 0;
     }
+#ifdef ISCHED_DEBUG
     printf("\nExiting receive_feedback\n");
+#endif
     return rc;
 }
 
 int
 process_feedback(status_report_msg_t *msg)
 {
+#ifdef ISCHED_DEBUG
     printf("\nEntering process_feedback\n");
     printf("\nExiting process_feedback\n");
+#endif
     return SLURM_SUCCESS;
 }

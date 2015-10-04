@@ -270,8 +270,9 @@ extern void *feedback_agent(void *args)
 			break;
 		ret_val = receive_feedback(fd, msg);
 		if (ret_val != SLURM_SUCCESS) {
-		   printf("\nError in receiving the periodic feedback from iRM. Shutting down the feedback agent\n");
+		   printf("\nError in receiving the periodic feedback from iRM. Shutting down the feedback agent as well as other agents\n");
 		   if (!stop_agent_feedback) stop_feedback_agent();
+		   if (!stop_agent_irm) stop_irm_agent();
 		   continue;
 		}
 #ifdef ISCHED_DEBUG

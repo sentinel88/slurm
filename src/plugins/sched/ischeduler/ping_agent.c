@@ -243,23 +243,25 @@ extern void *ping_agent(void *args)
 
 	if (fd < 0) {
 	   printf("\n[PING_AGENT]: Unable to reach iRM daemon. Thread is exiting and also signalling the urgent job agent to shutdown.\n");
-	   stop_ping_agent();
-	   stop_urgent_job_agent();
+	   if (!stop_agent_ping) stop_ping_agent();
+	   if (!stop_ug_agent) stop_urgent_job_agent();
 	   return NULL;
 	}
 
 	//_load_config();
-
 	ret_val = send_recv_urgent_job(fd, msg);
 
 	if (ret_val == SLURM_SUCCESS) {
-	   printf("\nSubmitted the urgent job successfully to iRM\n");
+	   if ( ((urgent_job_resp_msg_t *)(msg->data))->value == 500) {
+	      printf("\nUrgent job submission unsuccessful. We do not retry again.\n");
+	   } else {
+	      printf("\nSubmitted the urgent job successfully to iRM\n");
+	   }
 	} else {
 	   printf("\nError returned from send_recv_urgent_job function. Killing this thread and signalling the urgent job agent to shutdown\n");
-	   stop_ping_agent();
-	   stop_urgent_job_agent();
+	   if (!stop_agent_ping) stop_ping_agent();
+	   if (!stop_ug_agent) stop_urgent_job_agent();
 	}
-
 	slurm_free_msg(msg);
 	close(fd);	
 

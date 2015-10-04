@@ -60,7 +60,7 @@ extern void stop_isched_agent(void)
 	if (!stop_agent_irm) stop_irm_agent();
         //pthread_join(ping_thread,  NULL);
         //pthread_join(feedback_thread,  NULL);
-        pthread_join(irm_thread,  NULL);
+        //pthread_join(irm_thread,  NULL);
 #ifdef ISCHED_DEBUG
         printf("\nFeedback and iRM threads have shutdown successfully\n");
 #endif
@@ -288,6 +288,7 @@ extern void *isched_agent(void *args)
 		last_sched_time = time(NULL);
 		//unlock_slurmctld(all_locks);
 	}
+        pthread_join(irm_thread,  NULL);
         printf("\n[ISCHED_AGENT]: Exiting isched_agent\n");
 	return NULL;
 }

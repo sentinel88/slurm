@@ -255,7 +255,9 @@ extern void *feedback_agent(void *args)
 
 	client_fd = slurm_accept_msg_conn(fd, &cli_addr);
         if (client_fd != SLURM_SOCKET_ERROR) {
+	#ifdef IRM_DEBUG
            printf("\n[FEEDBACK_AGENT]: Accepted connection from iScheduler's feedback agent. Communications can now start\n");
+	#endif
         } else {
            printf("\n[FEEDBACK_AGENT]: Unable to receive any connection request from iScheduler's feedback agent. Shutting down the agent.\n");
            stop_agent = true;

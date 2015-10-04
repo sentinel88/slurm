@@ -92,6 +92,8 @@ extern void *schedule_loop(void *);
 
 extern void stop_sleep_agent(void);
 
+extern void stop_urgent_job_agent(void);
+
 #define timeout (20*1000)
 
 #define _TESTING 0
@@ -101,6 +103,7 @@ extern bool stop_ug_agent;
 extern bool stop_agent_irm;
 extern bool stop_agent_feedback;
 extern bool stop_agent_sleep;
+extern bool stop_agent_ping;
 //extern pthread_mutex_t urgent_lock;
 
 #endif	/* _SLURM_ISCHEDULER_H */

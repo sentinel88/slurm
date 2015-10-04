@@ -57,7 +57,9 @@ send_custom_data(slurm_fd_t fd)
     resource_offer_msg_t msg1;
     negotiation_start_resp_msg_t msg2;
     negotiation_end_resp_msg_t msg3;
-    return_code_msg_t msg4;
+    urgent_job_resp_msg_t msg4;
+    status_report_msg_t msg5;
+    return_code_msg_t msg6;
 
     Buf buffer;
     header_t header;
@@ -72,7 +74,9 @@ send_custom_data(slurm_fd_t fd)
     printf("1. RESOURCE_OFFER\n");
     printf("2. RESPONSE_NEGOTIATION_START\n");
     printf("3. RESPONSE_NEGOTIATION_END\n");
-    printf("4. RANDOM MSG\n"); 
+    printf("4. RESPONSE_URGENT_JOB\n");
+    printf("5. STATUS_REPORT\n");
+    printf("6. RANDOM MSG\n"); 
     printf("\nEnter your choice of the message from the below options\n");
     scanf("%d", &choice);
 
@@ -98,10 +102,22 @@ send_custom_data(slurm_fd_t fd)
 	     msg.data = &msg3;
 	     break;
 	case 4:
+	     msg.msg_type = RESPONSE_URGENT_JOB;
+	     msg4.value = 0;
+	     msg4.error_code = 0;
+	     msg4.error_msg = (char *) NULL;
+	     msg.data = &msg4;
+	     break;
+	case 5:
+	     msg.msg_type = STATUS_REPORT;
+	     msg5.value = 0;
+	     msg.data = &msg5;
+	     break;
+	case 6:
 	default:
 	     msg.msg_type = RESPONSE_SLURM_RC;
-	     msg4.return_code = 1;
-	     msg.data = &msg4;
+	     msg6.return_code = 1;
+	     msg.data = &msg6;
     }
 
     init_header(&header, &msg, msg.flags);
@@ -118,15 +134,17 @@ send_custom_data(slurm_fd_t fd)
     new_pack_msg(&msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef IRM_DEBUG
     _print_data (get_buf_data(buffer),get_buf_offset(buffer));
+#endif
 //#endif
 
     /*
      * Send message
      */
 
-    printf("\nPress enter\n");
-    scanf("%c", &ch);
+/*    printf("\nPress enter\n");
+    scanf("%c", &ch);*/
 
     rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
                             get_buf_offset(buffer),
@@ -134,7 +152,7 @@ send_custom_data(slurm_fd_t fd)
 
     if (rc < 0) {
        printf("\nProblem with sending the message to iScheduler\n");
-       rc = errno;
+       rc = SLURM_ERROR;
     } else {
        printf("[iSCHED]: Sent the msg.\n");
        rc = SLURM_SUCCESS;
