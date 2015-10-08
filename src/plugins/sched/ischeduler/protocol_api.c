@@ -31,12 +31,22 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 
 #define MAX_NEGOTIATION_ATTEMPTS 5
 
-//#define TESTING 1
+#ifdef TESTING
+   extern resource_offer_resp_msg_t tc_offer_resp;
+   int val;
+#endif
 
 bool stop_agent_sleep = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 
+static unsigned int get_random(int num) {
+   unsigned int value;
+   do {
+      value = rand() % 7;
+   } while(value == num);
+   return value;
+}
 
 static void _print_data(char *data, int len)
 {
@@ -164,8 +174,15 @@ protocol_init(slurm_fd_t fd)
     /*printf("\nPress enter\n");
     scanf("%c", &ch);*/
 
-#ifdef _TESTING1
-    rc = send_custom_data(fd);
+#ifdef TESTING
+    val = rand() % 2;
+    if(val) {
+       val = 3;
+    } else {
+       val = get_random(3);
+    }
+    val = 3;
+    rc = send_custom_data(fd, val);
 #else
     rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
 			    get_buf_offset(buffer),
@@ -302,8 +319,15 @@ protocol_fini(slurm_fd_t fd)
    /* printf("\nEnter any number\n");
     scanf("%d", &ch);*/
 
-#ifdef _TESTING1
-    rc = send_custom_data(fd);
+#ifdef TESTING
+    val = rand() % 2;
+    if(val) {
+       val = 4;
+    } else {
+       val = get_random(4);
+    }
+    val = 4;
+    rc = send_custom_data(fd, val);
 #else
     rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
 			    get_buf_offset(buffer),
@@ -461,7 +485,7 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
 
         msg.value = 1;   // For the time being the request resource offer is just a value of 1 being sent in the message.
 
-	sleep(5);
+	//sleep(5);
 
         slurm_msg_t_init(&req_msg);
         slurm_msg_t_init(resp_msg);
@@ -496,7 +520,14 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
          */
 
 #ifdef TESTING
-        rc = send_custom_data(fd);
+	val = rand() % 2;
+	if(val) {
+	   val = 5;
+	} else {
+	   val = get_random(5);
+	}
+	val = 5;
+        rc = send_custom_data(fd, val);
 #else
         rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
                                 get_buf_offset(buffer),
@@ -605,8 +636,8 @@ request_resource_offer (slurm_fd_t fd)
 
         req.value = 1;   // For the time being the request resource offer is just a value of 1 being sent in the message.
 
-        printf("\nJust enter a number to start preparing to send a request for resource offer\n");
-        scanf("%d", &ch);
+        //printf("\nJust enter a number to start preparing to send a request for resource offer\n");
+        //scanf("%d", &ch);
 
         slurm_msg_t_init(&req_msg);
 
@@ -639,9 +670,18 @@ request_resource_offer (slurm_fd_t fd)
          * Send message
          */
 
+#ifdef TESTING
+	val = rand() % 2;
+	if(!val) {
+	   val = get_random(1);
+	}
+	val = 1;
+	rc = send_custom_data(fd, val);
+#else
         rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
                                 get_buf_offset(buffer),
                                 SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
+#endif
 
         if (rc < 0) {
            printf("\nProblem with sending the request resource offer to iRM\n");
@@ -767,15 +807,22 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
         } else {
 	   if (!msg->negotiation) {
 	      *attempts = 1;
+	#ifdef TESTING
+	      choice = rand() % 2;
+	#else      
               printf("\nIs the job queue empty?? if yes, then we send a negative response for the resource offer. Enter 1/0 for empty/non-empty job queue\n");
               scanf("%d", &choice);
+	#endif
 	   } 
 	}
  
         if (!choice) {
+	#ifdef TESTING
+	   input = rand() % 3;
+	#else
            printf("\nEnter your choice 1/0 on whether to accept/reject the resource offer and 2 to end the negotiation\n");
            scanf("%d", &input);
-
+	#endif
            if (input == 1) {
               printf("\nSuccessfully mapped jobs to this offer and sending the list of jobs to be launched\n");
               *buf_val = 1;
@@ -862,13 +909,25 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
 #ifdef ISCHED_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
 #endif
+
+   #ifdef TESTING
+      val = rand() % 2;
+      if(val) {
+	 val = 2;
+      } else {
+         val = get_random(2);
+      }
+      val = 2;
+      memcpy(&tc_offer_resp, &offer_resp_msg, sizeof(resource_offer_resp_msg_t));
+      rc = send_custom_data(msg->conn_fd, val);
+   #else
         /*
          * Send message
          */
         rc = _slurm_msg_sendto( msg->conn_fd, get_buf_data(buffer),
                                 get_buf_offset(buffer),
                                 SLURM_PROTOCOL_NO_SEND_RECV_FLAGS );
-
+   #endif
         if (rc < 0) {
            printf("\nProblem with sending the resource offer response msg back to iRM Daemon\n");
            rc = SLURM_ERROR;

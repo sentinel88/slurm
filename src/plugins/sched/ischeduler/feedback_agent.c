@@ -289,12 +289,13 @@ extern void *feedback_agent(void *args)
 #ifdef ISCHED_DEBUG
                 printf("\nFinished updating history. Will sleep for sometime before processing the next feedback report\n");
 #endif
-		idle: _my_sleep(feedback_interval);
+		//idle: _my_sleep(feedback_interval);
+		_my_sleep(feedback_interval);
 		now = time(NULL);
 		wait_time = difftime(now, last_feedback_time);
-		if ((wait_time < feedback_interval)) {
+		/*if ((wait_time < feedback_interval)) {
 		   goto idle;
-		}
+		}*/
 		last_feedback_time = time(NULL);
 		slurm_free_status_report_msg(msg->data);
 	}

@@ -440,7 +440,9 @@ static slurm_errtab_t slurm_errtab[] = {
 	{ ESLURM_INVASIVE_JOB_QUEUE_EMPTY,
 	  "iScheduler says -> Invasive job queue is empty"	},
 	{ ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT,
-	  "iRM has rejected the Map:Jobs->Offer"		}
+	  "iRM has rejected the Map:Jobs->Offer"		},
+	{ ESLURM_URGENT_JOB_SUBMISSION_FAILURE,
+	  "Urgent job submission was unsuccessful"		}
 };
 
 /*

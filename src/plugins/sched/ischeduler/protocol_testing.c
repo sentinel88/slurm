@@ -25,9 +25,14 @@ extern pid_t getsid(pid_t pid);         /* missing from <unistd.h> */
 #include "src/common/slurm_protocol_api.h"
 #include "src/common/slurm_protocol_pack.h"
 #include "src/common/forward.h"
+#include "ischeduler.h"
 
 #define timeout 30*1000
 #define RANDOM 2345
+
+#ifdef TESTING
+   resource_offer_resp_msg_t tc_offer_resp;
+#endif
 
 static void _print_data(char *data, int len)
 {
@@ -44,12 +49,12 @@ static void _print_data(char *data, int len)
 
 
 int 
-send_custom_data(slurm_fd_t fd)
+send_custom_data(slurm_fd_t fd, int choice)
 {
     printf("\nInside send_custom_data\n");
     int rc;
     char ch;
-    int choice = -1;
+    //int choice = -1;
     slurm_msg_t msg;
     
     request_resource_offer_msg_t msg1;
@@ -69,16 +74,16 @@ send_custom_data(slurm_fd_t fd)
     forward_init(&msg.forward, NULL);
     msg.ret_list = NULL;
     msg.forward_struct = NULL;
-
-    printf("\nMenu for all the possible message types you can send\n");
+/* Do not change the order of the message below as it needs to be in this order for the automated testing to work. In case of any new messages please add them at the end of the list */
+/*    printf("\nMenu for all the possible message types you can send\n");
     printf("1. REQUEST_RESOURCE_OFFER\n");
     printf("2. RESPONSE_RESOURCE_OFFER\n");
     printf("3. NEGOTIATION_START\n");
     printf("4. NEGOTIATION_END\n");
     printf("5. URGENT_JOB\n");
-    printf("6. RANDOM MSG\n"); 
-    printf("\nEnter your choice of the message from the below options\n");
-    scanf("%d", &choice);
+    printf("6. RANDOM MSG\n"); */
+   // printf("\nEnter your choice of the message from the below options\n");
+   // scanf("%d", &choice);
 
     switch(choice) {
 	case 1:
@@ -91,7 +96,8 @@ send_custom_data(slurm_fd_t fd)
 	     msg2.value = 1;
 	     msg2.error_code = 0;
 	     msg2.error_msg = (char *) NULL;
-	     msg.data = &msg2;
+	     //msg.data = &msg2;
+	     msg.data = &tc_offer_resp;
 	     break;
 	case 3:
 	     msg.msg_type = NEGOTIATION_START;
@@ -129,8 +135,9 @@ send_custom_data(slurm_fd_t fd)
     new_pack_msg(&msg, &header, buffer);
 
 //#if     _DEBUG
+#ifdef ISCHED_DEBUG
     _print_data (get_buf_data(buffer),get_buf_offset(buffer));
-//#endif
+#endif
 
     /*
      * Send message

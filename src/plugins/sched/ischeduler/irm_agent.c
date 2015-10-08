@@ -326,6 +326,7 @@ extern void *irm_agent(void *args)
 	   slurm_attr_init(&attr);
            if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
               error("\nUnable to start a thread to execute a schedule loop for urgent jobs\n");
+	      if (!stop_agent_irm) stop_irm_agent();
            } else {
 #ifdef ISCHED_DEBUG
 	      printf("\nSuccessfully created a thread which serves as an agent to dispatch urgent jobs immediately to iRM\n");
@@ -381,6 +382,7 @@ extern void *irm_agent(void *args)
 		   slurm_attr_init(&attr);
                    if (pthread_create( &feedback_thread, &attr, feedback_agent, NULL)) {
                       error("\nUnable to start a thread to process feedbacks from iRM\n");
+		      if (!stop_irm_agent) stop_irm_agent();
                    } else {
 #ifdef ISCHED_DEBUG
                       printf("\nSuccessfully created a thread which serves as the feedback agent\n");

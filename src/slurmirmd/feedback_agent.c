@@ -275,13 +275,14 @@ extern void *feedback_agent(void *args)
 	       stop_feedback_agent();
 	       continue;
 	    }
-	    idle: _my_sleep(feedback_interval);
+	    //idle: _my_sleep(feedback_interval);
+	    _my_sleep(feedback_interval);
 	    now = time(NULL);
 	    wait_time = difftime(now, last_feedback_time);
-	    if (!stop_agent && (wait_time < feedback_interval)) {
+	    /*if (!stop_agent && (wait_time < feedback_interval)) {
 	       goto idle;
 		    //continue;
-	    }
+	    }*/
 	    //_compute_start_times();
 	    last_feedback_time = time(NULL);
 	        //unlock_slurmctld(all_locks);

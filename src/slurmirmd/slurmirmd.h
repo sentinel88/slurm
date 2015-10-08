@@ -38,6 +38,8 @@ extern int recv_send_urgent_job(slurm_fd_t);
 
 extern bool stop_agent_urgent_job;
 
+#define TESTING 1
+
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
 //extern void *isched_agent(void *args);
 

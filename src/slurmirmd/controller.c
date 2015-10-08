@@ -54,6 +54,10 @@ extern void stop_urgent_job_agent(void);
 //static void _my_sleep(int secs);
 //static int _init_comm(void);
 
+#ifdef TESTING
+   extern resource_offer_msg_t tc_offer;
+#endif
+
 /* Terminate ischeduler_agent */
 extern void stop_irm_agent(void)
 {
@@ -269,6 +273,9 @@ int main(int argc, char *argv[])
 		   //Populate the request message here with the error code and error msg for the previous mapping of jobs to offer
 		   req->error_code = last_mapping_error_code;
 		   req->error_msg = last_mapping_error_msg;
+		#ifdef TESTING
+		   memcpy(&tc_offer, req, sizeof(resource_offer_msg_t));
+		#endif
                    ret_val = slurm_submit_resource_offer(client_fd, req, &resp);
 		   if (attempts == 0) attempts++;
                 } else {

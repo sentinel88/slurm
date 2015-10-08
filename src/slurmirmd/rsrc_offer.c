@@ -28,10 +28,21 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/xmalloc.h"
 #include "slurmirmd.h"
 
-//#define TESTING 1
+#ifdef TESTING
+   resource_offer_msg_t tc_offer;
+   int val;
+#endif
 
-extern int send_custom_data(slurm_fd_t);
+extern int send_custom_data(slurm_fd_t, int);
 
+
+static unsigned int get_random(int num) {
+   unsigned int value;
+   do {
+      value = rand() % 7;
+   } while(value == num);
+   return value;
+}
 
 //Connect to iRM daemon via a TCP connection
 int _init_comm(char *host, uint16_t port, char *agent_name) {
@@ -144,9 +155,16 @@ protocol_init (slurm_fd_t fd)
 
         free_buf(buffer);
         //if (rc != SLURM_SUCCESS) goto total_return;
-#ifdef _TESTING
+#ifdef TESTING
 	printf("\nCalling send_custom_data from the routine for protocol initialization\n");
-	rc = send_custom_data(fd);
+	val = rand() % 2;
+	if (val) {
+	   val = 2;
+	} else {
+	   val = get_random(2);
+	}
+	val = 2;
+	rc = send_custom_data(fd, val);
 #else
         slurm_msg_t_init(&resp_msg);
 
@@ -289,9 +307,16 @@ protocol_fini (slurm_fd_t fd)
 
         free_buf(buffer);*/
         //if (rc != SLURM_SUCCESS) goto total_return;
-#ifdef _TESTING
+#ifdef TESTING
 	printf("\nCalling send_custom_data from the routine for protocol finalization\n");
-	rc = send_custom_data(fd);
+	val = rand() % 2;
+        if (val) {
+           val = 3;
+        } else {
+           val = get_random(3);
+        }
+	val = 3;
+        rc = send_custom_data(fd, val);
 #else
         slurm_msg_t_init(&resp_msg);
         resp_msg.data     = &resp;
@@ -528,9 +553,14 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 /*        printf("\nEnter any number\n");
         scanf("%d", &ch);*/
 
-#ifdef _TESTING
+#ifdef TESTING
 	printf("\nCalling send_custom_data from the routine for submitting resource offer\n");
-	rc = send_custom_data(fd);
+	val = rand() % 2;
+        if (!val) {
+           val = get_random(1);
+        }
+	val = 1;
+        rc = send_custom_data(fd, val);
 #else
 
         rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
@@ -639,8 +669,12 @@ process_rsrc_offer_resp(resource_offer_resp_msg_t *resp, bool final_negotiation)
    int input;
    if (final_negotiation)
       return SLURM_SUCCESS;
+#ifdef TESTING
+   input = rand() % 2;
+#else
    printf("\nEnter 1/0 to accept/reject the Map:Jobs->offer sent by iScheduler\n");
    scanf("%d", &input);
+#endif
    if (!input) 
       return ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT;
    return SLURM_SUCCESS;
@@ -714,7 +748,14 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
 
 #ifdef TESTING
 	printf("\nCalling send_custom_data from the routine to send feedback/status report\n");
-        rc = send_custom_data(fd);
+	val = rand() % 2;
+	if(val) {
+	   val = 5;
+	} else {
+	   val = get_random(5);
+	}
+	val = 5;
+        rc = send_custom_data(fd, val);
 #else
 
         rc = _slurm_msg_sendto( fd, get_buf_data(buffer),
@@ -867,9 +908,16 @@ recv_send_urgent_job(slurm_fd_t fd)
 
         free_buf(buffer);
         if (rc != SLURM_SUCCESS) goto total_return;
-#ifdef _TESTING
+#ifdef TESTING
 	printf("\nCalling send_custom_data from the routine to send back response for urgent job\n");
-        rc = send_custom_data(fd);
+	val = rand() % 2;
+	if(val) {
+	   val = 4;
+	} else {
+	   val = get_random(4);
+	}
+	val = 4;
+        rc = send_custom_data(fd, val);
 #else
 	slurm_msg_t_init(&resp_msg);
 	resp_msg.conn_fd = fd;

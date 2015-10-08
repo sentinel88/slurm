@@ -43,6 +43,8 @@
 
 #include "src/common/xmalloc.h"
 
+#define TESTING 1
+
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
 extern void *isched_agent(void *);
 
@@ -76,7 +78,7 @@ extern int protocol_init(slurm_fd_t);
 
 extern int protocol_fini(slurm_fd_t);
 
-extern int send_custom_data(slurm_fd_t);
+extern int send_custom_data(slurm_fd_t, int);
 
 extern int receive_feedback(slurm_fd_t, slurm_msg_t *);
 
@@ -96,7 +98,7 @@ extern void stop_urgent_job_agent(void);
 
 #define timeout (20*1000)
 
-#define _TESTING 0
+#define TESTING 1
 
 //extern bool urgent_jobs;
 extern bool stop_ug_agent;

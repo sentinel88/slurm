@@ -25,11 +25,15 @@ extern pid_t getsid(pid_t pid);         /* missing from <unistd.h> */
 #include "src/common/slurm_protocol_api.h"
 #include "src/common/slurm_protocol_pack.h"
 #include "src/common/forward.h"
+#include "slurmirmd.h"
 
 #define timeout 30*1000
 
 #define RANDOM 2345
 
+#ifdef TESTING
+   extern resource_offer_msg_t tc_offer;
+#endif
 
 static void _print_data(char *data, int len)
 {
@@ -46,12 +50,12 @@ static void _print_data(char *data, int len)
 
 
 int 
-send_custom_data(slurm_fd_t fd)
+send_custom_data(slurm_fd_t fd, int choice)
 {
     printf("\nInside send_custom_data\n");
     int rc;
     char ch;
-    int choice = -1;
+    //int choice = -1;
     slurm_msg_t msg;
 
     resource_offer_msg_t msg1;
@@ -60,6 +64,8 @@ send_custom_data(slurm_fd_t fd)
     urgent_job_resp_msg_t msg4;
     status_report_msg_t msg5;
     return_code_msg_t msg6;
+
+    int value;
 
     Buf buffer;
     header_t header;
@@ -70,15 +76,16 @@ send_custom_data(slurm_fd_t fd)
     msg.ret_list = NULL;
     msg.forward_struct = NULL;
 
-    printf("\nMenu for all the possible message types you can send\n");
+/* Do not change the order of the messages below. In case of adding a new message, please add it at the end so that it does not disturb the automated testing functionality of this component */
+  /*  printf("\nMenu for all the possible message types you can send\n");
     printf("1. RESOURCE_OFFER\n");
     printf("2. RESPONSE_NEGOTIATION_START\n");
     printf("3. RESPONSE_NEGOTIATION_END\n");
     printf("4. RESPONSE_URGENT_JOB\n");
     printf("5. STATUS_REPORT\n");
-    printf("6. RANDOM MSG\n"); 
-    printf("\nEnter your choice of the message from the below options\n");
-    scanf("%d", &choice);
+    printf("6. RANDOM MSG\n"); */
+    //printf("\nEnter your choice of the message from the below options\n");
+    //scanf("%d", &choice);
 
     switch(choice) {
 	case 1:
@@ -86,26 +93,50 @@ send_custom_data(slurm_fd_t fd)
 	     msg1.value = 1;
 	     msg1.error_code = 0;
 	     msg1.error_msg = (char *) NULL;
-	     msg.data = &msg1;
+	     //msg.data = &msg1;
+	     msg.data = &tc_offer;
 	     break;
 	case 2:
+	     value = rand() % 2;
+	     value = 1;
 	     msg.msg_type = RESPONSE_NEGOTIATION_START;
-	     msg2.value = 1;
-	     msg2.error_code = 0;
-	     msg2.error_msg = (char *) NULL;
+	     if(value) {
+	        msg2.value = 0;
+	        msg2.error_code = 0;
+	        msg2.error_msg = (char *) NULL;
+	     } else {
+	 	msg2.value = 500;
+		msg2.error_code = ESLURM_NEGOTIATION_PROTOCOL_INIT_ERROR;
+		msg2.error_msg = slurm_strerror(msg2.error_code);
+	     }
 	     msg.data = &msg2;
 	     break;
 	case 3:
+	     value = rand() % 2;
 	     msg.msg_type = RESPONSE_NEGOTIATION_END;
-	     msg3.error_code = 0;
-	     msg3.error_msg = (char *) NULL;
+	     if(value) {
+                msg3.value = 0;
+                msg3.error_code = 0;
+                msg3.error_msg = (char *) NULL;
+             } else {
+                msg3.value = 500;
+                msg3.error_code = ESLURM_NEGOTIATION_PROTOCOL_TERM_ERROR;
+                msg3.error_msg = slurm_strerror(msg3.error_code);
+             }
 	     msg.data = &msg3;
 	     break;
 	case 4:
+	     value = rand() % 2;
 	     msg.msg_type = RESPONSE_URGENT_JOB;
-	     msg4.value = 0;
-	     msg4.error_code = 0;
-	     msg4.error_msg = (char *) NULL;
+	     if(value) {
+                msg4.value = 0;
+                msg4.error_code = 0;
+                msg4.error_msg = (char *) NULL;
+             } else {
+                msg4.value = 500;
+                msg4.error_code = ESLURM_URGENT_JOB_SUBMISSION_FAILURE;
+                msg4.error_msg = slurm_strerror(msg4.error_code);
+             }
 	     msg.data = &msg4;
 	     break;
 	case 5:
