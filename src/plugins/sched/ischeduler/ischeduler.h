@@ -108,4 +108,16 @@ extern bool stop_agent_sleep;
 extern bool stop_agent_ping;
 //extern pthread_mutex_t urgent_lock;
 
+extern int print(FILE *, char *);
+
+#ifdef TESTING
+#define LOG_IRM_AGENT "/home/nishanth/logs_SLURM/iSched_iRM_Agent.txt"
+#define LOG_FEEDBACK_AGENT "/home/nishanth/logs_SLURM/iSched_Feedback_Agent.txt"
+#define LOG_UG_AGENT "/home/nishanth/logs_SLURM/iSched_UG_Agent.txt"
+
+extern FILE *log_irm_agent;
+extern FILE *log_feedback_agent;
+extern FILE *log_ug_agent;
+#endif
+
 #endif	/* _SLURM_ISCHEDULER_H */

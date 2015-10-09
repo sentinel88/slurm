@@ -58,6 +58,11 @@ static void _load_config(void);
 static void _my_sleep(int secs);
 //static int _connect_to_irmd(void);
 
+#ifdef TESTING
+FILE *log_irm_agent = NULL;
+FILE *log_feedback_agent = NULL;
+FILE *log_ug_agent = NULL;
+#endif
 
 /* Terminate iScheduler_agent */
 extern void stop_irm_agent(void)
@@ -67,7 +72,7 @@ extern void stop_irm_agent(void)
 	if (!stop_agent_feedback) stop_feedback_agent();
 	if (!stop_agent_ping) stop_ping_agent();
 	if (!stop_ug_agent) stop_urgent_job_agent();
-        printf("\nStopping IRM agent\n");
+        print(log_irm_agent, "\nStopping IRM agent\n");
 	if (!stop_agent_sleep) stop_sleep_agent();
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -78,7 +83,7 @@ extern void stop_urgent_job_agent(void)
 {
 	pthread_mutex_lock(&urgent_lock);
 	stop_ug_agent = true;
-        printf("\nStopping urgent job agent\n");
+        print(log_ug_agent, "\nStopping urgent job agent\n");
 	pthread_mutex_unlock(&urgent_lock);
 }
 
@@ -283,6 +288,7 @@ extern void *irm_agent(void *args)
 {
         slurm_fd_t fd = -1;
         char *buf = NULL; 
+	char *str = NULL;
         bool empty_queue = true;
         uint16_t buf_val = -1;
         int ret_val = 0;
@@ -299,15 +305,25 @@ extern void *irm_agent(void *args)
         buf = (char *)malloc(sizeof(uint16_t));
         msg = xmalloc(sizeof(slurm_msg_t));
         msg->data = &res_off_msg;
+	str = (char *)malloc(400 * sizeof(char));
+
+#ifdef TESTING
+	log_irm_agent = fopen(LOG_IRM_AGENT, "w");
+	if (log_irm_agent == NULL) {
+	   printf("\nError in opening the log file for iRM_Agent\n");
+	   return -1;
+	}
+#endif   
+
 	slurm_attr_init(&attr);
-#ifdef ISCHED_DEBUG
-        printf("\n[IRM_AGENT]: Entering irm_agent\n");
-        printf("\n[IRM_AGENT]: Attempting to connect to iRM Daemon\n");
+#if defined (ISCHED_DEBUG) || defined (TESTING)
+        print(log_irm_agent, "\n[IRM_AGENT]: Entering irm_agent\n");
+        print(log_irm_agent, "\n[IRM_AGENT]: Attempting to connect to iRM Daemon\n");
 #endif
         fd = _connect_to_irmd("127.0.0.1", 12345, &stop_agent_irm, irm_interval, "IRM_AGENT");
 
         if (fd < 0) { 
-           printf("\n[IRM_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
+           print(log_irm_agent, "\n[IRM_AGENT]: Unable to reach iRM daemon. Agent shutting down\n");
            return NULL;
         }
 
@@ -320,16 +336,16 @@ extern void *irm_agent(void *args)
 	   irm_state = PROTOCOL_INITIALIZED;
 	}
 	if (ret_val != SLURM_SUCCESS) {
-	   printf("\nProtocol initialization failed\n");
+	   print(log_irm_agent, "\nProtocol initialization failed\n");
 	   if (!stop_agent_irm) stop_irm_agent();
 	} else {
 	   slurm_attr_init(&attr);
            if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
-              error("\nUnable to start a thread to execute a schedule loop for urgent jobs\n");
+              print(log_irm_agent, "\nUnable to start a thread to execute a schedule loop for urgent jobs\n");
 	      if (!stop_agent_irm) stop_irm_agent();
            } else {
-#ifdef ISCHED_DEBUG
-	      printf("\nSuccessfully created a thread which serves as an agent to dispatch urgent jobs immediately to iRM\n");
+#if defined (ISCHED_DEBUG) || defined (TESTING)
+	      print(log_irm_agent, "\nSuccessfully created a thread which serves as an agent to dispatch urgent jobs immediately to iRM\n");
 #endif
 	   }
 	   slurm_attr_destroy(&attr);
@@ -343,8 +359,9 @@ extern void *irm_agent(void *args)
 	   }
 	   slurm_attr_destroy(&attr); */
 	}
-#ifdef ISCHED_DEBUG
-	printf("\nstop_agent_irm = %d\n", stop_agent_irm);
+#if defined (ISCHED_DEBUG) || defined (TESTING)
+	sprintf(str, "\nstop_agent_irm = %d\n", stop_agent_irm);
+	print(log_irm_agent, str);
 #endif
 	while (!stop_agent_irm) {
 		irm_state = PROTOCOL_IN_PROGRESS;
@@ -356,8 +373,8 @@ extern void *irm_agent(void *args)
 			_load_config();
 		}
                 if (empty_queue) {
-#ifdef ISCHED_DEBUG
-		   printf("\nIn this state, the irm agent will request for a resource offer only when some jobs have been added to the queue. For this purpose, we will have to periodically inspect the invasive job queue for new jobs.\n");
+#if defined (ISCHED_DEBUG) || defined(TESTING)
+		   print(log_irm_agent, "\nIn this state, the irm agent will request for a resource offer only when some jobs have been added to the queue. For this purpose, we will have to periodically inspect the invasive job queue for new jobs.\n");
 #endif
                    ret_val = request_resource_offer(fd);
                    empty_queue = false;
@@ -366,13 +383,13 @@ extern void *irm_agent(void *args)
                    ret_val = receive_resource_offer(fd, msg);
 		   attempts++;
                 } else {
-                   printf("\nError in sending the request for resource offer to iRM. Shutting down the iRM agent.\n");
+                   print(log_irm_agent, "\nError in sending the request for resource offer to iRM. Shutting down the iRM agent.\n");
                    if (!stop_agent_irm) stop_irm_agent();
 		   //stop_feedback_agent();
                    continue;
                 }
                 if (ret_val != SLURM_SUCCESS) {
-                   printf("\nError in receiving the resource offer. Stopping iRM agent.\n");
+                   print(log_irm_agent, "\nError in receiving the resource offer. Stopping iRM agent.\n");
                    if (!stop_agent_irm) stop_irm_agent();
 		   //stop_feedback_agent();
                    continue;
@@ -381,17 +398,17 @@ extern void *irm_agent(void *args)
 		   feedback_initialized = true;
 		   slurm_attr_init(&attr);
                    if (pthread_create( &feedback_thread, &attr, feedback_agent, NULL)) {
-                      error("\nUnable to start a thread to process feedbacks from iRM\n");
+                      print(log_irm_agent, "\nUnable to start a thread to process feedbacks from iRM\n");
 		      if (!stop_irm_agent) stop_irm_agent();
                    } else {
-#ifdef ISCHED_DEBUG
-                      printf("\nSuccessfully created a thread which serves as the feedback agent\n");
+#if defined (ISCHED_DEBUG) || defined (TESTING)
+                      print(log_irm_agent, "\nSuccessfully created a thread which serves as the feedback agent\n");
 #endif
                    }
                    slurm_attr_destroy(&attr);
 		}
-#ifdef ISCHED_DEBUG
-                printf("[IRM_AGENT]: Processing the offer\n");
+#if defined (ISCHED_DEBUG) || defined (TESTING)
+                print(log_irm_agent, "[IRM_AGENT]: Processing the offer\n");
 #endif
                 ret_val = process_resource_offer(msg->data, &buf_val, &attempts);
                 memcpy(buf, (char *)&buf_val, sizeof(buf_val)); 
@@ -408,8 +425,8 @@ extern void *irm_agent(void *args)
 		   //stop_feedback_agent();
 		   continue;
 		}
-#ifdef ISCHED_DEBUG
-                printf("\nBefore sending the response to the resource offer\n");
+#if defined (ISCHED_DEBUG) || defined (TESTING)
+                print(log_irm_agent, "\nBefore sending the response to the resource offer\n");
 #endif
                 ret_val = 0;
 		slurm_free_resource_offer_resp_msg(msg->data);
@@ -420,8 +437,8 @@ extern void *irm_agent(void *args)
 		   //stop_feedback_agent();
                    continue;
                 }
-#ifdef ISCHED_DEBUG
-                printf("[IRM_AGENT]: Sent back a response to the resource offer\n");
+#if defined (ISCHED_DEBUG) || defined (TESTING)
+                print(log_irm_agent, "[IRM_AGENT]: Sent back a response to the resource offer\n");
 #endif
 	}
 
@@ -430,7 +447,7 @@ extern void *irm_agent(void *args)
 		 if (ret_val == SLURM_SUCCESS) {
 		    ret_val = receive_resource_offer(fd, msg);
 		    if (ret_val == SLURM_SUCCESS) {
-		       printf("\nReceived a resource offer from iRM. We are proceeding to terminate so we ignore this message.\n");
+		       print(log_irm_agent, "\nReceived a resource offer from iRM. We are proceeding to terminate so we ignore this message.\n");
 		       slurm_free_resource_offer_resp_msg(msg->data);
 		    }
 		    ret_val = protocol_fini(fd);
@@ -447,16 +464,20 @@ extern void *irm_agent(void *args)
 	}
 
 	if (ret_val == SLURM_SUCCESS) {
-	   printf("\nProtocol termination succeeded\n");
+	   print(log_irm_agent, "\nProtocol termination succeeded\n");
         } else {
-           printf("\nProtocol termination failed\n");
+           print(log_irm_agent, "\nProtocol termination failed\n");
         }
 
         free(buf);
+	free(str);
         slurm_free_msg(msg);
         close(fd);
 	pthread_join(urgent_job_agent, NULL);
 	pthread_join(feedback_thread, NULL);
-        printf("\n[IRM_AGENT]: Exiting irm_agent\n");
+        print(log_irm_agent, "\n[IRM_AGENT]: Exiting irm_agent\n");
+	close(log_irm_agent);
+	close(log_feedback_agent);
+	close(log_ug_agent);
 	return NULL;
 }

@@ -52,7 +52,7 @@ extern void stop_feedback_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
 	stop_agent = true;
-        printf("\nStopping FEEDBACK AGENT\n");
+        print(log_feedback_agent, "\nStopping FEEDBACK AGENT\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -245,21 +245,21 @@ extern void *feedback_agent(void *args)
 	static time_t last_feedback_time = 0;
 	time_t now;
 	double wait_time;
-        printf("\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
+        print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
 
 	fd = _init_comm("127.0.0.1", 12346, "FEEDBACK_AGENT");
         if (fd == -1) {
-           printf("\n[FEEDBACK_AGENT]: Unsuccessful initialization of the communcation engine. Agent shutting down\n");
+           print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Unsuccessful initialization of the communcation engine. Agent shutting down\n");
            return NULL;
         }
 
-	client_fd = slurm_accept_msg_conn(fd, &cli_addr);
+	client_fd = _accept_msg_conn(fd, &cli_addr);
         if (client_fd != SLURM_SOCKET_ERROR) {
-	#ifdef IRM_DEBUG
-           printf("\n[FEEDBACK_AGENT]: Accepted connection from iScheduler's feedback agent. Communications can now start\n");
+	#if defined (IRM_DEBUG) || defined (TESTING)
+           print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Accepted connection from iScheduler's feedback agent. Communications can now start\n");
 	#endif
         } else {
-           printf("\n[FEEDBACK_AGENT]: Unable to receive any connection request from iScheduler's feedback agent. Shutting down the agent.\n");
+           print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Unable to receive any connection request from iScheduler's feedback agent. Shutting down the agent.\n");
            stop_agent = true;
         }
 
@@ -271,7 +271,7 @@ extern void *feedback_agent(void *args)
 	    ret_val = compute_feedback(&msg);
 	    ret_val = send_feedback(client_fd, &msg);
 	    if (ret_val != SLURM_SUCCESS) {
-	       printf("\nError in sending the periodic feedback to iScheduler. Shutting down the feedback agent\n");
+	       print(log_feedback_agent, "\nError in sending the periodic feedback to iScheduler. Shutting down the feedback agent\n");
 	       stop_feedback_agent();
 	       continue;
 	    }
@@ -289,6 +289,6 @@ extern void *feedback_agent(void *args)
 	}
 	close(client_fd);
 	close(fd);
-        printf("\n[FEEDBACK_AGENT]: Exiting feedback_agent\n");
+        print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Exiting feedback_agent\n");
 	return NULL;
 }

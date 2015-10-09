@@ -56,6 +56,9 @@ extern void stop_urgent_job_agent(void);
 
 #ifdef TESTING
    extern resource_offer_msg_t tc_offer;
+   FILE *log_irm_agent = NULL;
+   FILE *log_feedback_agent = NULL;
+   FILE *log_ug_agent = NULL;
 #endif
 
 /* Terminate ischeduler_agent */
@@ -65,7 +68,7 @@ extern void stop_irm_agent(void)
 	stop_agent = true;
 	stop_urgent_job_agent();
 	//stop_agent_urgent_job = true;
-        printf("\nStopping IRM agent\n");
+        print(log_irm_agent, "\nStopping IRM agent\n");
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
 }
@@ -74,7 +77,7 @@ extern void stop_urgent_job_agent(void)
 {
 	pthread_mutex_lock(&urgent_lock);
 	stop_agent_urgent_job = true;
-	printf("\nStopping urgent job agent\n");
+	print(log_ug_agent, "\nStopping urgent job agent\n");
 	pthread_mutex_unlock(&urgent_lock);
 }
 
@@ -178,22 +181,23 @@ int main(int argc, char *argv[])
 
         buf = (char *)malloc(sizeof(int));
 	req = xmalloc(sizeof(resource_offer_msg_t));
-#ifdef IRM_DEBUG
-        printf("\n[IRM_DAEMON]: Entering irm_agent\n");
+#if defined (IRM_DEBUG) || defined (TESTING)
+        print(log_irm_agent, "\n[IRM_DAEMON]: Entering irm_agent\n");
 #endif
         fd = _init_comm("127.0.0.1", 12345, "IRM_DAEMON");
 
         if (fd == -1) { 
-           printf("\n[IRM_DAEMON]: Unsuccessful initialization of communication engine. Agent shutting down\n");
+           print(log_irm_agent, "\n[IRM_DAEMON]: Unsuccessful initialization of communication engine. Agent shutting down\n");
            return 0;
         }
 
-        client_fd = slurm_accept_msg_conn(fd, &cli_addr);
+        client_fd = _accept_msg_conn(fd, &cli_addr);
         if (client_fd != SLURM_SOCKET_ERROR) {
-           printf("\n[IRM_DAEMON]: Accepted connection from iScheduler. Communications can now start\n");
+           print(log_irm_agent, "\n[IRM_DAEMON]: Accepted connection from iScheduler. Communications can now start\n");
         } else {
-           printf("\n[IRM_DAEMON]: Unable to receive any connection request from iScheduler. Shutting down the daemon.\n");
+           print(log_irm_agent, "\n[IRM_DAEMON]: Unable to receive any connection request from iScheduler. Shutting down the daemon.\n");
            stop_agent = true;
+	   goto total_return;
         }
 
 	_load_config();
@@ -206,15 +210,15 @@ int main(int argc, char *argv[])
 	   irm_state = PROTOCOL_INITIALIZED;
         }
         if (ret_val != SLURM_SUCCESS) {
-           printf("\nProtocol initialization falied\n");
+           print(log_irm_agent, "\nProtocol initialization falied\n");
            stop_irm_agent();
         } else {
 	   slurm_attr_init(&attr);
 	   if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
-	      error("\nUnable to start the agent to handle urgent jobs\n");
+	      print(log_irm_agent, "\nUnable to start the agent to handle urgent jobs\n");
 	   } else {
-#ifdef IRM_DEBUG
-	      printf("\nSuccessfully created a thread to handle urgent jobs\n");
+#if defined (IRM_DEBUG) || defined (TESTING)
+	      print(log_irm_agent, "\nSuccessfully created a thread to handle urgent jobs\n");
 #endif
 	   }
 	}
@@ -255,10 +259,10 @@ int main(int argc, char *argv[])
 		      /* Create an attached thread for feedback agent */
         	      slurm_attr_init(&attr);
         	      if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
-                         error("pthread_create error %m");
+                         print(log_irm_agent, "pthread_create error %m");
         	      }
-		#ifdef IRM_DEBUG
-		      printf("\nSuccessfully created a thread for the feedback agent\n");
+		#if defined (IRM_DEBUG) || defined (TESTING)
+		      print(log_irm_agent, "\nSuccessfully created a thread for the feedback agent\n");
 		#endif
         	      slurm_attr_destroy(&attr);
 		      flag = 1;
@@ -266,8 +270,8 @@ int main(int argc, char *argv[])
                    no_jobs = false; 
                    //xfree(msg.data);
 		   //slurm_free_request_resource_offer_msg(req_msg);
-#ifdef IRM_DEBUG
-                   printf("\nCreating a new resource offer to send to iScheduler\n");
+#if defined (IRM_DEBUG) || defined (TESTING)
+                   print(log_irm_agent, "\nCreating a new resource offer to send to iScheduler\n");
 #endif
                    //ret_val = slurm_submit_resource_offer(client_fd, &req, &resp);
 		   //Populate the request message here with the error code and error msg for the previous mapping of jobs to offer
@@ -279,14 +283,14 @@ int main(int argc, char *argv[])
                    ret_val = slurm_submit_resource_offer(client_fd, req, &resp);
 		   if (attempts == 0) attempts++;
                 } else {
-                   printf("\nHave not received any request for resource offer yet. Shutting down the daemon along with the feedback agent\n");
+                   print(log_irm_agent, "\nHave not received any request for resource offer yet. Shutting down the daemon along with the feedback agent\n");
 		   if (flag)
 		      stop_feedback_agent();
                    stop_irm_agent();
                    continue;
                 }
                 if (ret_val != SLURM_SUCCESS) {
-                   printf("\niRM agent shutting down along with feedback agent\n");
+                   print(log_irm_agent, "\niRM agent shutting down along with feedback agent\n");
                    /*xfree(resp.error_msg); Not valid because this could be a negotiation end message. Need to handle this better */
 		   stop_feedback_agent();
                    stop_irm_agent();
@@ -315,9 +319,9 @@ int main(int argc, char *argv[])
 
                 /*if (val == 500) { */
 		if (resp->error_code == ESLURM_INVASIVE_JOB_QUEUE_EMPTY) {
-                   printf("\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler for a resource offer\n");
-                   printf("\nError code = %d\n", resp->error_code);
-                   printf("\nError msg = %s\n", resp->error_msg);
+                   print(log_irm_agent, "\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler for a resource offer\n");
+                   print(log_irm_agent, "\nError code = %d\n", resp->error_code);
+                   print(log_irm_agent, "\nError msg = %s\n", resp->error_msg);
                    no_jobs = true;
                    attempts = 0;
 		   req->negotiation = 0;
@@ -326,7 +330,7 @@ int main(int argc, char *argv[])
                 }        
 
                 if (attempts == MAX_NEGOTIATION_ATTEMPTS) {
-                   printf("\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
+                   print(log_irm_agent, "\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
                    attempts = 0;
                    ret_val = process_rsrc_offer_resp(resp, true);
 		   req->negotiation = 0;
@@ -336,26 +340,26 @@ int main(int argc, char *argv[])
 
                 /*if (val == 0) {*/
 		if (resp->error_code == ESLURM_RESOURCE_OFFER_REJECT) {
-                   printf("\niScheduler did not accept this offer.\n");
+                   print(log_irm_agent, "\niScheduler did not accept this offer.\n");
                    attempts++;
 		   req->negotiation = 1;
                 /*} else if (val == 1) {*/
 		} else if (resp->error_code == SLURM_SUCCESS) {
-                   printf("\niScheduler accepted the offer\n");
+                   print(log_irm_agent, "\niScheduler accepted the offer\n");
                    ret_val = process_rsrc_offer_resp(resp, false);
 		   if (ret_val != SLURM_SUCCESS) {
 		      last_mapping_error_code = ret_val;
 		      last_mapping_error_msg = slurm_strerror(last_mapping_error_code);
-		      printf("\niRM has rejected the mapping.\n");
+		      print(log_irm_agent, "\niRM has rejected the mapping.\n");
 		      attempts++;
 		      req->negotiation = 1;
 		   } else {
-		      printf("\niRM has accepted the mapping.\n");
+		      print(log_irm_agent, "\niRM has accepted the mapping.\n");
 		      attempts = 0;
 		      req->negotiation = 0;
 		   }
                 } else {
-                   printf("\nInvalid response from iScheduler. Ignoring this.\n");
+                   print(log_irm_agent, "\nInvalid response from iScheduler. Ignoring this.\n");
 		   last_mapping_error_code = SLURM_UNEXPECTED_MSG_ERROR;
 		   last_mapping_error_msg = slurm_strerror(last_mapping_error_code);
                    attempts++;
@@ -368,7 +372,7 @@ int main(int argc, char *argv[])
    without first setting the error_msg pointer to NULL. This will result in trying to free a statically allocated memory resulting in
    segmentation fault */
 
-	req->error_msg = NULL;
+total_return:req->error_msg = NULL;
 	slurm_free_resource_offer_msg(req);
 	slurm_free_resource_offer_resp_msg(resp);  // May not be required. Can be removed later after sufficient testing
         free(buf);
@@ -377,6 +381,6 @@ int main(int argc, char *argv[])
 	slurm_conf_destroy();
 	log_fini();
 	pthread_join(feedback_thread,  NULL);
-        printf("\n[IRM_DAEMON]: Exiting iRM Daemon\n");
+        print(log_irm_agent, "\n[IRM_DAEMON]: Exiting iRM Daemon\n");
 	return 0;
 }

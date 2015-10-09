@@ -51,7 +51,7 @@ extern void stop_ping_agent(void)
 {
 	pthread_mutex_lock(&term_lock);
 	stop_agent_ping = true;
-        printf("\nStopping PING agent\n");
+        print(log_ug_agent, "\nStopping PING agent\n");
 	if (!stop_agent_sleep) stop_sleep_agent();
 	pthread_cond_signal(&term_cond);
 	pthread_mutex_unlock(&term_lock);
@@ -222,7 +222,7 @@ extern void *ping_agent(void *args)
 	//time_t now;
 	//double wait_time;
 	//static time_t last_ping_time = 0;
-	printf("\nInside ping agent\n");
+	print(log_ug_agent, "\nInside ping agent\n");
 	slurm_fd_t fd = -1;
 	int ret_val = SLURM_SUCCESS;
 	slurm_msg_t *msg = NULL;
@@ -235,14 +235,14 @@ extern void *ping_agent(void *args)
 	msg = xmalloc(sizeof(slurm_msg_t));
 
 	slurm_msg_t_init(msg);
-#ifdef ISCHED_DEBUG
-        printf("\n[PING_AGENT]: Entering ping_agent\n");
-	printf("\n[PING_AGENT]: Attempting to connect to iRM Daemon\n");
+#if defined (ISCHED_DEBUG) || defined (TESTING)
+        print(log_ug_agent, "\n[PING_AGENT]: Entering ping_agent\n");
+	print(log_ug_agent, "\n[PING_AGENT]: Attempting to connect to iRM Daemon\n");
 #endif
 	fd = _connect_to_irmd("127.0.0.1", 12435, &stop_agent_ping, ping_interval, "PING_AGENT");
 
 	if (fd < 0) {
-	   printf("\n[PING_AGENT]: Unable to reach iRM daemon. Thread is exiting and also signalling the urgent job agent to shutdown.\n");
+	   print(log_ug_agent, "\n[PING_AGENT]: Unable to reach iRM daemon. Thread is exiting and also signalling the urgent job agent to shutdown.\n");
 	   if (!stop_agent_ping) stop_ping_agent();
 	   if (!stop_ug_agent) stop_urgent_job_agent();
 	   return NULL;
@@ -253,12 +253,12 @@ extern void *ping_agent(void *args)
 
 	if (ret_val == SLURM_SUCCESS) {
 	   if ( ((urgent_job_resp_msg_t *)(msg->data))->value == 500) {
-	      printf("\nUrgent job submission unsuccessful. We do not retry again.\n");
+	      print(log_ug_agent, "\nUrgent job submission unsuccessful. We do not retry again.\n");
 	   } else {
-	      printf("\nSubmitted the urgent job successfully to iRM\n");
+	      print(log_ug_agent, "\nSubmitted the urgent job successfully to iRM\n");
 	   }
 	} else {
-	   printf("\nError returned from send_recv_urgent_job function. Killing this thread and signalling the urgent job agent to shutdown\n");
+	   print(log_ug_agent, "\nError returned from send_recv_urgent_job function. Killing this thread and signalling the urgent job agent to shutdown\n");
 	   if (!stop_agent_ping) stop_ping_agent();
 	   if (!stop_ug_agent) stop_urgent_job_agent();
 	}
@@ -290,6 +290,6 @@ extern void *ping_agent(void *args)
 		last_ping_time = time(NULL);
 		//unlock_slurmctld(all_locks);
 	}*/
-        printf("\n[PING_AGENT]: Exiting ping_agent\n");
+        print(log_ug_agent, "\n[PING_AGENT]: Exiting ping_agent\n");
 	return NULL;
 }

@@ -113,6 +113,7 @@ send_custom_data(slurm_fd_t fd, int choice)
 	     break;
 	case 3:
 	     value = rand() % 2;
+	     value = 1;
 	     msg.msg_type = RESPONSE_NEGOTIATION_END;
 	     if(value) {
                 msg3.value = 0;
@@ -127,6 +128,7 @@ send_custom_data(slurm_fd_t fd, int choice)
 	     break;
 	case 4:
 	     value = rand() % 2;
+	     value = 1;
 	     msg.msg_type = RESPONSE_URGENT_JOB;
 	     if(value) {
                 msg4.value = 0;
