@@ -34,6 +34,7 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #ifdef TESTING
    extern resource_offer_resp_msg_t tc_offer_resp;
    int val;
+   char str[1000];
 #endif
 
 bool stop_agent_sleep = false;
@@ -249,7 +250,8 @@ protocol_init(slurm_fd_t fd)
 
     switch (resp_msg.msg_type) {
        case RESPONSE_NEGOTIATION_START:
-	    print(log_irm_agent, "\nResponse received from iRM for the start of negotiation. Value is %d\n", ((negotiation_start_resp_msg_t *)(resp_msg.data))->value);
+	    sprintf(str, "\nResponse received from iRM for the start of negotiation. Value is %d\n", ((negotiation_start_resp_msg_t *)(resp_msg.data))->value);
+	    print(log_irm_agent, str);
 	    if ( ((negotiation_start_resp_msg_t *)(resp_msg.data))->value == 500) {
 	       rc = SLURM_ERROR;
 	    } else {
@@ -402,7 +404,8 @@ if (rc)
             *resp = NULL;
             break;*/
        case RESPONSE_NEGOTIATION_END:
-            print(log_irm_agent, "\nResponse received from iRM for the end of negotiation. Value is %d\n", ((negotiation_end_resp_msg_t *)(resp_msg.data))->value);
+	    sprintf(str, "\nResponse received from iRM for the end of negotiation. Value is %d\n", ((negotiation_end_resp_msg_t *)(resp_msg.data))->value);
+            print(log_irm_agent, str);
 	    if ( ((negotiation_end_resp_msg_t *)(resp_msg.data))->value == 500) {
                rc = SLURM_ERROR;
             } else {
@@ -444,7 +447,8 @@ schedule_urgent_jobs(void)
    while(!stop_ug_agent) {
 #if defined (ISCHED_DEBUG) || defined (TESTING)
       print(log_ug_agent, "\nInside the threading loop\n");
-      print(log_ug_agent, "\nstop_ug_agent = %d\n", stop_ug_agent);
+      sprintf(str, "\nstop_ug_agent = %d\n", stop_ug_agent);	
+      print(log_ug_agent, str);
 #endif
       slurm_attr_init(&thread_attr);
       if (pthread_create(&thread_id, &thread_attr, ping_agent, NULL)) {
@@ -603,7 +607,8 @@ if (rc)
             break;*/
            case RESPONSE_URGENT_JOB:
 #ifdef ISCHED_DEBUG
-              print(log_ug_agent, "\nResponse received from iRM for the urgent job. Value is %d\n", ((urgent_job_resp_msg_t *)(resp_msg->data))->value);
+	      sprintf(str, "\nResponse received from iRM for the urgent job. Value is %d\n", ((urgent_job_resp_msg_t *)(resp_msg->data))->value);
+              print(log_ug_agent, str);
 #endif
               slurm_free_urgent_job_resp_msg(resp_msg->data);
               rc = SLURM_SUCCESS;
@@ -700,7 +705,7 @@ request_resource_offer (slurm_fd_t fd)
 
         free_buf(buffer);
 #if defined (ISCHED_DEBUG) || defined (TESTING)
-        printf(log_irm_agent, "\nExiting request_resource_offer\n");
+        print(log_irm_agent, "\nExiting request_resource_offer\n");
 #endif
         return rc;
 }
@@ -780,9 +785,10 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
         }
 
         free_buf(buffer);
-        if (rc == SLURM_SUCCESS)
-           print(log_irm_agent, "\n[IRM_AGENT]: Received a resource offer from iRM daemon which is %d\n", ( (resource_offer_msg_t *) (msg->data))->value);
-
+        if (rc == SLURM_SUCCESS) {
+	   sprintf(str, "\n[IRM_AGENT]: Received a resource offer from iRM daemon which is %d\n", ( (resource_offer_msg_t *) (msg->data))->value);
+           print(log_irm_agent, str);
+        }
 total_return:
         destroy_forward(&header.forward);
 
@@ -792,7 +798,7 @@ total_return:
                 rc = 0;
         }
 #if defined (ISCHED_DEBUG) || defined (TESTING)
-        printf(log_irm_agent, "\nExiting isched_recv_rsrc_offer\n");
+        print(log_irm_agent, "\nExiting isched_recv_rsrc_offer\n");
 #endif
         return rc;
 }
@@ -1019,11 +1025,12 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
 
     free_buf(buffer);
     //if (rc != SLURM_SUCCESS) goto total_return;
-    if (rc == SLURM_SUCCESS)
+    if (rc == SLURM_SUCCESS) {
 #if defined (ISCHED_DEBUG) || defined (TESTING)
-       print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Received a status report from the feedback agent of iRM daemon which is %d\n", ( (status_report_msg_t *) (msg->data))->value);
+       sprintf(str, "\n[FEEDBACK_AGENT]: Received a status report from the feedback agent of iRM daemon which is %d\n", ( (status_report_msg_t *) (msg->data))->value);
+       print(log_feedback_agent, str);
 #endif
-
+    }
 total_return:
     destroy_forward(&header.forward);
 

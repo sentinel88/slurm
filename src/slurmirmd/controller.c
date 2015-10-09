@@ -165,6 +165,9 @@ int main(int argc, char *argv[])
         slurm_fd_t fd = -1;
         slurm_fd_t client_fd = -1;
         char *buf = NULL;
+#ifdef TESTING
+	char str[1000];
+#endif
 	uint16_t last_mapping_error_code = 0;
 	char *last_mapping_error_msg = NULL;
         int ret_val;
@@ -181,6 +184,26 @@ int main(int argc, char *argv[])
 
         buf = (char *)malloc(sizeof(int));
 	req = xmalloc(sizeof(resource_offer_msg_t));
+
+#ifdef TESTING
+        log_irm_agent = fopen(LOG_IRM_AGENT, "w");
+        if (log_irm_agent == NULL) {
+           printf("\nError in opening the log file for iRM_Agent\n");
+           return -1;
+        }
+        log_feedback_agent = fopen(LOG_FEEDBACK_AGENT, "w");
+        if (log_feedback_agent == NULL) {
+           printf("\nError in opening the log file for feedback_agent\n");
+           return -1;
+        }
+        log_ug_agent = fopen(LOG_UG_AGENT, "w");
+        if (log_ug_agent == NULL) {
+           printf("\nError in opening the log file for urgent_jobs_agent\n");
+           return -1;
+        }
+#endif
+
+
 #if defined (IRM_DEBUG) || defined (TESTING)
         print(log_irm_agent, "\n[IRM_DAEMON]: Entering irm_agent\n");
 #endif
@@ -320,8 +343,8 @@ int main(int argc, char *argv[])
                 /*if (val == 500) { */
 		if (resp->error_code == ESLURM_INVASIVE_JOB_QUEUE_EMPTY) {
                    print(log_irm_agent, "\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler for a resource offer\n");
-                   print(log_irm_agent, "\nError code = %d\n", resp->error_code);
-                   print(log_irm_agent, "\nError msg = %s\n", resp->error_msg);
+		   sprintf(str, "\nError code = %d\nError msg = %s\n", resp->error_code, resp->error_msg);
+                   print(log_irm_agent, str);
                    no_jobs = true;
                    attempts = 0;
 		   req->negotiation = 0;
@@ -382,5 +405,8 @@ total_return:req->error_msg = NULL;
 	log_fini();
 	pthread_join(feedback_thread,  NULL);
         print(log_irm_agent, "\n[IRM_DAEMON]: Exiting iRM Daemon\n");
+	fclose(log_irm_agent);
+	fclose(log_feedback_agent);
+	fclose(log_ug_agent);
 	return 0;
 }

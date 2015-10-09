@@ -31,6 +31,7 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #ifdef TESTING
    resource_offer_msg_t tc_offer;
    int val;
+   char str[1000];
 #endif
 
 extern int send_custom_data(slurm_fd_t, int);
@@ -673,10 +674,12 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 		*resp = NULL;
 		break;*/
 	   case RESPONSE_RESOURCE_OFFER:
-                print(log_irm_agent, "\nResponse received from iScheduler for the resource offer is %d\n", ((resource_offer_resp_msg_t *)(resp_msg.data))->value);
+	        sprintf(str, "\nResponse received from iScheduler for the resource offer is %d\n", ((resource_offer_resp_msg_t *)(resp_msg.data))->value);
+                print(log_irm_agent, str);
                 //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
 		*resp = (resource_offer_resp_msg_t *)(resp_msg.data);
-		print(log_irm_agent, "\nError code = %d, Error msg = %s\n", (*resp)->error_code, (*resp)->error_msg);
+		sprintf(str, "\nError code = %d, Error msg = %s\n", (*resp)->error_code, (*resp)->error_msg);
+		print(log_irm_agent, str);
 		//slurm_free_resource_offer_resp_msg(resp_msg.data);
                 rc = SLURM_SUCCESS;
 		//*resp = (resource_offer_response_msg_t *) resp_msg.data;

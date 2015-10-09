@@ -313,6 +313,16 @@ extern void *irm_agent(void *args)
 	   printf("\nError in opening the log file for iRM_Agent\n");
 	   return -1;
 	}
+	log_feedback_agent = fopen(LOG_FEEDBACK_AGENT, "w");
+	if (log_feedback_agent == NULL) {
+	   printf("\nError in opening the log file for feedback_agent\n");
+	   return -1;
+	}
+	log_ug_agent = fopen(LOG_UG_AGENT, "w");
+	if (log_ug_agent == NULL) {
+	   printf("\nError in opening the log file for urgent_jobs_agent\n");
+	   return -1;
+	}
 #endif   
 
 	slurm_attr_init(&attr);
@@ -470,14 +480,14 @@ extern void *irm_agent(void *args)
         }
 
         free(buf);
-	free(str);
         slurm_free_msg(msg);
         close(fd);
 	pthread_join(urgent_job_agent, NULL);
 	pthread_join(feedback_thread, NULL);
         print(log_irm_agent, "\n[IRM_AGENT]: Exiting irm_agent\n");
-	close(log_irm_agent);
-	close(log_feedback_agent);
-	close(log_ug_agent);
+	free(str);
+	fclose(log_irm_agent);
+	fclose(log_feedback_agent);
+	fclose(log_ug_agent);
 	return NULL;
 }
