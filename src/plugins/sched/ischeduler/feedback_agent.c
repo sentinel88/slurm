@@ -250,8 +250,11 @@ extern void *feedback_agent(void *args)
 	time_t now;
 	double wait_time;
 	slurm_fd_t fd = -1;
+#ifdef TESTING
+	char str[1000];
+#endif
 	slurm_msg_t *msg;
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG) 
         print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
 	print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Attempting to connect to the feedback agent of iRM daemon\n");
 #endif
@@ -275,9 +278,13 @@ extern void *feedback_agent(void *args)
 		   if (!stop_agent_irm) stop_irm_agent();
 		   continue;
 		}
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG) 
                 print(log_feedback_agent, "\nFeedback report received from iRM\n");
                 print(log_feedback_agent, "\nProcessing the report now\n");
+#endif
+#ifdef TESTING
+		sprintf(str, "\n%s\n", rpc_num2string(STATUS_REPORT));
+		print(log_feedback_agent, str);
 #endif
 		ret_val = process_feedback(msg->data);
 		if (ret_val != SLURM_SUCCESS) {

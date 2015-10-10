@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
 #endif
 
 
-#if defined (IRM_DEBUG) || defined (TESTING)
+#if defined (IRM_DEBUG)
         print(log_irm_agent, "\n[IRM_DAEMON]: Entering irm_agent\n");
 #endif
         fd = _init_comm("127.0.0.1", 12345, "IRM_DAEMON");
@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
                    no_jobs = false; 
                    //xfree(msg.data);
 		   //slurm_free_request_resource_offer_msg(req_msg);
-#if defined (IRM_DEBUG) || defined (TESTING)
+#if defined (IRM_DEBUG) 
                    print(log_irm_agent, "\nCreating a new resource offer to send to iScheduler\n");
 #endif
                    //ret_val = slurm_submit_resource_offer(client_fd, &req, &resp);
@@ -342,9 +342,13 @@ int main(int argc, char *argv[])
 
                 /*if (val == 500) { */
 		if (resp->error_code == ESLURM_INVASIVE_JOB_QUEUE_EMPTY) {
+		#ifdef IRM_DEBUG
                    print(log_irm_agent, "\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler for a resource offer\n");
-		   sprintf(str, "\nError code = %d\nError msg = %s\n", resp->error_code, resp->error_msg);
+		#endif
+		#ifdef TESTING
+		   sprintf(str, "\n%s, Error code = %d\nError msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), resp->error_code, resp->error_msg);
                    print(log_irm_agent, str);
+		#endif
                    no_jobs = true;
                    attempts = 0;
 		   req->negotiation = 0;
@@ -363,12 +367,24 @@ int main(int argc, char *argv[])
 
                 /*if (val == 0) {*/
 		if (resp->error_code == ESLURM_RESOURCE_OFFER_REJECT) {
+		#ifdef IRM_DEBUG
                    print(log_irm_agent, "\niScheduler did not accept this offer.\n");
+		#endif
+		#ifdef TESTING
+		   sprintf(str, "\n%s, Error code = %d\nError msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), resp->error_code, resp->error_msg); 
+		   print(log_irm_agent, str);
+		#endif
                    attempts++;
 		   req->negotiation = 1;
                 /*} else if (val == 1) {*/
 		} else if (resp->error_code == SLURM_SUCCESS) {
+		#ifdef IRM_DEBUG
                    print(log_irm_agent, "\niScheduler accepted the offer\n");
+		#endif
+		#ifdef TESTING
+		   sprintf(str, "\n%s, Error code = %d\nError msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), resp->error_code, resp->error_msg);
+                   print(log_irm_agent, str);
+		#endif
                    ret_val = process_rsrc_offer_resp(resp, false);
 		   if (ret_val != SLURM_SUCCESS) {
 		      last_mapping_error_code = ret_val;

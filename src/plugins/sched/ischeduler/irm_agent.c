@@ -326,7 +326,7 @@ extern void *irm_agent(void *args)
 #endif   
 
 	slurm_attr_init(&attr);
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG) 
         print(log_irm_agent, "\n[IRM_AGENT]: Entering irm_agent\n");
         print(log_irm_agent, "\n[IRM_AGENT]: Attempting to connect to iRM Daemon\n");
 #endif
@@ -354,7 +354,7 @@ extern void *irm_agent(void *args)
               print(log_irm_agent, "\nUnable to start a thread to execute a schedule loop for urgent jobs\n");
 	      if (!stop_agent_irm) stop_irm_agent();
            } else {
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG)
 	      print(log_irm_agent, "\nSuccessfully created a thread which serves as an agent to dispatch urgent jobs immediately to iRM\n");
 #endif
 	   }
@@ -369,7 +369,7 @@ extern void *irm_agent(void *args)
 	   }
 	   slurm_attr_destroy(&attr); */
 	}
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG)
 	sprintf(str, "\nstop_agent_irm = %d\n", stop_agent_irm);
 	print(log_irm_agent, str);
 #endif
@@ -411,13 +411,13 @@ extern void *irm_agent(void *args)
                       print(log_irm_agent, "\nUnable to start a thread to process feedbacks from iRM\n");
 		      if (!stop_irm_agent) stop_irm_agent();
                    } else {
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG) 
                       print(log_irm_agent, "\nSuccessfully created a thread which serves as the feedback agent\n");
 #endif
                    }
                    slurm_attr_destroy(&attr);
 		}
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG) 
                 print(log_irm_agent, "[IRM_AGENT]: Processing the offer\n");
 #endif
                 ret_val = process_resource_offer(msg->data, &buf_val, &attempts);
@@ -435,7 +435,7 @@ extern void *irm_agent(void *args)
 		   //stop_feedback_agent();
 		   continue;
 		}
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG) 
                 print(log_irm_agent, "\nBefore sending the response to the resource offer\n");
 #endif
                 ret_val = 0;
@@ -447,7 +447,7 @@ extern void *irm_agent(void *args)
 		   //stop_feedback_agent();
                    continue;
                 }
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG) 
                 print(log_irm_agent, "[IRM_AGENT]: Sent back a response to the resource offer\n");
 #endif
 	}
