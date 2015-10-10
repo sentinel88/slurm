@@ -261,10 +261,6 @@ extern void *ping_agent(void *args)
 	#ifdef ISCHED_DEBUG
 	      print(log_ug_agent, "\nSubmitted the urgent job successfully to iRM\n");
 	#endif
-	#ifdef TESTING
-	      sprintf(str, "\n%s\n", rpc_num2string(URGENT_JOB));
-	      print(log_ug_agent, str);
-	#endif
 	   }
 	} else {
 	   print(log_ug_agent, "\nError returned from send_recv_urgent_job function. Killing this thread and signalling the urgent job agent to shutdown\n");

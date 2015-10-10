@@ -3639,6 +3639,8 @@ rpc_num2string(uint16_t opcode)
 		return "URGENT_JOB";
 	case RESPONSE_URGENT_JOB:
 		return "RESPONSE_URGENT_JOB";
+	case STATUS_REPORT:
+		return "STATUS_REPORT";
 	default:
 		(void) snprintf(buf, sizeof(buf), "%u", opcode);
 		return buf;

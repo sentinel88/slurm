@@ -486,6 +486,9 @@ extern void *irm_agent(void *args)
 	pthread_join(feedback_thread, NULL);
         print(log_irm_agent, "\n[IRM_AGENT]: Exiting irm_agent\n");
 	free(str);
+	fflush(log_irm_agent);
+	fflush(log_feedback_agent);
+	fflush(log_ug_agent);
 	fclose(log_irm_agent);
 	fclose(log_feedback_agent);
 	fclose(log_ug_agent);

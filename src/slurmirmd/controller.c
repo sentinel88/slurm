@@ -216,7 +216,9 @@ int main(int argc, char *argv[])
 
         client_fd = _accept_msg_conn(fd, &cli_addr);
         if (client_fd != SLURM_SOCKET_ERROR) {
+	#ifdef IRM_DEBUG
            print(log_irm_agent, "\n[IRM_DAEMON]: Accepted connection from iScheduler. Communications can now start\n");
+	#endif
         } else {
            print(log_irm_agent, "\n[IRM_DAEMON]: Unable to receive any connection request from iScheduler. Shutting down the daemon.\n");
            stop_agent = true;
@@ -240,7 +242,7 @@ int main(int argc, char *argv[])
 	   if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
 	      print(log_irm_agent, "\nUnable to start the agent to handle urgent jobs\n");
 	   } else {
-#if defined (IRM_DEBUG) || defined (TESTING)
+#if defined (IRM_DEBUG) 
 	      print(log_irm_agent, "\nSuccessfully created a thread to handle urgent jobs\n");
 #endif
 	   }
@@ -284,7 +286,7 @@ int main(int argc, char *argv[])
         	      if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
                          print(log_irm_agent, "pthread_create error %m");
         	      }
-		#if defined (IRM_DEBUG) || defined (TESTING)
+		#if defined (IRM_DEBUG) 
 		      print(log_irm_agent, "\nSuccessfully created a thread for the feedback agent\n");
 		#endif
         	      slurm_attr_destroy(&attr);
@@ -345,10 +347,6 @@ int main(int argc, char *argv[])
 		#ifdef IRM_DEBUG
                    print(log_irm_agent, "\niScheduler responded saying that it has no jobs. We will now wait till we receive a request from the iScheduler for a resource offer\n");
 		#endif
-		#ifdef TESTING
-		   sprintf(str, "\n%s, Error code = %d\nError msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), resp->error_code, resp->error_msg);
-                   print(log_irm_agent, str);
-		#endif
                    no_jobs = true;
                    attempts = 0;
 		   req->negotiation = 0;
@@ -370,20 +368,12 @@ int main(int argc, char *argv[])
 		#ifdef IRM_DEBUG
                    print(log_irm_agent, "\niScheduler did not accept this offer.\n");
 		#endif
-		#ifdef TESTING
-		   sprintf(str, "\n%s, Error code = %d\nError msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), resp->error_code, resp->error_msg); 
-		   print(log_irm_agent, str);
-		#endif
                    attempts++;
 		   req->negotiation = 1;
                 /*} else if (val == 1) {*/
 		} else if (resp->error_code == SLURM_SUCCESS) {
 		#ifdef IRM_DEBUG
                    print(log_irm_agent, "\niScheduler accepted the offer\n");
-		#endif
-		#ifdef TESTING
-		   sprintf(str, "\n%s, Error code = %d\nError msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), resp->error_code, resp->error_msg);
-                   print(log_irm_agent, str);
 		#endif
                    ret_val = process_rsrc_offer_resp(resp, false);
 		   if (ret_val != SLURM_SUCCESS) {
@@ -421,6 +411,9 @@ total_return:req->error_msg = NULL;
 	log_fini();
 	pthread_join(feedback_thread,  NULL);
         print(log_irm_agent, "\n[IRM_DAEMON]: Exiting iRM Daemon\n");
+	fflush(log_irm_agent);
+	fflush(log_feedback_agent);
+	fflush(log_ug_agent);
 	fclose(log_irm_agent);
 	fclose(log_feedback_agent);
 	fclose(log_ug_agent);

@@ -283,8 +283,8 @@ extern void *feedback_agent(void *args)
                 print(log_feedback_agent, "\nProcessing the report now\n");
 #endif
 #ifdef TESTING
-		sprintf(str, "\n%s\n", rpc_num2string(STATUS_REPORT));
-		print(log_feedback_agent, str);
+		//sprintf(str, "\n%s\n", rpc_num2string(STATUS_REPORT));
+		//print(log_feedback_agent, str);
 #endif
 		ret_val = process_feedback(msg->data);
 		if (ret_val != SLURM_SUCCESS) {

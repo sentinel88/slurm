@@ -255,7 +255,7 @@ extern void *feedback_agent(void *args)
 
 	client_fd = _accept_msg_conn(fd, &cli_addr);
         if (client_fd != SLURM_SOCKET_ERROR) {
-	#if defined (IRM_DEBUG) || defined (TESTING)
+	#if defined (IRM_DEBUG) 
            print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Accepted connection from iScheduler's feedback agent. Communications can now start\n");
 	#endif
         } else {

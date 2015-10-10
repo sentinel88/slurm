@@ -741,6 +741,7 @@ request_resource_offer (slurm_fd_t fd)
 	#endif
 	#ifdef TESTING
 	   print(log_irm_agent, rpc_num2string(REQUEST_RESOURCE_OFFER));
+	#endif
            rc = SLURM_SUCCESS;
         }
 
@@ -829,8 +830,13 @@ receive_resource_offer (slurm_fd_t fd, slurm_msg_t *msg)
 
         free_buf(buffer);
         if (rc == SLURM_SUCCESS) {
-	   sprintf(str, "\n[IRM_AGENT]: Received a resource offer from iRM daemon which is %d\n", ( (resource_offer_msg_t *) (msg->data))->value);
+	#ifdef ISCHED_DEBUG
+	   printf("\n[IRM_AGENT]: Received a resource offer from iRM daemon which is %d\n", ( (resource_offer_msg_t *) (msg->data))->value);
+	#endif
+	#ifdef TESTING
+	   sprintf(str, "\n%s\n", rpc_num2string(RESOURCE_OFFER));
            print(log_irm_agent, str);
+	#endif
         }
 total_return:
         destroy_forward(&header.forward);
@@ -863,6 +869,7 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
         } else {
 	   if (!msg->negotiation) {
 	      *attempts = 1;
+	   print(log_irm_agent, "\niRM has accepted the previous mapping and sent us a new resource offer\n");
 	#ifdef TESTING
 	      choice = rand() % 2;
 	#else      
@@ -880,10 +887,14 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
            scanf("%d", &input);
 	#endif
            if (input == 1) {
+	#ifdef ISCHED_DEBUG
               print(log_irm_agent, "\nSuccessfully mapped jobs to this offer and sending the list of jobs to be launched\n");
+	#endif
               *buf_val = 1;
            } else if (input == 0){
+	#ifdef ISCHED_DEBUG
               print(log_irm_agent, "\nOffer not accepted. Sending back a negative response\n");
+	#endif
               *buf_val = 0;
            } else if (input == 2) {
 	      print(log_irm_agent, "\nGoing to end this negotiation\n");
@@ -940,12 +951,21 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         if (*(uint16_t *)(buf) == 500) {
            offer_resp_msg.error_code = ESLURM_INVASIVE_JOB_QUEUE_EMPTY;
            offer_resp_msg.error_msg = slurm_strerror(ESLURM_INVASIVE_JOB_QUEUE_EMPTY);
+	#ifdef TESTING
+	   sprintf(str, "\n%s, %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), offer_resp_msg.error_msg);
+	#endif
         } else if (*(uint16_t *)(buf) == 0) {
 	   offer_resp_msg.error_code = ESLURM_RESOURCE_OFFER_REJECT;
 	   offer_resp_msg.error_msg = slurm_strerror(ESLURM_RESOURCE_OFFER_REJECT);
+	#ifdef TESTING
+	   sprintf(str, "\n%s, %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), offer_resp_msg.error_msg);
+	#endif
         } else {
 	   offer_resp_msg.error_code = SLURM_SUCCESS;
 	   offer_resp_msg.error_msg = NULL;
+	#ifdef TESTING
+	   sprintf(str, "\n%s, SLURM_SUCCESS\n", rpc_num2string(RESPONSE_RESOURCE_OFFER));
+	#endif
 	}
 
         init_header(&header, &resp_msg, msg->flags);
@@ -992,7 +1012,7 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
            print(log_irm_agent, "\nSend was successful\n");
 	#endif
 	#ifdef TESTING
-	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER));
+	   //sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER));
 	   print(log_irm_agent, str);
 	#endif
            rc = SLURM_SUCCESS;
@@ -1061,7 +1081,7 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
 	#endif
 	#ifdef TESTING
 	    sprintf(str, "\n%s\n", rpc_num2string(STATUS_REPORT));
-	    print(log_irm_agent, str);
+	    print(log_feedback_agent, str);
 	#endif
 	    if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(msg, buffer) != SLURM_SUCCESS)) {
 		 print(log_feedback_agent, "\nError in buffer size and unpacking of buffer into the msg structure\n");

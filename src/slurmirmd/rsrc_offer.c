@@ -715,7 +715,7 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
                 //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
 		*resp = (resource_offer_resp_msg_t *)(resp_msg.data);
 	   #ifdef TESTING
-		sprintf(str, "\n%s\nError code = %d, Error msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), (*resp)->error_code, (*resp)->error_msg);
+		sprintf(str, "\n%s, Error code = %d, Error msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), (*resp)->error_code, (*resp)->error_msg);
 		print(log_irm_agent, str);
 	   #endif
 		//slurm_free_resource_offer_resp_msg(resp_msg.data);
@@ -837,7 +837,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
         scanf("%d", &ch);*/
 
 #ifdef TESTING
-	print(log_feedback_agent, "\nCalling send_custom_data from the routine to send feedback/status report\n");
+	//print(log_feedback_agent, "\nCalling send_custom_data from the routine to send feedback/status report\n");
 	val = rand() % 2;
 	if(val) {
 	   val = 5;
@@ -861,7 +861,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
            print(log_feedback_agent, "\nSend was successful\n");
 	#endif
 	#ifdef TESTING
-	   sprintf("\n%s\n", rpc_num2string(STATUS_REPORT));
+	   sprintf(str, "\n%s\n", rpc_num2string(STATUS_REPORT));
 	   print(log_feedback_agent, str);
 	#endif
            rc = SLURM_SUCCESS;
@@ -916,7 +916,7 @@ void
          print(log_ug_agent, "\nStopping the agent for processing urgent jobs\n");
          break;
       }
-#if defined (IRM_DEBUG) || defined (TESTING)
+#if defined (IRM_DEBUG) 
       print(log_ug_agent, "\nFinished the transaction for this urgent job successfully\n");
 #endif
    }
@@ -1010,7 +1010,7 @@ recv_send_urgent_job(slurm_fd_t fd)
         free_buf(buffer);
         if (rc != SLURM_SUCCESS) goto total_return;
 #ifdef TESTING
-	print(log_ug_agent, "\nCalling send_custom_data from the routine to send back response for urgent job\n");
+	//print(log_ug_agent, "\nCalling send_custom_data from the routine to send back response for urgent job\n");
 	val = rand() % 2;
 	if(val) {
 	   val = 4;
