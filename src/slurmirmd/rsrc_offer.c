@@ -913,6 +913,7 @@ void
 
       ret_val = recv_send_urgent_job(client_fd);
       if (stop_agent_urgent_job) { 
+	 printf("\nBefore writing to the file\n");
          print(log_ug_agent, "\nStopping the agent for processing urgent jobs\n");
          break;
       }

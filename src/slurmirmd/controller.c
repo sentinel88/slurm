@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 	   if (pthread_create( &urgent_job_agent, &attr, schedule_loop, NULL)) {
 	      print(log_irm_agent, "\nUnable to start the agent to handle urgent jobs\n");
 	   } else {
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG) || defined (TESTING)
 	      print(log_irm_agent, "\nSuccessfully created a thread to handle urgent jobs\n");
 #endif
 	   }
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
         	      if (pthread_create(&feedback_thread, &attr, feedback_agent, NULL)) {
                          print(log_irm_agent, "pthread_create error %m");
         	      }
-		#if defined (IRM_DEBUG) 
+		#if defined (IRM_DEBUG) || defined (TESTING)
 		      print(log_irm_agent, "\nSuccessfully created a thread for the feedback agent\n");
 		#endif
         	      slurm_attr_destroy(&attr);
