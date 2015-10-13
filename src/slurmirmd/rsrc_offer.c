@@ -920,7 +920,6 @@ void
 #if defined (IRM_DEBUG) 
       print(log_ug_agent, "\nFinished the transaction for this urgent job successfully\n");
 #endif
-      fflush(log_ug_agent);
    }
 #if defined (IRM_DEBUG) 
    print(log_ug_agent, "\nExiting schedule_loop\n");
@@ -1021,6 +1020,10 @@ recv_send_urgent_job(slurm_fd_t fd)
 	}
 	val = 4;
         rc = send_custom_data(fd, val);
+	if (rc == SLURM_SUCCESS) {
+	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_URGENT_JOB));
+	   print(log_ug_agent, str);
+	}
 #else
 	slurm_msg_t_init(&resp_msg);
 	resp_msg.conn_fd = fd;
@@ -1065,11 +1068,11 @@ recv_send_urgent_job(slurm_fd_t fd)
            print(log_ug_agent, "\nProblem with sending the response for urgent job msg to iScheduler\n");
            rc = SLURM_ERROR;
         } else {
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG)
            print(log_ug_agent, "\nSend was successful\n");
 #endif
 #ifdef TESTING
-	   sprintf(str, "\%s\n", rpc_num2string(RESPONSE_URGENT_JOB));
+	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_URGENT_JOB));
 	   print(log_ug_agent, str);
 #endif
            rc = SLURM_SUCCESS;

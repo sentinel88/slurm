@@ -440,6 +440,7 @@ total_return:req->error_msg = NULL;
 	log_fini();
 	pthread_join(feedback_thread,  NULL);
 	pthread_join(thread_id_sig, NULL);
+	pthread_join(urgent_job_agent, NULL);
         print(log_irm_agent, "\n[IRM_DAEMON]: Exiting iRM Daemon\n");
 	fflush(log_irm_agent);
 	fflush(log_feedback_agent);

@@ -286,11 +286,9 @@ extern void *feedback_agent(void *args)
 	    //_compute_start_times();
 	    last_feedback_time = time(NULL);
 	        //unlock_slurmctld(all_locks);
-	    fflush(log_feedback_agent);
 	}
 	close(client_fd);
 	close(fd);
         print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Exiting feedback_agent\n");
-	fflush(log_feedback_agent);
 	return NULL;
 }
