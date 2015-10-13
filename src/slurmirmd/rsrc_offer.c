@@ -186,7 +186,7 @@ protocol_init (slurm_fd_t fd)
 	   #endif
 	   #ifdef TESTING
 		sprintf(str, "\n%s\n", rpc_num2string(NEGOTIATION_START));
-		printf(log_irm_agent, str);
+		print(log_irm_agent, str);
 	   #endif
                 if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(&msg, buffer) != SLURM_SUCCESS)) {
                      print(log_irm_agent, "\nError in buffer size and unpacking of buffer into the msg structure\n");
@@ -920,6 +920,7 @@ void
 #if defined (IRM_DEBUG) 
       print(log_ug_agent, "\nFinished the transaction for this urgent job successfully\n");
 #endif
+      fflush(log_ug_agent);
    }
 #if defined (IRM_DEBUG) 
    print(log_ug_agent, "\nExiting schedule_loop\n");

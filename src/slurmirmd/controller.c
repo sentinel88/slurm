@@ -10,6 +10,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "slurm/slurm.h"
 #include "slurm/slurm_errno.h"
@@ -21,6 +22,7 @@
 #include "src/common/slurm_protocol_api.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
+#include "src/common/xsignal.h"
 
 #include "src/slurmirmd/slurmirmd.h"
 
@@ -33,6 +35,14 @@
 
 typedef enum{UNINITIALIZED, PROTOCOL_INITIALIZED, PROTOCOL_IN_PROGRESS, PROTOCOL_TERMINATING} STATE;
 
+static int controller_sigarray[] = {
+	SIGINT, SIGTERM, SIGHUP, SIGABRT,
+	SIGQUIT, 0
+};
+
+static void * _slurmirmd_signal_hand(void *no_data);
+static void _default_sigaction(int sig);
+
 /*********************** local variables *********************/
 static bool stop_agent = false;
 bool stop_agent_urgent_job = false;
@@ -41,6 +51,7 @@ static pthread_mutex_t urgent_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  term_cond = PTHREAD_COND_INITIALIZER;
 static pthread_t feedback_thread = 0;
 static pthread_t urgent_job_agent = 0;
+static pthread_t thread_id_sig = 0;
 static bool initialized = false;
 //static bool config_flag = false;
 //static int irm_interval = BACKFILL_INTERVAL;
@@ -203,6 +214,22 @@ int main(int argc, char *argv[])
         }
 #endif
 
+	/* This must happen before we spawn any threads
+         * which are not designed to handle them */
+        if (xsignal_block(controller_sigarray) < 0)
+                error("Unable to block signals");
+
+	/*
+	 * create attached thread for signal handling
+	 */
+	slurm_attr_init(&attr);
+	while (pthread_create(&thread_id_sig,
+			      &attr, _slurmirmd_signal_hand,
+			      NULL)) {
+		error("pthread_create %m");
+		sleep(1);
+	}
+	slurm_attr_destroy(&attr);
 
 #if defined (IRM_DEBUG)
         print(log_irm_agent, "\n[IRM_DAEMON]: Entering irm_agent\n");
@@ -312,11 +339,13 @@ int main(int argc, char *argv[])
 		   if (flag)
 		      stop_feedback_agent();
                    stop_irm_agent();
+		   pthread_kill(thread_id_sig, SIGTERM);
                    continue;
                 }
                 if (ret_val != SLURM_SUCCESS) {
                    print(log_irm_agent, "\niRM agent shutting down along with feedback agent\n");
                    /*xfree(resp.error_msg); Not valid because this could be a negotiation end message. Need to handle this better */
+		   pthread_kill(thread_id_sig, SIGTERM);
 		   stop_feedback_agent();
                    stop_irm_agent();
                    continue;
@@ -410,6 +439,7 @@ total_return:req->error_msg = NULL;
 	slurm_conf_destroy();
 	log_fini();
 	pthread_join(feedback_thread,  NULL);
+	pthread_join(thread_id_sig, NULL);
         print(log_irm_agent, "\n[IRM_DAEMON]: Exiting iRM Daemon\n");
 	fflush(log_irm_agent);
 	fflush(log_feedback_agent);
@@ -419,3 +449,64 @@ total_return:req->error_msg = NULL;
 	fclose(log_ug_agent);
 	return 0;
 }
+
+
+/* _slurmirmd_signal_hand - Process daemon-wide signals */
+static void *_slurmirmd_signal_hand(void *no_data)
+{
+	printf("\nInside signal handler\n");
+        int sig;
+        int i, rc;
+        int sig_array[] = {SIGINT, SIGTERM, SIGHUP, SIGABRT, SIGQUIT, 0};
+        sigset_t set;
+
+        (void) pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+        (void) pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+        /* Make sure no required signals are ignored (possibly inherited) */
+        for (i = 0; sig_array[i]; i++)
+                _default_sigaction(sig_array[i]);
+
+        while (1) {
+                xsignal_sigset_create(sig_array, &set);
+		printf("\nBefore calling sigwait\n");
+                rc = sigwait(&set, &sig);
+                if (rc == EINTR)
+                        continue;
+                switch (sig) {
+                case SIGINT:    /* kill -2  or <CTRL-C> */
+                case SIGTERM:   /* kill -15 */
+                case SIGHUP:    /* kill -1 */
+		case SIGABRT:   /* abort */
+		case SIGQUIT:
+			//if (!stop_agent_feedback)   variable is stop_agent and is still static in the feedback_agent.c file. Take care of it later
+			printf("\nReceived a signal\n");
+			   stop_feedback_agent();
+			//if (!stop_agent_irm)
+			   stop_irm_agent();			
+			break;
+                default:
+                        error("Invalid signal (%d) received", sig);
+                }
+		if (rc != EINTR) break;
+        }
+	printf("\nExiting signal handler\n");
+	return NULL;
+}
+
+static void _default_sigaction(int sig)
+{
+        struct sigaction act;
+        if (sigaction(sig, NULL, &act)) {
+                error("sigaction(%d): %m", sig);
+                return;
+        }
+        if (act.sa_handler != SIG_IGN)
+                return;
+
+        act.sa_handler = SIG_DFL;
+        if (sigaction(sig, &act, NULL))
+                error("sigaction(%d): %m", sig);
+}
+
+
