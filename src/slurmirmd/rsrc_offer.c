@@ -82,7 +82,7 @@ int _accept_msg_conn(slurm_fd_t fd, slurm_addr_t *cli_addr) {
 
    fds[0].fd = fd;
    fds[0].events = POLLIN;
-   while ((rc = poll(fds, 1, timeout)) < 0) {
+   while ((rc = poll(fds, 1, 10)) < 0) {
       switch (errno) {
           case EAGAIN:
           case EINTR:
@@ -206,7 +206,9 @@ protocol_init (slurm_fd_t fd)
         free_buf(buffer);
         //if (rc != SLURM_SUCCESS) goto total_return;
 #ifdef TESTING
+   #ifdef IRM_DEBUG
 	print(log_irm_agent, "\nCalling send_custom_data from the routine for protocol initialization\n");
+   #endif
 	val = rand() % 2;
 	if (val) {
 	   val = 2;
@@ -215,6 +217,10 @@ protocol_init (slurm_fd_t fd)
 	}
 	val = 2;
 	rc = send_custom_data(fd, val);
+	if (rc == SLURM_SUCCESS) {
+	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_NEGOTIATION_START));
+	   print(log_irm_agent, str);
+	}
 #else
         slurm_msg_t_init(&resp_msg);
 
@@ -364,7 +370,9 @@ protocol_fini (slurm_fd_t fd)
         free_buf(buffer);*/
         //if (rc != SLURM_SUCCESS) goto total_return;
 #ifdef TESTING
+   #ifdef IRM_DEBUG
 	print(log_irm_agent, "\nCalling send_custom_data from the routine for protocol finalization\n");
+   #endif
 	val = rand() % 2;
         if (val) {
            val = 3;
@@ -373,6 +381,10 @@ protocol_fini (slurm_fd_t fd)
         }
 	val = 3;
         rc = send_custom_data(fd, val);
+	if (rc == SLURM_SUCCESS) {
+	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_NEGOTIATION_END));
+	   print(log_irm_agent, str);
+	}
 #else
         slurm_msg_t_init(&resp_msg);
         resp_msg.data     = &resp;
