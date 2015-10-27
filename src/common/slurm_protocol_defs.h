@@ -1057,6 +1057,7 @@ typedef struct {
 
 typedef struct {
         uint16_t value;         /* info */
+	List mapped_job_queue;  /* Jobs mapped to the given offer */
         uint32_t error_code;    /* error code on failure */
         char   * error_msg;     /* error message on failure */
 } resource_offer_resp_msg_t;

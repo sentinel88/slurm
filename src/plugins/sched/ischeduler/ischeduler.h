@@ -96,7 +96,7 @@ extern void stop_sleep_agent(void);
 
 extern void stop_urgent_job_agent(void);
 
-#define timeout (20*1000)
+#define timeout (30*1000)
 
 #define TESTING 1
 

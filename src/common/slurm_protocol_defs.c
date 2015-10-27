@@ -2839,6 +2839,8 @@ extern void slurm_free_resource_offer_resp_msg(resource_offer_resp_msg_t *msg)
 {
 	if (msg) {
 	   xfree(msg->error_msg);
+	   if (msg->mapped_job_queue)
+	   	list_destroy(msg->mapped_job_queue);
            xfree(msg);
 	}
 }

@@ -82,7 +82,7 @@ int _accept_msg_conn(slurm_fd_t fd, slurm_addr_t *cli_addr) {
 
    fds[0].fd = fd;
    fds[0].events = POLLIN;
-   while ((rc = poll(fds, 1, 10)) < 0) {
+   while ((rc = poll(fds, 1, timeout)) < 0) {
       switch (errno) {
           case EAGAIN:
           case EINTR:

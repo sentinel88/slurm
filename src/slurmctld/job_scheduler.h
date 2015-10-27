@@ -69,6 +69,9 @@ extern int build_feature_list(struct job_record *job_ptr);
  */
 extern List build_job_queue(bool clear_start, bool backfill);
 
+/* Forward invasic jobs to iHypervisor via the iScheduler */
+extern List build_invasic_job_queue(bool clear_start, bool backfill, FILE *);
+
 /* Given a scheduled job, return a pointer to it batch_job_launch_msg_t data */
 extern batch_job_launch_msg_t *build_launch_job_msg(
 					struct job_record *job_ptr,

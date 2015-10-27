@@ -151,105 +151,58 @@ static void _load_config(void)
 	xfree(select_type);*/
 }
 
-//static void _compute_start_times(void)
-//{
-/*	int j, rc = SLURM_SUCCESS, job_cnt = 0;
-	List job_queue;
+static int schedule_invasic_jobs(resource_offer_msg_t *offer, List *mapped_job_queue)
+{
+	int j, rc = SLURM_SUCCESS, job_cnt = 0, mapped_job_cnt = 0;
+	List invasic_job_queue, last_mapped_job_queue;
 	job_queue_rec_t *job_queue_rec;
 	List preemptee_candidates = NULL;
 	struct job_record *job_ptr;
 	struct part_record *part_ptr;
-	bitstr_t *alloc_bitmap = NULL, *avail_bitmap = NULL;
+	/*bitstr_t *alloc_bitmap = NULL, *avail_bitmap = NULL;
 	bitstr_t *exc_core_bitmap = NULL;
-	uint32_t max_nodes, min_nodes, req_nodes, time_limit;
+	uint32_t max_nodes, min_nodes, req_nodes, time_limit; */
 	time_t now = time(NULL), sched_start, last_job_alloc;
-	bool resv_overlap = false;
+	bool resv_overlap = false; 
+	char str[1000];
+
+	print(log_irm_agent, "\nInside job scheduler\n");
 
 	sched_start = now;
-	last_job_alloc = now - 1;
-	alloc_bitmap = bit_alloc(node_record_count);
-	job_queue = build_job_queue(true, false);
-	sort_job_queue(job_queue);
-	while ((job_queue_rec = (job_queue_rec_t *) list_pop(job_queue))) {
+	//last_job_alloc = now - 1;
+	//alloc_bitmap = bit_alloc(node_record_count);
+	invasic_job_queue = build_invasic_job_queue(true, false, log_irm_agent);
+	sort_job_queue(invasic_job_queue);
+	while ((job_queue_rec = (job_queue_rec_t *) list_pop(invasic_job_queue))) {
 		job_ptr  = job_queue_rec->job_ptr;
 		part_ptr = job_queue_rec->part_ptr;
 		xfree(job_queue_rec);
-		if (part_ptr != job_ptr->part_ptr)
+		/*if (part_ptr != job_ptr->part_ptr)
 			continue;*/	/* Only test one partition */
 
-	/*	if (job_cnt++ > max_sched_job_cnt) {
+		/*if (job_cnt++ > max_sched_job_cnt) {
 			debug2("scheduling loop exiting after %d jobs",
 			       max_sched_job_cnt);
 			break;
 		} */
 
-		/* Determine minimum and maximum node counts */
-		/* On BlueGene systems don't adjust the min/max node limits
-		   here.  We are working on midplane values. */
-	/*	min_nodes = MAX(job_ptr->details->min_nodes,
-				part_ptr->min_nodes);
+		/*if (strcmp(job_ptr->partition, "invasic") == 0) {
+		   print(log_irm_agent, "\nFound an invasic job, ");
+		   sprintf(str, "Job ID=%d\n", job_ptr->job_id);
+		   print(log_irm_agent, str);
+		}*/
 
-		if (job_ptr->details->max_nodes == 0)
-			max_nodes = part_ptr->max_nodes;
-		else
-			max_nodes = MIN(job_ptr->details->max_nodes,
-					part_ptr->max_nodes);
 
-		max_nodes = MIN(max_nodes, 500000); */    /* prevent overflows */
-
-	/*	if (job_ptr->details->max_nodes)
-			req_nodes = max_nodes;
-		else
-			req_nodes = min_nodes;
-
-		if (min_nodes > max_nodes) {*/
-			/* job's min_nodes exceeds partition's max_nodes */
-	/*		continue;
-		}
-
-		j = job_test_resv(job_ptr, &now, true, &avail_bitmap,
-				  &exc_core_bitmap, &resv_overlap);
-		if (j != SLURM_SUCCESS) {
-			FREE_NULL_BITMAP(avail_bitmap);
-			FREE_NULL_BITMAP(exc_core_bitmap);
-			continue;
-		}
-
-		rc = select_g_job_test(job_ptr, avail_bitmap,
-				       min_nodes, max_nodes, req_nodes,
-				       SELECT_MODE_WILL_RUN,
-				       preemptee_candidates, NULL,
-				       exc_core_bitmap);
-		if (rc == SLURM_SUCCESS) {
-			last_job_update = now;
-			if (job_ptr->time_limit == INFINITE)
-				time_limit = 365 * 24 * 60 * 60;
-			else if (job_ptr->time_limit != NO_VAL)
-				time_limit = job_ptr->time_limit * 60;
-			else if (job_ptr->part_ptr &&
-				 (job_ptr->part_ptr->max_time != INFINITE))
-				time_limit = job_ptr->part_ptr->max_time * 60;
-			else
-				time_limit = 365 * 24 * 60 * 60;
-			if (bit_overlap(alloc_bitmap, avail_bitmap) &&
-			    (job_ptr->start_time <= last_job_alloc)) {
-				job_ptr->start_time = last_job_alloc;
-			}
-			bit_or(alloc_bitmap, avail_bitmap);
-			last_job_alloc = job_ptr->start_time + time_limit;
-		}
-		FREE_NULL_BITMAP(avail_bitmap);
-		FREE_NULL_BITMAP(exc_core_bitmap);
-
-		if ((time(NULL) - sched_start) >= sched_timeout) {
+	/*	if ((time(NULL) - sched_start) >= sched_timeout) {
 			debug2("scheduling loop exiting after %d jobs",
 			       max_sched_job_cnt);
 			break;
-		}
+		}*/
 	}
-	list_destroy(job_queue);
-	FREE_NULL_BITMAP(alloc_bitmap); */
-//} 
+	list_destroy(invasic_job_queue);
+	//FREE_NULL_BITMAP(alloc_bitmap); 
+	print(log_irm_agent, "\nExiting job scheduler\n");
+} 
 
 
 //Connect to iRM daemon via a TCP connection
@@ -292,6 +245,8 @@ extern void *irm_agent(void *args)
         bool empty_queue = true;
         uint16_t buf_val = -1;
         int ret_val = 0;
+	slurmctld_lock_t all_locks = {
+                READ_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
         slurm_msg_t *msg = NULL;
         resource_offer_msg_t res_off_msg;
         bool initialized = false;
@@ -417,6 +372,7 @@ extern void *irm_agent(void *args)
                    }
                    slurm_attr_destroy(&attr);
 		}
+
 #if defined (ISCHED_DEBUG) 
                 print(log_irm_agent, "[IRM_AGENT]: Processing the offer\n");
 #endif
@@ -439,6 +395,13 @@ extern void *irm_agent(void *args)
                 print(log_irm_agent, "\nBefore sending the response to the resource offer\n");
 #endif
                 ret_val = 0;
+		
+		if (*buf_val == 1) {
+		   lock_slurmctld(all_locks);
+		   schedule_invasic_jobs(msg->data);
+		   unlock_slurmctld(all_locks);
+		}
+
 		slurm_free_resource_offer_resp_msg(msg->data);
                 ret_val = send_resource_offer_resp(msg, buf);
                 if (ret_val != SLURM_SUCCESS) {

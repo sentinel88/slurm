@@ -113,6 +113,18 @@ static void *	_wait_boot(void *arg);
 static int	build_queue_timeout = BUILD_TIMEOUT;
 static int	save_last_part_update = 0;
 
+
+static int print(FILE *fp, char *str)
+{
+   if (fp == NULL)
+      return -1;
+   fprintf(fp, "\n");
+   fprintf(fp, str);
+   fprintf(fp, "\n");
+   return 0;
+}
+
+
 extern diag_stats_t slurmctld_diag_stats;
 
 /*
@@ -291,6 +303,8 @@ extern List build_job_queue(bool clear_start, bool backfill)
 	job_queue = list_create(_job_queue_rec_del);
 	job_iterator = list_iterator_create(job_list);
 	while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
+		if (strcmp(job_ptr->partition, "invasic") == 0) 
+		   continue;
 		if (((tested_jobs % 100) == 0) &&
 		    (_delta_tv(&start_tv) >= build_queue_timeout)) {
 			info("build_job_queue has been running for %d usec, "
@@ -301,9 +315,10 @@ extern List build_job_queue(bool clear_start, bool backfill)
 		}
 		tested_jobs++;
 		job_ptr->preempt_in_progress = false;	/* initialize */
-		if (!_job_runnable_test1(job_ptr, clear_start))
+		if (!_job_runnable_test1(job_ptr, clear_start)) {
+			printf("\njob runnable test1 returns false\n");
 			continue;
-
+		}
 		if (job_ptr->part_ptr_list) {
 			int inx = -1;
 			part_iterator = list_iterator_create(
@@ -962,6 +977,8 @@ extern int schedule(uint32_t job_limit)
 		ListIterator job_iterator = list_iterator_create(job_list);
 		while ((job_ptr = (struct job_record *)
 				list_next(job_iterator))) {
+			if (strcmp(job_ptr->invasic, "invasic") == 0)
+			   continue;
 			if (!IS_JOB_PENDING(job_ptr))
 				continue;
 			if ((job_ptr->state_reason != WAIT_NO_REASON) &&
@@ -1072,11 +1089,16 @@ next_part:			part_ptr = (struct part_record *)
 					continue;
 			}
 		} else {
+			printf("\nInside else condition here\n");
 			job_queue_rec = list_pop(job_queue);
-			if (!job_queue_rec)
+			if (!job_queue_rec) {
+				printf("\nNo entry found\n");
 				break;
+			}
 			job_ptr  = job_queue_rec->job_ptr;
 			part_ptr = job_queue_rec->part_ptr;
+			printf("\njob_ptr->partition=%s\n", job_ptr->partition);
+			printf("\npart_ptr->name=%s\n", part_ptr->name);
 			xfree(job_queue_rec);
 			if (!avail_front_end(job_ptr)) {
 				job_ptr->state_reason = WAIT_FRONT_END;
@@ -3405,3 +3427,37 @@ cleanup_completing(struct job_record *job_ptr)
 
 	slurm_sched_g_schedule();
 }
+
+
+/* Forward Invasic jobs to the iHypervisor via iScheduler plugin. */
+extern List build_invasic_job_queue(bool clear_start, bool backfill, FILE *log_irm_agent)
+{
+        List job_queue;
+        ListIterator job_iterator, part_iterator;
+        struct job_record *job_ptr = NULL;
+        struct part_record *part_ptr;
+        int reason;
+        struct timeval start_tv = {0, 0};
+        int tested_jobs = 0;
+        char str[1000];
+
+       // print(log_irm_agent, "Inside build_job_queue\n");
+
+        job_queue = list_create(_job_queue_rec_del);
+        job_iterator = list_iterator_create(job_list);
+        while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
+                  // print(log_irm_agent, "Inside loop\n");
+                //if(strcmp(job_ptr->partition, "invasic") == 0) {
+                  // print(log_irm_agent, "Invasic job: ");
+                  // sprintf(str, "ID: %d, Partition: %s\n", job_ptr->job_id, job_ptr->partition);
+                  // print(log_irm_agent, str);
+                   _job_queue_append(job_queue, job_ptr,
+                                          job_ptr->part_ptr, job_ptr->priority);
+                //}
+        }
+        list_iterator_destroy(job_iterator);
+        ////print(log_irm_agent, "Exiting build_job_queue\n");
+
+        return job_queue;
+}
+
