@@ -97,6 +97,9 @@ static void	_depend_list_del(void *dep_ptr);
 static void	_feature_list_delete(void *x);
 static void	_job_queue_append(List job_queue, struct job_record *job_ptr,
 				  struct part_record *part_ptr, uint32_t priority);
+#ifdef INVASIC_SCHEDULING
+static void	_invasic_job_queue_append(List job_queue, struct job_record *job_ptr);
+#endif
 static void	_job_queue_rec_del(void *x);
 static bool	_job_runnable_test1(struct job_record *job_ptr,
 				    bool clear_start);
@@ -113,7 +116,7 @@ static void *	_wait_boot(void *arg);
 static int	build_queue_timeout = BUILD_TIMEOUT;
 static int	save_last_part_update = 0;
 
-
+#ifdef INVASIC_SCHEDULING
 static int print(FILE *fp, char *str)
 {
    if (fp == NULL)
@@ -123,7 +126,7 @@ static int print(FILE *fp, char *str)
    fprintf(fp, "\n");
    return 0;
 }
-
+#endif
 
 extern diag_stats_t slurmctld_diag_stats;
 
@@ -174,6 +177,23 @@ static void _job_queue_rec_del(void *x)
 {
 	xfree(x);
 }
+
+#ifdef INVASIC_SCHEDULING
+void _invasive_job_queue_rec_del(void *x)
+{
+	xfree(x);
+}
+
+void _invasic_job_queue_append(List job_queue, struct job_record *job_ptr)
+{
+        invasic_job_queue_rec_t *invasive_job_queue_rec;
+
+        invasive_job_queue_rec = xmalloc(sizeof(invasic_job_queue_rec_t));
+        invasive_job_queue_rec->job_ptr   = job_ptr;
+        list_append(job_queue, invasive_job_queue_rec);
+}
+#endif
+
 
 /* Job test for ability to run now, excludes partition specific tests */
 static bool _job_runnable_test1(struct job_record *job_ptr, bool clear_start)
@@ -977,7 +997,7 @@ extern int schedule(uint32_t job_limit)
 		ListIterator job_iterator = list_iterator_create(job_list);
 		while ((job_ptr = (struct job_record *)
 				list_next(job_iterator))) {
-			if (strcmp(job_ptr->invasic, "invasic") == 0)
+			if (strcmp(job_ptr->partition, "invasic") == 0)
 			   continue;
 			if (!IS_JOB_PENDING(job_ptr))
 				continue;
@@ -1548,6 +1568,13 @@ extern void sort_job_queue(List job_queue)
 	list_sort(job_queue, sort_job_queue2);
 }
 
+#ifdef INVASIC_SCHEDULING
+extern void sort_invasic_job_queue(List job_queue)
+{
+	list_sort(job_queue, sort_job_queue3);
+}
+#endif
+
 /* Note this differs from the ListCmpF typedef since we want jobs sorted
  *	in order of decreasing priority then by increasing job id */
 extern int sort_job_queue2(void *x, void *y)
@@ -1612,6 +1639,11 @@ extern int sort_job_queue2(void *x, void *y)
 		return 1;
 
 	return -1;
+}
+
+extern int sort_job_queue3(void *x, void *y)
+{
+	return 1;
 }
 
 /* Given a scheduled job, return a pointer to it batch_job_launch_msg_t data */
@@ -3428,36 +3460,32 @@ cleanup_completing(struct job_record *job_ptr)
 	slurm_sched_g_schedule();
 }
 
-
+#ifdef INVASIC_SCHEDULING
 /* Forward Invasic jobs to the iHypervisor via iScheduler plugin. */
 extern List build_invasic_job_queue(bool clear_start, bool backfill, FILE *log_irm_agent)
 {
-        List job_queue;
-        ListIterator job_iterator, part_iterator;
+        List invasic_job_queue;
+        ListIterator job_iterator;
         struct job_record *job_ptr = NULL;
-        struct part_record *part_ptr;
-        int reason;
-        struct timeval start_tv = {0, 0};
-        int tested_jobs = 0;
         char str[1000];
 
        // print(log_irm_agent, "Inside build_job_queue\n");
 
-        job_queue = list_create(_job_queue_rec_del);
+        invasic_job_queue = list_create(_invasive_job_queue_rec_del);
         job_iterator = list_iterator_create(job_list);
         while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
                   // print(log_irm_agent, "Inside loop\n");
-                //if(strcmp(job_ptr->partition, "invasic") == 0) {
+                if(strcmp(job_ptr->partition, "invasic") == 0) {
                   // print(log_irm_agent, "Invasic job: ");
                   // sprintf(str, "ID: %d, Partition: %s\n", job_ptr->job_id, job_ptr->partition);
                   // print(log_irm_agent, str);
-                   _job_queue_append(job_queue, job_ptr,
-                                          job_ptr->part_ptr, job_ptr->priority);
+                   _invasic_job_queue_append(invasic_job_queue, job_ptr);
+		}
                 //}
         }
         list_iterator_destroy(job_iterator);
         ////print(log_irm_agent, "Exiting build_job_queue\n");
 
-        return job_queue;
+        return invasic_job_queue;
 }
-
+#endif

@@ -30,9 +30,9 @@ extern pid_t getsid(pid_t pid);         /* missing from <unistd.h> */
 #define timeout 30*1000
 #define RANDOM 2345
 
-#ifdef TESTING
+//#ifdef TESTING
    resource_offer_resp_msg_t tc_offer_resp;
-#endif
+//#endif
 
 static void _print_data(char *data, int len)
 {

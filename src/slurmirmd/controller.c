@@ -65,12 +65,12 @@ extern void stop_urgent_job_agent(void);
 //static void _my_sleep(int secs);
 //static int _init_comm(void);
 
-#ifdef TESTING
+//#ifdef TESTING
    extern resource_offer_msg_t tc_offer;
    FILE *log_irm_agent = NULL;
    FILE *log_feedback_agent = NULL;
    FILE *log_ug_agent = NULL;
-#endif
+//#endif
 
 /* Terminate ischeduler_agent */
 extern void stop_irm_agent(void)
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
         buf = (char *)malloc(sizeof(int));
 	req = xmalloc(sizeof(resource_offer_msg_t));
 
-#ifdef TESTING
+//#ifdef TESTING
         log_irm_agent = fopen(LOG_IRM_AGENT, "w");
         if (log_irm_agent == NULL) {
            printf("\nError in opening the log file for iRM_Agent\n");
@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
            printf("\nError in opening the log file for urgent_jobs_agent\n");
            return -1;
         }
-#endif
+//#endif
 
 	/* This must happen before we spawn any threads
          * which are not designed to handle them */
@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
 		#ifdef TESTING
 		   memcpy(&tc_offer, req, sizeof(resource_offer_msg_t));
 		#endif
-		   sleep(5);
+		   //sleep(5);
                    ret_val = slurm_submit_resource_offer(client_fd, req, &resp);
 		   if (attempts == 0) attempts++;
                 } else {

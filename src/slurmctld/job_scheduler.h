@@ -52,6 +52,10 @@ typedef struct job_queue_rec {
 	uint32_t priority;		/* Job priority in THIS partition */
 } job_queue_rec_t;
 
+typedef struct invasive_job_queue_rec {
+	struct job_record *job_ptr;	/* Pointer to job record */
+} invasic_job_queue_rec_t;
+
 /*
  * build_feature_list - Translate a job's feature string into a feature_list
  * IN  details->features
@@ -175,6 +179,8 @@ extern void set_job_elig_time(void);
  * IN/OUT job_queue - sorted job queue previously made by build_job_queue()
  */
 extern void sort_job_queue(List job_queue);
+
+extern void sort_invasic_job_queue(List job_queue);
 
 /* Note this differs from the ListCmpF typedef since we want jobs sorted
  *	in order of decreasing priority */

@@ -12295,8 +12295,24 @@ unpack_error:
 static void _pack_resource_offer_resp_msg(resource_offer_resp_msg_t *msg, Buf buffer,
 				     uint16_t protocol_version)
 {
+#ifdef INVASIC_SCHEDULING
+	uint32_t count = 0;
+	ListIterator itr = NULL;
+#endif
         xassert(msg != NULL);
 	pack16(msg->value, buffer);
+#ifdef INVASIC_SCHEDULIGN
+        if (msg->mapped_job_queue)
+                count = list_count(msg->mapped_job_queue);
+        pack32(count, buffer);
+        if (count && count != NO_VAL) {
+                itr = list_iterator_create(msg->mapped_job_queue);
+                while ((share = list_next(itr)))
+                        _pack_assoc_shares_object(share, buffer,
+                                                  protocol_version);
+                list_iterator_destroy(itr);
+        }
+#endif
         pack32((uint32_t)msg->error_code, buffer);
         packstr(msg->error_msg, buffer);
 }

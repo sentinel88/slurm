@@ -39,21 +39,23 @@ extern int recv_send_urgent_job(slurm_fd_t);
 
 #define timeout (30*1000)
 
+#define IRM_DEBUG 1
+
 extern bool stop_agent_urgent_job;
 
-#define TESTING 1
+//#define TESTING 1
 
 extern int print(FILE *, char *);
 
-#ifdef TESTING
+//#ifdef TESTING
 #define LOG_IRM_AGENT "/home/nishanth/logs_SLURM/iHyper_iRM_Daemon.txt"
 #define LOG_FEEDBACK_AGENT "/home/nishanth/logs_SLURM/iHyper_Feedback_Agent.txt"
 #define LOG_UG_AGENT "/home/nishanth/logs_SLURM/iHyper_UG_Agent.txt"
-
+//#endif
 extern FILE *log_irm_agent;
 extern FILE *log_feedback_agent;
 extern FILE *log_ug_agent;
-#endif
+//#endif
 
 
 /* ischeduler_agent - detached thread periodically when pending jobs can start */

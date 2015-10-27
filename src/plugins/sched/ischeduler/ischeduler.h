@@ -43,7 +43,7 @@
 
 #include "src/common/xmalloc.h"
 
-#define TESTING 1
+//#define TESTING 1
 
 /* ischeduler_agent - detached thread periodically when pending jobs can start */
 extern void *isched_agent(void *);
@@ -98,7 +98,9 @@ extern void stop_urgent_job_agent(void);
 
 #define timeout (30*1000)
 
-#define TESTING 1
+#define ISCHED_DEBUG 1
+
+//#define TESTING 1
 
 //extern bool urgent_jobs;
 extern bool stop_ug_agent;
@@ -110,14 +112,14 @@ extern bool stop_agent_ping;
 
 extern int print(FILE *, char *);
 
-#ifdef TESTING
+//#ifdef TESTING
 #define LOG_IRM_AGENT "/home/nishanth/logs_SLURM/iSched_iRM_Agent.txt"
 #define LOG_FEEDBACK_AGENT "/home/nishanth/logs_SLURM/iSched_Feedback_Agent.txt"
 #define LOG_UG_AGENT "/home/nishanth/logs_SLURM/iSched_UG_Agent.txt"
-
+//#endif
 extern FILE *log_irm_agent;
 extern FILE *log_feedback_agent;
 extern FILE *log_ug_agent;
-#endif
+//#endif
 
 #endif	/* _SLURM_ISCHEDULER_H */

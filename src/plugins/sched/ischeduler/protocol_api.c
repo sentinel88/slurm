@@ -31,11 +31,11 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 
 #define MAX_NEGOTIATION_ATTEMPTS 5
 
-#ifdef TESTING
+//#ifdef TESTING
    extern resource_offer_resp_msg_t tc_offer_resp;
    int val;
    char str[1000];
-#endif
+//#endif
 
 bool stop_agent_sleep = false;
 static pthread_mutex_t term_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -51,6 +51,7 @@ static unsigned int get_random(int num) {
 
 static void _print_data(char *data, int len)
 {
+#ifdef ISCHED_DEBUG1
         int i;
         for (i = 0; i < len; i++) {
                 if ((i % 10 == 0) && (i != 0))
@@ -60,6 +61,7 @@ static void _print_data(char *data, int len)
                         break;
         }
         printf("\n\n");
+#endif
 }
 
 
@@ -70,6 +72,7 @@ int print(FILE *fp, char *str)
    fprintf(fp, "\n");
    fprintf(fp, str);
    fprintf(fp, "\n");
+   printf("%s", str);
    return 0;
 }
 
@@ -463,7 +466,7 @@ total_return:
 int
 schedule_urgent_jobs(void) 
 {
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
    print(log_ug_agent, "\nInside schedule_urgent_jobs\n");
 #endif
    int sleep_interval = 20;
@@ -475,7 +478,7 @@ schedule_urgent_jobs(void)
                 fatal("pthread_attr_setdetachstate %m");
    */
    while(!stop_ug_agent) {
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
       print(log_ug_agent, "\nInside the threading loop\n");
       sprintf(str, "\nstop_ug_agent = %d\n", stop_ug_agent);	
       print(log_ug_agent, str);
@@ -489,7 +492,7 @@ schedule_urgent_jobs(void)
       _my_sleep(sleep_interval);
    }   
 
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
    print(log_ug_agent, "\nExiting schedule_urgent_jobs\n");
 #endif
    return SLURM_SUCCESS;
@@ -511,7 +514,7 @@ void
 int
 send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
 {
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
         print(log_ug_agent, "\nInside send_recv_urgent_job\n");
 #endif
         int rc;
@@ -553,7 +556,7 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
         new_pack_msg(&req_msg, &header, buffer);
 
 //#if    / _DEBUG
-#ifdef ISCHED_DEBUG
+#ifdef ISCHED_DEBUG1
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
 #endif
         /*
@@ -580,7 +583,7 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
            free_buf(buffer);
            goto total_return;
         }
-#ifdef ISCHED_DEBUG
+#ifdef ISCHED_DEBUG1
         print(log_ug_agent, "[PING_AGENT]: Sent the urgent job. Waiting for a response.\n");
 #endif
 #ifdef TESTING
@@ -604,7 +607,7 @@ send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)
     	}
 
 //#if    / _DEBUG
-#ifdef ISCHED_DEBUG
+#ifdef ISCHED_DEBUG1
     	_print_data (buf, buflen);
 #endif
     	buffer = create_buf(buf, buflen);
@@ -639,7 +642,7 @@ if (rc)
             *resp = NULL;
             break;*/
            case RESPONSE_URGENT_JOB:
-#ifdef ISCHED_DEBUG
+#ifdef ISCHED_DEBUG1
 	      sprintf(str, "\nResponse received from iRM for the urgent job. Value is %d\n", ((urgent_job_resp_msg_t *)(resp_msg->data))->value);
               print(log_ug_agent, str);
 #endif
@@ -654,14 +657,14 @@ if (rc)
               free_buf(buffer);
               slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
     	}
-#ifdef ISCHED_DEBUG
+#ifdef ISCHED_DEBUG1
     	print(log_ug_agent, "[PING_AGENT]: Received the response for the urgent job msg.\n");
 #endif
 
     	free_buf(buffer);
 total_return:
 
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
         print(log_ug_agent, "\nExiting send_recv_urgent_job\n");
 #endif
         return rc;
@@ -858,18 +861,27 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
         int input = -1;
         int choice = 0;
 
-	if (*attempts == MAX_NEGOTIATION_ATTEMPTS) {
+	if (*attempts == MAX_NEGOTIATION_ATTEMPTS && msg->negotiation == 1) {
+	   if (msg->error_code == ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT)
+	      print(log_irm_agent, "iRM rejected the previous mapping\n");
 	   print(log_irm_agent, "\nThis is the final negotiation attempt hence we cannot reject this resource offer. Accepting the offer and sending back a mapping to iRM\n");
 	   *attempts = 0;
 	   *buf_val = 1;
 	   return 0;
-	}
+	}  
 	if (msg->error_code == ESLURM_MAPPING_FROM_JOBS_TO_OFFER_REJECT) {
 	   print(log_irm_agent, "\niRM has rejected the previous mapping and sent us a new resource offer for a fresh mapping.\n");
+	   if (*attempts == MAX_NEGOTIATION_ATTEMPTS) {
+              print(log_irm_agent, "\nThis is the final negotiation attempt hence we cannot reject this resource offer. Accepting the offer and sending back a mapping to iRM\n");
+              *attempts = 0;
+              *buf_val = 1;
+              return 0;
+           }
+
         } else {
 	   if (!msg->negotiation) {
 	      *attempts = 1;
-	   print(log_irm_agent, "\niRM has accepted the previous mapping and sent us a new resource offer\n");
+	   print(log_irm_agent, "\niRM has accepted the previous mapping and sent us a new resource offer to start a new transaction\n");
 	#ifdef TESTING
 	      choice = rand() % 2;
 	#else      
@@ -1028,7 +1040,7 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
 int 
 receive_feedback(slurm_fd_t fd, slurm_msg_t *msg) 
 {
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
     print(log_feedback_agent, "\nInside receive_feedback\n");
 #endif
     char *buf = NULL;
@@ -1055,7 +1067,7 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
     }
 
     //#if     _DEBUG
-#ifdef ISCHED_DEBUG
+#ifdef ISCHED_DEBUG1
     _print_data (buf, buflen);
 #endif
     buffer = create_buf(buf, buflen);
@@ -1076,7 +1088,7 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
 
     switch(msg->msg_type) {
        case STATUS_REPORT:  // Do not free msg->data as we need the complete status report msg back in the caller for further processing
-	#ifdef ISCHED_DEBUG
+	#ifdef ISCHED_DEBUG1
 	    print(log_feedback_agent, "\nReceived a status report from the feedback agent of iRM daemon\n");
 	#endif
 	#ifdef TESTING
@@ -1101,7 +1113,7 @@ receive_feedback(slurm_fd_t fd, slurm_msg_t *msg)
     free_buf(buffer);
     //if (rc != SLURM_SUCCESS) goto total_return;
     if (rc == SLURM_SUCCESS) {
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
        sprintf(str, "\n[FEEDBACK_AGENT]: Received a status report from the feedback agent of iRM daemon which is %d\n", ( (status_report_msg_t *) (msg->data))->value);
        print(log_feedback_agent, str);
 #endif
@@ -1114,7 +1126,7 @@ total_return:
     } else {
 	    rc = 0;
     }
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
     print(log_feedback_agent, "\nExiting receive_feedback\n");
 #endif
     return rc;
@@ -1123,7 +1135,7 @@ total_return:
 int
 process_feedback(status_report_msg_t *msg)
 {
-#if defined (ISCHED_DEBUG)
+#if defined (ISCHED_DEBUG1)
     print(log_feedback_agent, "\nEntering process_feedback\n");
     print(log_feedback_agent, "\nExiting process_feedback\n");
 #endif

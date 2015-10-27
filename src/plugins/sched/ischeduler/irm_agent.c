@@ -58,11 +58,11 @@ static void _load_config(void);
 static void _my_sleep(int secs);
 //static int _connect_to_irmd(void);
 
-#ifdef TESTING
+//#ifdef TESTING
 FILE *log_irm_agent = NULL;
 FILE *log_feedback_agent = NULL;
 FILE *log_ug_agent = NULL;
-#endif
+//#endif
 
 /* Terminate iScheduler_agent */
 extern void stop_irm_agent(void)
@@ -151,19 +151,19 @@ static void _load_config(void)
 	xfree(select_type);*/
 }
 
-static int schedule_invasic_jobs(resource_offer_msg_t *offer, List *mapped_job_queue)
+#ifdef INVASIC_SCHEDULING
+static List schedule_invasic_jobs(resource_offer_msg_t *offer)
 {
 	int j, rc = SLURM_SUCCESS, job_cnt = 0, mapped_job_cnt = 0;
 	List invasic_job_queue, last_mapped_job_queue;
-	job_queue_rec_t *job_queue_rec;
+	List mapped_job_queue;
+	invasic_job_queue_rec_t *invasive_job_queue_rec;
 	List preemptee_candidates = NULL;
 	struct job_record *job_ptr;
-	struct part_record *part_ptr;
 	/*bitstr_t *alloc_bitmap = NULL, *avail_bitmap = NULL;
 	bitstr_t *exc_core_bitmap = NULL;
 	uint32_t max_nodes, min_nodes, req_nodes, time_limit; */
 	time_t now = time(NULL), sched_start, last_job_alloc;
-	bool resv_overlap = false; 
 	char str[1000];
 
 	print(log_irm_agent, "\nInside job scheduler\n");
@@ -171,14 +171,14 @@ static int schedule_invasic_jobs(resource_offer_msg_t *offer, List *mapped_job_q
 	sched_start = now;
 	//last_job_alloc = now - 1;
 	//alloc_bitmap = bit_alloc(node_record_count);
+	mapped_job_queue = list_create(_invasive_job_queue_rec_del);
+
 	invasic_job_queue = build_invasic_job_queue(true, false, log_irm_agent);
-	sort_job_queue(invasic_job_queue);
-	while ((job_queue_rec = (job_queue_rec_t *) list_pop(invasic_job_queue))) {
-		job_ptr  = job_queue_rec->job_ptr;
-		part_ptr = job_queue_rec->part_ptr;
-		xfree(job_queue_rec);
-		/*if (part_ptr != job_ptr->part_ptr)
-			continue;*/	/* Only test one partition */
+	sort_invasic_job_queue(invasic_job_queue);
+
+	while ((invasive_job_queue_rec = (invasive_job_queue_rec_t *) list_pop(invasic_job_queue))) {
+		job_ptr  = invasive_job_queue_rec->job_ptr;
+		xfree(invasive_job_queue_rec);
 
 		/*if (job_cnt++ > max_sched_job_cnt) {
 			debug2("scheduling loop exiting after %d jobs",
@@ -203,7 +203,7 @@ static int schedule_invasic_jobs(resource_offer_msg_t *offer, List *mapped_job_q
 	//FREE_NULL_BITMAP(alloc_bitmap); 
 	print(log_irm_agent, "\nExiting job scheduler\n");
 } 
-
+#endif
 
 //Connect to iRM daemon via a TCP connection
 /*static int _connect_to_irmd(void) {
@@ -262,7 +262,7 @@ extern void *irm_agent(void *args)
         msg->data = &res_off_msg;
 	str = (char *)malloc(400 * sizeof(char));
 
-#ifdef TESTING
+//#ifdef TESTING
 	log_irm_agent = fopen(LOG_IRM_AGENT, "w");
 	if (log_irm_agent == NULL) {
 	   printf("\nError in opening the log file for iRM_Agent\n");
@@ -278,7 +278,7 @@ extern void *irm_agent(void *args)
 	   printf("\nError in opening the log file for urgent_jobs_agent\n");
 	   return -1;
 	}
-#endif   
+//#endif   
 
 	slurm_attr_init(&attr);
 #if defined (ISCHED_DEBUG) 
@@ -395,13 +395,13 @@ extern void *irm_agent(void *args)
                 print(log_irm_agent, "\nBefore sending the response to the resource offer\n");
 #endif
                 ret_val = 0;
-		
+	#ifdef INVASIC_SCHEDULING		
 		if (*buf_val == 1) {
 		   lock_slurmctld(all_locks);
 		   schedule_invasic_jobs(msg->data);
 		   unlock_slurmctld(all_locks);
 		}
-
+	#endif
 		slurm_free_resource_offer_resp_msg(msg->data);
                 ret_val = send_resource_offer_resp(msg, buf);
                 if (ret_val != SLURM_SUCCESS) {

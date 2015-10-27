@@ -254,7 +254,7 @@ extern void *feedback_agent(void *args)
 	char str[1000];
 #endif
 	slurm_msg_t *msg;
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
         print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Entering feedback_agent\n");
 	print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Attempting to connect to the feedback agent of iRM daemon\n");
 #endif
@@ -278,7 +278,7 @@ extern void *feedback_agent(void *args)
 		   if (!stop_agent_irm) stop_irm_agent();
 		   continue;
 		}
-#if defined (ISCHED_DEBUG) 
+#if defined (ISCHED_DEBUG1) 
                 print(log_feedback_agent, "\nFeedback report received from iRM\n");
                 print(log_feedback_agent, "\nProcessing the report now\n");
 #endif
@@ -293,7 +293,7 @@ extern void *feedback_agent(void *args)
 		   if (!stop_agent_feedback) stop_feedback_agent();
 		   continue;
 		}
-#if defined (ISCHED_DEBUG) || defined (TESTING)
+#if defined (ISCHED_DEBUG1) || defined (TESTING)
                 print(log_feedback_agent, "\nFinished updating history. Will sleep for sometime before processing the next feedback report\n");
 #endif
 		//idle: _my_sleep(feedback_interval);

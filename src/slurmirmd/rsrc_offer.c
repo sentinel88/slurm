@@ -28,11 +28,11 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/xmalloc.h"
 #include "slurmirmd.h"
 
-#ifdef TESTING
+//#ifdef TESTING
    resource_offer_msg_t tc_offer;
    int val;
    char str[1000];
-#endif
+//#endif
 
 extern int send_custom_data(slurm_fd_t, int);
 
@@ -51,6 +51,7 @@ int print(FILE *fp, char *str)
    if (fp == NULL)
       return -1;
    fprintf(fp, str);
+   printf("%s", str);
    return 0;
 }
 
@@ -111,6 +112,7 @@ int _accept_msg_conn(slurm_fd_t fd, slurm_addr_t *cli_addr) {
 
 static void _print_data(char *data, int len)
 {
+#ifdef IRM_DEBUG1
         int i;
         for (i = 0; i < len; i++) {
                 if ((i % 10 == 0) && (i != 0))
@@ -120,6 +122,7 @@ static void _print_data(char *data, int len)
                         break;
         }
         printf("\n\n");
+#endif
 }
 
 
@@ -785,11 +788,11 @@ process_rsrc_offer_resp(resource_offer_resp_msg_t *resp, bool final_negotiation)
 int 
 compute_feedback(status_report_msg_t *msg) 
 {
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG1) 
    print(log_feedback_agent, "\nInside compute_feedback\n");
 #endif
    msg->value = 1;
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG1) 
    print(log_feedback_agent, "\nExiting compute_feedback\n");
 #endif
    return SLURM_SUCCESS;
@@ -799,7 +802,7 @@ compute_feedback(status_report_msg_t *msg)
 int
 send_feedback(slurm_fd_t fd, status_report_msg_t *req)
 {
-#if defined (IRM_DEBUG)
+#if defined (IRM_DEBUG1)
     print(log_feedback_agent, "\nInside send_feedback\n");
 #endif
     int rc;
@@ -838,7 +841,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
         new_pack_msg(&req_msg, &header, buffer);
 
 //#if     _DEBUG
-#ifdef IRM_DEBUG
+#ifdef IRM_DEBUG1
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
 #endif
         /*
@@ -869,7 +872,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
            print(log_feedback_agent, "\nProblem with sending the periodic feedback to iScheduler\n");
            rc = errno;
         } else {
-	#if defined (IRM_DEBUG) 
+	#if defined (IRM_DEBUG1) 
            print(log_feedback_agent, "\nSend was successful\n");
 	#endif
 	#ifdef TESTING
@@ -878,7 +881,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
 	#endif
            rc = SLURM_SUCCESS;
         }
-#ifdef IRM_DEBUG
+#ifdef IRM_DEBUG1
    print(log_feedback_agent, "[FEEDBACK_AGENT]: Sent the feedback\n");
 #endif
    free_buf(buffer);
@@ -886,7 +889,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
    } else {
       rc = 0;
    }
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG1) 
    printf("\nExiting send_feedback\n");
 #endif
    return rc;
@@ -896,7 +899,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
 void 
 *schedule_loop(void *args) 
 {
-#if defined (IRM_DEBUG)
+#if defined (IRM_DEBUG1)
    print(log_ug_agent, "\nInside schedule_loop\n");
 #endif
    slurm_fd_t fd = -1;
@@ -915,7 +918,7 @@ void
       client_fd = _accept_msg_conn(fd, &cli_addr);
 
       if (client_fd != SLURM_SOCKET_ERROR) {
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG1) 
          print(log_ug_agent, "\n[URGENT_JOBS_AGENT]: Accepted a connection from iScheduler's urgent jobs agent. Communications can now start\n");
 #endif
       } else {
@@ -929,11 +932,11 @@ void
          print(log_ug_agent, "\nStopping the agent for processing urgent jobs\n");
          break;
       }
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG1) 
       print(log_ug_agent, "\nFinished the transaction for this urgent job successfully\n");
 #endif
    }
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG1) 
    print(log_ug_agent, "\nExiting schedule_loop\n");
 #endif
    return NULL;
@@ -943,7 +946,7 @@ void
 int
 recv_send_urgent_job(slurm_fd_t fd)
 {
-#if defined (IRM_DEBUG) 
+#if defined (IRM_DEBUG1) 
         print(log_ug_agent, "\nInside recv_send_urgent_job\n");
 #endif
         char *buf = NULL;
@@ -974,7 +977,7 @@ recv_send_urgent_job(slurm_fd_t fd)
         }
 
 //#if     _DEBUG
-#ifdef IRM_DEBUG
+#ifdef IRM_DEBUG1
         _print_data (buf, buflen);
 #endif
         buffer = create_buf(buf, buflen);
@@ -996,7 +999,7 @@ recv_send_urgent_job(slurm_fd_t fd)
 
         switch(msg.msg_type) {
            case URGENT_JOB:
-	   #ifdef IRM_DEBUG
+	   #ifdef IRM_DEBUG1
                 print(log_ug_agent, "\nReceived an urgent job from iScheduler.\n");
 	   #endif
 	   #ifdef TESTING
@@ -1066,7 +1069,7 @@ recv_send_urgent_job(slurm_fd_t fd)
         new_pack_msg(&resp_msg, &header, buffer);
 
 //#if     _DEBUG
-#ifdef IRM_DEBUG
+#ifdef IRM_DEBUG1
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));	
 #endif
  /*
@@ -1080,7 +1083,7 @@ recv_send_urgent_job(slurm_fd_t fd)
            print(log_ug_agent, "\nProblem with sending the response for urgent job msg to iScheduler\n");
            rc = SLURM_ERROR;
         } else {
-#if defined (IRM_DEBUG)
+#if defined (IRM_DEBUG1)
            print(log_ug_agent, "\nSend was successful\n");
 #endif
 #ifdef TESTING
@@ -1101,7 +1104,7 @@ total_return:
         } else {
                 rc = 0;
         }
-#if defined (IRM_DEBUG)
+#if defined (IRM_DEBUG1)
         print(log_ug_agent, "\nExiting recv_send_urgent_job\n");
 #endif
         return rc;

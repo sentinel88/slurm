@@ -31,9 +31,9 @@ extern pid_t getsid(pid_t pid);         /* missing from <unistd.h> */
 
 #define RANDOM 2345
 
-#ifdef TESTING
+//#ifdef TESTING
    extern resource_offer_msg_t tc_offer;
-#endif
+//#endif
 
 static void _print_data(char *data, int len)
 {
