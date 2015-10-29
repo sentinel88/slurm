@@ -238,7 +238,7 @@ extern void *ping_agent(void *args)
 	msg = xmalloc(sizeof(slurm_msg_t));
 
 	slurm_msg_t_init(msg);
-#if defined (ISCHED_DEBUG1) 
+#if defined (ISCHED_DEBUG) 
         print(log_ug_agent, "\n[PING_AGENT]: Entering ping_agent\n");
 	print(log_ug_agent, "\n[PING_AGENT]: Attempting to connect to iRM Daemon\n");
 #endif
@@ -258,7 +258,7 @@ extern void *ping_agent(void *args)
 	   if ( ((urgent_job_resp_msg_t *)(msg->data))->value == 500) {
 	      print(log_ug_agent, "\nUrgent job submission unsuccessful. We do not retry again.\n");
 	   } else {
-	#ifdef ISCHED_DEBUG1
+	#ifdef ISCHED_DEBUG
 	      print(log_ug_agent, "\nSubmitted the urgent job successfully to iRM\n");
 	#endif
 	   }

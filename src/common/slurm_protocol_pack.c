@@ -12301,7 +12301,7 @@ static void _pack_resource_offer_resp_msg(resource_offer_resp_msg_t *msg, Buf bu
 #endif
         xassert(msg != NULL);
 	pack16(msg->value, buffer);
-#ifdef INVASIC_SCHEDULIGN
+#ifdef INVASIC_SCHEDULING
         if (msg->mapped_job_queue)
                 count = list_count(msg->mapped_job_queue);
         pack32(count, buffer);

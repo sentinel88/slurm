@@ -28,11 +28,11 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/xmalloc.h"
 #include "slurmirmd.h"
 
-//#ifdef TESTING
+#ifdef TESTING
    resource_offer_msg_t tc_offer;
    int val;
    char str[1000];
-//#endif
+#endif
 
 extern int send_custom_data(slurm_fd_t, int);
 
@@ -51,7 +51,7 @@ int print(FILE *fp, char *str)
    if (fp == NULL)
       return -1;
    fprintf(fp, str);
-   printf("%s", str);
+   //printf("%s", str);
    return 0;
 }
 
@@ -112,7 +112,7 @@ int _accept_msg_conn(slurm_fd_t fd, slurm_addr_t *cli_addr) {
 
 static void _print_data(char *data, int len)
 {
-#ifdef IRM_DEBUG1
+#ifdef IRM_DEBUG
         int i;
         for (i = 0; i < len; i++) {
                 if ((i % 10 == 0) && (i != 0))
@@ -188,7 +188,7 @@ protocol_init (slurm_fd_t fd)
                 print(log_irm_agent, "\nReceived a request to start negotiation from iScheduler.\n");
 	   #endif
 	   #ifdef TESTING
-		sprintf(str, "\n%s\n", rpc_num2string(NEGOTIATION_START));
+		sprintf(str, "\nRECEIVED %s\n", rpc_num2string(NEGOTIATION_START));
 		print(log_irm_agent, str);
 	   #endif
                 if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(&msg, buffer) != SLURM_SUCCESS)) {
@@ -201,7 +201,7 @@ protocol_init (slurm_fd_t fd)
                 }
                 break;
            default:
-                print(log_irm_agent, "\nUnexpected message\n");
+                print(log_irm_agent, "\nReceived Unexpected message\n");
         	free_buf(buffer);
                 slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
         }
@@ -221,7 +221,7 @@ protocol_init (slurm_fd_t fd)
 	val = 2;
 	rc = send_custom_data(fd, val);
 	if (rc == SLURM_SUCCESS) {
-	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_NEGOTIATION_START));
+	   sprintf(str, "\nSENT %s\n", rpc_num2string(RESPONSE_NEGOTIATION_START));
 	   print(log_irm_agent, str);
 	}
 #else
@@ -275,7 +275,7 @@ protocol_init (slurm_fd_t fd)
            print(log_irm_agent, "\nSend was successful\n");
 	#endif
 	#ifdef TESTING
-	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_NEGOTIATION_START));
+	   sprintf(str, "\nSENT %s\n", rpc_num2string(RESPONSE_NEGOTIATION_START));
 	   print(log_irm_agent, str);
 	#endif
            rc = SLURM_SUCCESS;
@@ -444,7 +444,7 @@ protocol_fini (slurm_fd_t fd)
            print(log_irm_agent, "\nSent the response to negotiation end msg successfully\n");
 	#endif
 	#ifdef TESTING
-	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_NEGOTIATION_END));
+	   sprintf(str, "\nSENT %s\n", rpc_num2string(RESPONSE_NEGOTIATION_END));
 	   print(log_irm_agent, str);
 	#endif
            rc = SLURM_SUCCESS;
@@ -523,10 +523,11 @@ wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_
         switch(msg.msg_type) {
            case REQUEST_RESOURCE_OFFER:
 	   #ifdef IRM_DEBUG
+		print(log_irm_agent, "\n============================================================================================================================================\n\n");
                 print(log_irm_agent, "\nReceived a request for a resource offer from iScheduler.\n");
 	   #endif
 	   #ifdef TESTING
-		sprintf(str, "\n%s\n", rpc_num2string(REQUEST_RESOURCE_OFFER));
+		sprintf(str, "\nRECEIVED %s\n", rpc_num2string(REQUEST_RESOURCE_OFFER));
 		print(log_irm_agent, str);
 	   #endif
                 if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(&msg, buffer) != SLURM_SUCCESS)) {
@@ -544,7 +545,7 @@ wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_
                 print(log_irm_agent, "\nNegotiation end message received\n");
 	#endif
 	#ifdef TESTING
-		sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_NEGOTIATION_END));
+		sprintf(str, "\nRECEIVED %s\n", rpc_num2string(RESPONSE_NEGOTIATION_END));
 		print(log_irm_agent, str);
 	#endif
                 rc = protocol_fini(fd);
@@ -554,7 +555,7 @@ wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_
                 rc = SLURM_ERROR; //To influence the caller back in controller.c to shut down irm agent based on this return value
                 break;
            default:
-                print(log_irm_agent, "\nUnexpected message\n");
+                print(log_irm_agent, "\nReceived Unexpected message\n");
 		free_buf(buffer);
                 slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
         }
@@ -667,7 +668,7 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
         print(log_irm_agent, "[IRM_DAEMON]: Sent the offer. Waiting for a mapping from jobs to this offer\n");
    #endif
    #ifdef TESTING
-	sprintf(str, "\n%s\n", rpc_num2string(RESOURCE_OFFER));
+	sprintf(str, "\nSENT %s\n", rpc_num2string(RESOURCE_OFFER));
 	print(log_irm_agent, str);
    #endif
         free_buf(buffer);
@@ -730,7 +731,7 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
                 //memcpy(resp, resp_msg.data, sizeof(resource_offer_resp_msg_t));
 		*resp = (resource_offer_resp_msg_t *)(resp_msg.data);
 	   #ifdef TESTING
-		sprintf(str, "\n%s, Error code = %d, Error msg = %s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), (*resp)->error_code, (*resp)->error_msg);
+		sprintf(str, "\nRECEIVED %s-->%s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), (*resp)->error_msg);
 		print(log_irm_agent, str);
 	   #endif
 		//slurm_free_resource_offer_resp_msg(resp_msg.data);
@@ -742,7 +743,7 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
                 print(log_irm_agent, "\nNegotiation end message received\n");
 	   #endif
 	   #ifdef TESTING
-	        sprintf(str, "\n%s\n", rpc_num2string(NEGOTIATION_END));
+	        sprintf(str, "\nRECEIVED %s\n", rpc_num2string(NEGOTIATION_END));
 		print(log_irm_agent, str);
 	   #endif
                 rc = protocol_fini(fd);
@@ -752,7 +753,7 @@ slurm_submit_resource_offer (slurm_fd_t fd, resource_offer_msg_t *req,
 		rc = SLURM_ERROR; //To influence the caller back in controller.c to shut down irm agent based on this return value
 		break;
 	   default:
-                print(log_irm_agent, "\nUnexpected message.\n");
+                print(log_irm_agent, "\nReceived Unexpected message.\n");
         	free_buf(buffer);
 		slurm_seterrno_ret(SLURM_UNEXPECTED_MSG_ERROR);
 	}
@@ -788,11 +789,11 @@ process_rsrc_offer_resp(resource_offer_resp_msg_t *resp, bool final_negotiation)
 int 
 compute_feedback(status_report_msg_t *msg) 
 {
-#if defined (IRM_DEBUG1) 
+#if defined (IRM_DEBUG) 
    print(log_feedback_agent, "\nInside compute_feedback\n");
 #endif
    msg->value = 1;
-#if defined (IRM_DEBUG1) 
+#if defined (IRM_DEBUG) 
    print(log_feedback_agent, "\nExiting compute_feedback\n");
 #endif
    return SLURM_SUCCESS;
@@ -802,7 +803,7 @@ compute_feedback(status_report_msg_t *msg)
 int
 send_feedback(slurm_fd_t fd, status_report_msg_t *req)
 {
-#if defined (IRM_DEBUG1)
+#if defined (IRM_DEBUG)
     print(log_feedback_agent, "\nInside send_feedback\n");
 #endif
     int rc;
@@ -841,7 +842,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
         new_pack_msg(&req_msg, &header, buffer);
 
 //#if     _DEBUG
-#ifdef IRM_DEBUG1
+#ifdef IRM_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));
 #endif
         /*
@@ -872,16 +873,16 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
            print(log_feedback_agent, "\nProblem with sending the periodic feedback to iScheduler\n");
            rc = errno;
         } else {
-	#if defined (IRM_DEBUG1) 
+	#if defined (IRM_DEBUG) 
            print(log_feedback_agent, "\nSend was successful\n");
 	#endif
 	#ifdef TESTING
-	   sprintf(str, "\n%s\n", rpc_num2string(STATUS_REPORT));
+	   sprintf(str, "\nSENT %s\n", rpc_num2string(STATUS_REPORT));
 	   print(log_feedback_agent, str);
 	#endif
            rc = SLURM_SUCCESS;
         }
-#ifdef IRM_DEBUG1
+#ifdef IRM_DEBUG
    print(log_feedback_agent, "[FEEDBACK_AGENT]: Sent the feedback\n");
 #endif
    free_buf(buffer);
@@ -889,7 +890,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
    } else {
       rc = 0;
    }
-#if defined (IRM_DEBUG1) 
+#if defined (IRM_DEBUG) 
    printf("\nExiting send_feedback\n");
 #endif
    return rc;
@@ -899,7 +900,7 @@ send_feedback(slurm_fd_t fd, status_report_msg_t *req)
 void 
 *schedule_loop(void *args) 
 {
-#if defined (IRM_DEBUG1)
+#if defined (IRM_DEBUG)
    print(log_ug_agent, "\nInside schedule_loop\n");
 #endif
    slurm_fd_t fd = -1;
@@ -918,7 +919,7 @@ void
       client_fd = _accept_msg_conn(fd, &cli_addr);
 
       if (client_fd != SLURM_SOCKET_ERROR) {
-#if defined (IRM_DEBUG1) 
+#if defined (IRM_DEBUG) 
          print(log_ug_agent, "\n[URGENT_JOBS_AGENT]: Accepted a connection from iScheduler's urgent jobs agent. Communications can now start\n");
 #endif
       } else {
@@ -932,11 +933,11 @@ void
          print(log_ug_agent, "\nStopping the agent for processing urgent jobs\n");
          break;
       }
-#if defined (IRM_DEBUG1) 
+#if defined (IRM_DEBUG) 
       print(log_ug_agent, "\nFinished the transaction for this urgent job successfully\n");
 #endif
    }
-#if defined (IRM_DEBUG1) 
+#if defined (IRM_DEBUG) 
    print(log_ug_agent, "\nExiting schedule_loop\n");
 #endif
    return NULL;
@@ -946,7 +947,7 @@ void
 int
 recv_send_urgent_job(slurm_fd_t fd)
 {
-#if defined (IRM_DEBUG1) 
+#if defined (IRM_DEBUG) 
         print(log_ug_agent, "\nInside recv_send_urgent_job\n");
 #endif
         char *buf = NULL;
@@ -977,7 +978,7 @@ recv_send_urgent_job(slurm_fd_t fd)
         }
 
 //#if     _DEBUG
-#ifdef IRM_DEBUG1
+#ifdef IRM_DEBUG
         _print_data (buf, buflen);
 #endif
         buffer = create_buf(buf, buflen);
@@ -999,11 +1000,11 @@ recv_send_urgent_job(slurm_fd_t fd)
 
         switch(msg.msg_type) {
            case URGENT_JOB:
-	   #ifdef IRM_DEBUG1
+	   #ifdef IRM_DEBUG
                 print(log_ug_agent, "\nReceived an urgent job from iScheduler.\n");
 	   #endif
 	   #ifdef TESTING
-	  	sprintf(str, "\n%s\n", rpc_num2string(URGENT_JOB));
+	  	sprintf(str, "\nRECEIVED %s\n", rpc_num2string(URGENT_JOB));
 		print(log_ug_agent, str);
 	   #endif
                 if ((header.body_length > remaining_buf(buffer)) || (unpack_msg(&msg, buffer) != SLURM_SUCCESS)) {
@@ -1069,7 +1070,7 @@ recv_send_urgent_job(slurm_fd_t fd)
         new_pack_msg(&resp_msg, &header, buffer);
 
 //#if     _DEBUG
-#ifdef IRM_DEBUG1
+#ifdef IRM_DEBUG
         _print_data (get_buf_data(buffer),get_buf_offset(buffer));	
 #endif
  /*
@@ -1083,11 +1084,11 @@ recv_send_urgent_job(slurm_fd_t fd)
            print(log_ug_agent, "\nProblem with sending the response for urgent job msg to iScheduler\n");
            rc = SLURM_ERROR;
         } else {
-#if defined (IRM_DEBUG1)
+#if defined (IRM_DEBUG)
            print(log_ug_agent, "\nSend was successful\n");
 #endif
 #ifdef TESTING
-	   sprintf(str, "\n%s\n", rpc_num2string(RESPONSE_URGENT_JOB));
+	   sprintf(str, "\nSENT %s\n", rpc_num2string(RESPONSE_URGENT_JOB));
 	   print(log_ug_agent, str);
 #endif
            rc = SLURM_SUCCESS;
@@ -1104,7 +1105,7 @@ total_return:
         } else {
                 rc = 0;
         }
-#if defined (IRM_DEBUG1)
+#if defined (IRM_DEBUG)
         print(log_ug_agent, "\nExiting recv_send_urgent_job\n");
 #endif
         return rc;

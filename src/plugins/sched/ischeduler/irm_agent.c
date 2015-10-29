@@ -58,11 +58,11 @@ static void _load_config(void);
 static void _my_sleep(int secs);
 //static int _connect_to_irmd(void);
 
-//#ifdef TESTING
+#ifdef TESTING
 FILE *log_irm_agent = NULL;
 FILE *log_feedback_agent = NULL;
 FILE *log_ug_agent = NULL;
-//#endif
+#endif
 
 /* Terminate iScheduler_agent */
 extern void stop_irm_agent(void)
@@ -159,6 +159,7 @@ static List schedule_invasic_jobs(resource_offer_msg_t *offer)
 	List mapped_job_queue;
 	invasic_job_queue_rec_t *invasive_job_queue_rec;
 	List preemptee_candidates = NULL;
+	uint16_t rand_choice = 0;
 	struct job_record *job_ptr;
 	/*bitstr_t *alloc_bitmap = NULL, *avail_bitmap = NULL;
 	bitstr_t *exc_core_bitmap = NULL;
@@ -262,7 +263,9 @@ extern void *irm_agent(void *args)
         msg->data = &res_off_msg;
 	str = (char *)malloc(400 * sizeof(char));
 
-//#ifdef TESTING
+	srand(time(NULL));
+
+#ifdef TESTING
 	log_irm_agent = fopen(LOG_IRM_AGENT, "w");
 	if (log_irm_agent == NULL) {
 	   printf("\nError in opening the log file for iRM_Agent\n");
@@ -278,7 +281,7 @@ extern void *irm_agent(void *args)
 	   printf("\nError in opening the log file for urgent_jobs_agent\n");
 	   return -1;
 	}
-//#endif   
+#endif   
 
 	slurm_attr_init(&attr);
 #if defined (ISCHED_DEBUG) 
@@ -339,14 +342,16 @@ extern void *irm_agent(void *args)
 		}
                 if (empty_queue) {
 #if defined (ISCHED_DEBUG) || defined(TESTING)
-		   print(log_irm_agent, "\nIn this state, the irm agent will request for a resource offer only when some jobs have been added to the queue. For this purpose, we will have to periodically inspect the invasive job queue for new jobs.\n");
+		   print(log_irm_agent, "\n\nIn this state, the irm agent will request for a resource offer only when some jobs have been added to the queue. For this purpose, we will have to periodically inspect the invasive job queue for new jobs.\n\n");
+		   print(log_irm_agent, "===========================================================================================================================================\n\n");
 #endif
                    ret_val = request_resource_offer(fd);
                    empty_queue = false;
                 }
                 if (ret_val == SLURM_SUCCESS) {
                    ret_val = receive_resource_offer(fd, msg);
-		   attempts++;
+		   //if (attempts != MAX_NEGOTIATION_ATTEMPTS)
+		      attempts++;
                 } else {
                    print(log_irm_agent, "\nError in sending the request for resource offer to iRM. Shutting down the iRM agent.\n");
                    if (!stop_agent_irm) stop_irm_agent();

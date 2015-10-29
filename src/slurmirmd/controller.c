@@ -65,12 +65,12 @@ extern void stop_urgent_job_agent(void);
 //static void _my_sleep(int secs);
 //static int _init_comm(void);
 
-//#ifdef TESTING
+#ifdef TESTING
    extern resource_offer_msg_t tc_offer;
    FILE *log_irm_agent = NULL;
    FILE *log_feedback_agent = NULL;
    FILE *log_ug_agent = NULL;
-//#endif
+#endif
 
 /* Terminate ischeduler_agent */
 extern void stop_irm_agent(void)
@@ -196,7 +196,9 @@ int main(int argc, char *argv[])
         buf = (char *)malloc(sizeof(int));
 	req = xmalloc(sizeof(resource_offer_msg_t));
 
-//#ifdef TESTING
+	srand(time(NULL));
+
+#ifdef TESTING
         log_irm_agent = fopen(LOG_IRM_AGENT, "w");
         if (log_irm_agent == NULL) {
            printf("\nError in opening the log file for iRM_Agent\n");
@@ -212,7 +214,7 @@ int main(int argc, char *argv[])
            printf("\nError in opening the log file for urgent_jobs_agent\n");
            return -1;
         }
-//#endif
+#endif
 
 	/* This must happen before we spawn any threads
          * which are not designed to handle them */
@@ -332,7 +334,7 @@ int main(int argc, char *argv[])
 		#ifdef TESTING
 		   memcpy(&tc_offer, req, sizeof(resource_offer_msg_t));
 		#endif
-		   //sleep(5);
+		   //sleep(3);
                    ret_val = slurm_submit_resource_offer(client_fd, req, &resp);
 		   if (attempts == 0) attempts++;
                 } else {
@@ -380,12 +382,19 @@ int main(int argc, char *argv[])
                    no_jobs = true;
                    attempts = 0;
 		   req->negotiation = 0;
+		#ifdef TESTING
+		   print(log_irm_agent, "\n=========================================================================================================================================\n\n");
+		#endif
              /*      xfree(resp.error_msg); */
                    continue;
                 }        
 
                 if (attempts == MAX_NEGOTIATION_ATTEMPTS) {
-                   print(log_irm_agent, "\nReached the limit for negotiation attempts. Accepting the mapping given by iScheduler. A new transaction will start with iScheduler by constructing new resource offers.\n");
+		   print(log_irm_agent, "\nReached the limit for negotiation attempts. Accepting the mapping given by the iScheduler. The transaction ends here. No. of attempts-->");
+		   sprintf(str, "%d\n", attempts);
+		   print(log_irm_agent, str);
+                   print(log_irm_agent, "\nA new transaction will start now by constructing a new resource offer and sending it.\n\n");
+		   print(log_irm_agent, "===========================================================================================================================================\n\n");
                    attempts = 0;
                    ret_val = process_rsrc_offer_resp(resp, true);
 		   req->negotiation = 0;
@@ -413,7 +422,10 @@ int main(int argc, char *argv[])
 		      attempts++;
 		      req->negotiation = 1;
 		   } else {
-		      print(log_irm_agent, "\niRM has accepted the mapping.\n");
+		      print(log_irm_agent, "\niRM has accepted the mapping. The transaction ends here. No. of attempts-->");
+		      sprintf(str, "%d\n", attempts);
+		      print(log_irm_agent, str);
+		      print(log_irm_agent, "\n==============================================================================================================================================\n\n");
 		      attempts = 0;
 		      req->negotiation = 0;
 		   }
