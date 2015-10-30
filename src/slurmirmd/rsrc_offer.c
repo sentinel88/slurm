@@ -545,7 +545,7 @@ wait_req_rsrc_offer (slurm_fd_t fd)/*, slurm_msg_t *msg, request_resource_offer_
                 print(log_irm_agent, "\nNegotiation end message received\n");
 	#endif
 	#ifdef TESTING
-		sprintf(str, "\nRECEIVED %s\n", rpc_num2string(RESPONSE_NEGOTIATION_END));
+		sprintf(str, "\nRECEIVED %s\n", rpc_num2string(NEGOTIATION_END));
 		print(log_irm_agent, str);
 	#endif
                 rc = protocol_fini(fd);

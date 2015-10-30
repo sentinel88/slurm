@@ -334,7 +334,7 @@ int main(int argc, char *argv[])
 		#ifdef TESTING
 		   memcpy(&tc_offer, req, sizeof(resource_offer_msg_t));
 		#endif
-		   //sleep(3);
+		   sleep(1);
                    ret_val = slurm_submit_resource_offer(client_fd, req, &resp);
 		   if (attempts == 0) attempts++;
                 } else {

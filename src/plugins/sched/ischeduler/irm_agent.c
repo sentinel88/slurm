@@ -516,7 +516,8 @@ extern void *irm_agent(void *args)
 		 if (ret_val == SLURM_SUCCESS) {
 		    ret_val = receive_resource_offer(fd, msg);
 		    if (ret_val == SLURM_SUCCESS) {
-		       print(log_irm_agent, "\nReceived a resource offer from iRM. We are proceeding to terminate so we ignore this message.\n");
+		       print(log_irm_agent, "\n\n==========================================================================================================================================\n\n");
+		       print(log_irm_agent, "\nReceived a resource offer from iRM. Any ongoing negotiations will end now. We are proceeding to terminate so we ignore this resource offer.\n");
 		       slurm_free_resource_offer_resp_msg(msg->data);
 		    }
 		    ret_val = protocol_fini(fd);
