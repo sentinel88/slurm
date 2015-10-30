@@ -1055,10 +1055,43 @@ typedef struct {
         char   * error_msg;     /* error message on failure */
 } resource_offer_msg_t;
 
+#ifdef INVASIC_SCHEDULING
+struct forward_job_record {
+        uint16_t cr_enabled;            /* specify if Consumable Resources
+                                         * is enabled. Needed since CR deals
+                                         * with a finer granularity in its
+                                         * node/cpu scheduling (available cpus
+                                         * instead of available nodes) than the
+                                         * bluegene and the linear plugins
+                                         * 0 if cr is NOT enabled,
+                                         * 1 if cr is enabled */
+        uint32_t db_index;              /* used only for database
+                                         * plugins */
+ 	struct job_details *details;    /* job details */
+        uint16_t direct_set_prio;       /* Priority set directly if
+                                         * set the system will not
+                                         * change the priority any further. */
+        uint32_t job_id;                /* job ID */
+        uint32_t magic;                 /* magic cookie for data integrity */
+        char *name;                     /* name of the job */
+        uint32_t priority;              /* relative priority of the job,
+                                         * zero == held (don't initiate) */
+        uint32_t requid;                /* requester user ID */
+        uint32_t time_limit;            /* time_limit minutes or INFINITE,
+                                         * NO_VAL implies partition max_time */
+        uint32_t time_min;              /* minimum time_limit minutes or
+                                         * INFINITE,
+                                         * zero implies same as time_limit */
+        uint32_t user_id;               /* user the job runs as */
+        char *wckey;                    /* optional wckey */
+};
+#endif
+
+
 typedef struct {
         uint16_t value;         /* info */
 #ifdef INVASIC_SCHEDULING
-	List mapped_job_queue;  /* Jobs mapped to the given offer */
+	List map_jobs2offer;  /* Jobs mapped to the given offer */
 #endif
         uint32_t error_code;    /* error code on failure */
         char   * error_msg;     /* error message on failure */

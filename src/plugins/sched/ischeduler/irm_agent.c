@@ -56,6 +56,10 @@ typedef enum {UNINITIALIZED, PROTOCOL_INITIALIZED, PROTOCOL_IN_PROGRESS, PROTOCO
 //static void _compute_start_times(void);
 static void _load_config(void);
 static void _my_sleep(int secs);
+
+#ifdef INVASIC_SCHEDULING
+static void _copy_job_to_forward(struct forward_job_record *forward_job_ptr, struct job_record *job_ptr);
+#endif
 //static int _connect_to_irmd(void);
 
 #ifdef TESTING
@@ -161,6 +165,7 @@ static List schedule_invasic_jobs(resource_offer_msg_t *offer)
 	List preemptee_candidates = NULL;
 	uint16_t rand_choice = 0;
 	struct job_record *job_ptr;
+	struct forward_job_record *forward_job_ptr = NULL;
 	/*bitstr_t *alloc_bitmap = NULL, *avail_bitmap = NULL;
 	bitstr_t *exc_core_bitmap = NULL;
 	uint32_t max_nodes, min_nodes, req_nodes, time_limit; */
@@ -180,6 +185,13 @@ static List schedule_invasic_jobs(resource_offer_msg_t *offer)
 	while ((invasive_job_queue_rec = (invasive_job_queue_rec_t *) list_pop(invasic_job_queue))) {
 		job_ptr  = invasive_job_queue_rec->job_ptr;
 		xfree(invasive_job_queue_rec);
+
+		if (rand_choice = (rand() % 2) ) {
+		   /* We consider the job found in this iteration for the mapping to the available offer */
+		   forward_job_ptr = (struct forward_job_record *) xmalloc(sizeof(struct forward_job_record));
+		   _copy_job_to_forward(forward_job_ptr, job_ptr);
+		   list_append(mapped_job_queue, forward_job_ptr);
+		}
 
 		/*if (job_cnt++ > max_sched_job_cnt) {
 			debug2("scheduling loop exiting after %d jobs",
@@ -203,7 +215,86 @@ static List schedule_invasic_jobs(resource_offer_msg_t *offer)
 	list_destroy(invasic_job_queue);
 	//FREE_NULL_BITMAP(alloc_bitmap); 
 	print(log_irm_agent, "\nExiting job scheduler\n");
+	return mapped_job_queue
 } 
+
+static void _copy_job_to_forward(struct forward_job_record *forward_job_ptr, struct job_record *job_ptr)
+{
+	struct job_details *details = (struct job_details *)xmalloc(sizeof(struct job_details));
+	struct job_details *job_details_ptr = job_ptr->details;
+
+	forward_job_ptr->cr_enabled = job_ptr->cr_enabled;
+	forward_job_ptr->db_index = job_ptr->db_index;
+	forward_job_ptr->details = details;
+
+	details->acctg_freq = xstrdup(job_details_ptr->acctg_freq);
+	details->argc = job_details_ptr->argc;
+	details->argv = (char **) NULL;
+	details->begin_time = job_details_ptr->time;
+	details->ckpt_dir = xstrdup(job_details_ptr->ckpt_dir);
+	details->contiguous = job_details_ptr->contiguous;
+	details->core_spec = job_details_ptr->core_spec;
+	details->cpu_bind = xstrdup(job_details_ptr->cpu_bind);
+	details->cpu_bind_type = job_details_ptr->cpu_bind_type;
+	details->cpus_per_task = job_details_ptr->cpus_per_task;
+	details->depend_list = depended_list_copy(job_details_ptr->depend_list);
+	details->dependency = xstrdup(job_details_ptr->dependency);
+	details->orig_dependency = xstrdup(job_details_ptr->orig_dependency);
+	details->env_cnt = job_details_ptr->env_cnt;
+	details->env_sup = (char **) NULL;
+	details->exc_node_bitmap = bit_copy(job_details_ptr->exc_node_bitmap);	
+	details->exc_nodes = xstrdup(job_details_ptr->exc_nodes);
+	details->expanding_job_id = job_details_ptr->expanding_job_id;
+	details->exc_nodes = xstrdup(job_details_ptr->exc_nodes);
+	details->expanding_job_id = job_details_ptr->expanding_job_id;
+	details->feature_list = NULL;
+	details->features = xstrdup(job_details_ptr->features);
+	details->magic = job_details_ptr->magic;
+	details->max_cpus = job_details_ptr->max_cpus;
+	details->max_nodes = job_details_ptr->max_nodes;
+	details->mc_ptr----------------------
+	details->mem_bind = xstrdup(job_details_ptr->mem_bind);
+	details->mem_bind_type = job_details_ptr->mem_bind_type;
+	details->min_cpus = job_details_ptr->min_cpus;
+	details->min_nodes = job_details_ptr->min_nodes;
+	details->nice = job_details_ptr->nice;
+	details->ntasks_per_node = job_details_ptr->ntasks_per_node;
+	details->num_tasks = job_details_ptr->num_tasks;	
+	details->open_mode = job_details_ptr->open_mode;
+	details->overcommit = job_details_ptr->overcommit;
+	details->plane_size = job_details_ptr->plane_size;	
+	details->pm_min_cpus = job_details_ptr->pm_min_cpus;
+	details->pm_min_memory = job_details_ptr->pm_min_memory;
+	details_pm_min_tmp_disk = job_details_ptr->pm_min_tmp_disk;		
+	details->prolog_running = job_details_ptr->prolog_running;
+	details->reserved_resources = job_details_ptr->reserved_resources;
+	details->req_node_bitmap = bit_copy(job_details_ptr->req_node_bitmap);
+	details->req_node_layout = NULL;
+	details->preempt_start_time = job_details_ptr->preempt_start_time;
+	details->req_nodes = xstrdup(job_details_ptr->req_nodes);
+	details->requeue = job_details_ptr->requeue;
+	details->restart_dir = xstrdup(job_details_ptr->restart_dir);
+	details->share_res = job_details_ptr->share_res;
+	details->std_err = xstrdup(job_details_ptr->std_err);
+	details->std_in = xstrdup(job_details_ptr->std_in);
+	details->std_out = xstrdup(job_details_ptr->std_out);
+	details->submit_time = job_details_ptr->submit_time;
+	details->task_dist = job_details_ptr->task_dist;
+	details->usable_nodes = job_details_ptr->usable_nodes;
+	details->whole_node = job_details_ptr->whole_node;
+	details->work_dir = xstrdup(job_details_ptr->work_dir);
+
+	forward_job_ptr->direct_set_prio = job_ptr->direct_set_prio;
+	forward_job_ptr->job_id = job_ptr->job_id;
+	forward_job_ptr->magic = job_ptr->magic;
+	forward_job_ptr->name = xstrdup(job_ptr->name);
+	forward_job_ptr->requid = job_ptr->requid;
+	forward_job_ptr->time_limit = job_ptr->time_limit;
+	forward_job_ptr->time_min = job_ptr->time_min;
+	forward_job_ptr->user_id = job_ptr->user_id;
+	forward_job_ptr->wckey = xstrdup(job_ptr->wckey);
+}
+
 #endif
 
 //Connect to iRM daemon via a TCP connection
