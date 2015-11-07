@@ -2539,6 +2539,8 @@ typedef struct stats_info_response_msg {
 #define TRIGGER_TYPE_PRI_DB_FAIL        0x00040000
 #define TRIGGER_TYPE_PRI_DB_RES_OP      0x00080000
 
+//#define INVASIC_SCHEDULING 1
+
 
 typedef struct trigger_info {
 	uint16_t flags;		/* TRIGGER_FLAG_* */

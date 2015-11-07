@@ -2835,17 +2835,105 @@ extern void slurm_free_resource_offer_msg(resource_offer_msg_t *msg)
 }
 
 
+
+#ifdef INVASIC_SCHEDULING
+extern void slurm_free_map_jobs2offer_entry(struct forward_job_record *job_ptr) {
+	xfree(job_ptr->details);
+/*
+        packstr(details->acctg_freq, buffer);
+        if (details->argv != NULL)
+           packstr_array(details->argv, details->argc, buffer);
+        pack_time(details->begin_time, buffer);
+        packstr(details->ckpt_dir, buffer);
+        pack16(details->contiguous, buffer);                    
+        pack16(details->core_spec, buffer);
+        packstr(details->cpu_bind, buffer);
+        pack16(details->cpu_bind_type, buffer);
+        pack16(details->cpus_per_task, buffer);
+        // pack here the dependency_list later or do not pack this parameter and at the receiver side, The iHypervisor will set this value to an empty list.
+        packstr(details->dependency, buffer);
+        packstr(details->orig_dependency, buffer);
+        pack16(details->env_cnt, buffer);       
+        // We do not pack supplemental environment variables so the receiver side should initialize this as NULL
+        // We do not pack excluded nodes bitmap or character string so the iHypervisor will set this to a default value.
+        pack32(details->expanding_jobid, buffer);       
+        // Pack feature_list during later development stages. Currently iHypervisor will keep this as an empty list.
+        packstr(details->features, buffer);             
+        pack32(details->magic, buffer);
+        pack32(details->max_cpus, buffer);
+        pack32(details->max_nodes, buffer);
+//   Do not pack the below data structure mc_ptr as of now
+        pack16(details->mc_ptr->boards_per_node, buffer);
+        pack16(details->mc_ptr->sockets_per_board, buffer);
+        pack16(details->mc_ptr->sockets_per_node, buffer);
+        pack16(details->mc_ptr->cores_per_socket, buffer);
+        pack16(details->mc_ptr->threads_per_core, buffer);
+	pack16(details->mc_ptr->ntasks_per_board, buffer);
+        pack16(details->mc_ptr->ntasks_per_socket, buffer);
+        pack16(details->mc_ptr->ntasks_per_core, buffer);
+        pack16(details->mc_ptr->plane_size, buffer);       
+        packstr(details->mem_bind, buffer);
+        pack16(details->mem_bind_type, buffer);
+        pack32(details->min_cpus, buffer);
+        pack32(details->min_nodes, buffer);
+        pack16(details->nice, buffer);
+        pack16(details->ntasks_per_node, buffer);
+        pack32(details->num_tasks, buffer);
+        pack8(details->open_mode, buffer);
+        pack8(details->overcommit, buffer);
+        pack16(details->plane_size, buffer);
+        pack32(details->pn_min_cpus, buffer);
+        pack32(details->pn_min_memory, buffer);
+        pack32(details->pn_min_tmp_disk, buffer);
+        pack32(details->prolog_running, buffer);
+        pack32(details->reserved_resources, buffer);
+        // We do not pack the bitmap of required nodes so the iHypervisor will set this to some default value. If need in the future this will be handled
+        // We do not pack this member called req_node_layout
+        pack_time(details->preempt_start_time, buffer);
+        packstr(details->req_nodes, buffer);
+        pack16(details->requeue, buffer);
+        packstr(details->restart_dir, buffer);
+        pack8(details->share_res, buffer);
+        packstr(details->std_err, buffer);
+        packstr(details->std_in, buffer);
+        packstr(details->std_out, buffer);
+        pack_time(details->submit_time, buffer);
+        pack16(details->task_dist, buffer);
+        pack32(details->usable_nodes, buffer);
+        pack8(details->whole_node, buffer);
+        packstr(details->work_dir, buffer);  */
+        xfree(job_ptr->name);
+        xfree(job_ptr->wckey);
+}
+#endif
+
+
+
 extern void slurm_free_resource_offer_resp_msg(resource_offer_resp_msg_t *msg)
 {
+     #ifdef INVASIC_SCHEDULING
+	uint32_t count = 0;
+	ListIterator itr = NULL;
+	struct forward_job_record *job_ptr = NULL;
+     #endif
 	if (msg) {
-	   xfree(msg->error_msg);
-	#ifdef INVASIC_SCHEDULING
-	   if (msg->mapped_job_queue)
-	   	list_destroy(msg->mapped_job_queue);
-	#endif
+	   xfree(msg->error_msg); // Unable to release this memory as of now because error_msg in resource_offer_resp_msg_t holds the address of a static memory location where table entries are held for string equivalents of all possible error codes
+     #ifdef INVASIC_SCHEDULING
+/*        if (msg->map_jobs2offer)
+	   count = list_count(msg->map_jobs2offer);
+        if (count && count != NO_VAL) {
+           itr = list_iterator_create(msg->map_jobs2offer);
+           while ((job_ptr = (struct forward_job_record *) list_next(itr)))
+              slurm_free_map_jobs2offer_entry(job_ptr);
+           list_iterator_destroy(itr);
+        }
+	list_destroy(msg->map_jobs2offer);*/
+     #endif
            xfree(msg);
 	}
 }
+
+
 
 extern void slurm_free_negotiation_start_msg(negotiation_start_msg_t *msg)
 {

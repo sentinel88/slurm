@@ -773,6 +773,22 @@ int
 process_rsrc_offer_resp(resource_offer_resp_msg_t *resp, bool final_negotiation) 
 {
    int input;
+#ifdef INVASIC_SCHEDULING
+   ListIterator map_iterator;
+   struct forward_job_record *forward_job_ptr = NULL;
+   char str[1000];
+
+   if (list_is_empty(resp->map_jobs2offer)) {
+      print(log_irm_agent, "Map:Jobs->Offer is empty\n");
+   } else {
+      map_iterator = list_iterator_create(resp->map_jobs2offer);
+      while (forward_job_ptr = (struct forward_job_record *) list_next(map_iterator)) {
+	 sprintf(str, "Job ID: %d\n", forward_job_ptr->job_id);
+         print(log_irm_agent, str);
+      }
+      //list_destroy(resp->map_jobs2offer);
+   }
+#endif
    if (final_negotiation)
       return SLURM_SUCCESS;
 #ifdef TESTING

@@ -306,6 +306,7 @@ extern void *feedback_agent(void *args)
 		last_feedback_time = time(NULL);
 		slurm_free_status_report_msg(msg->data);
 	}
+	close(fd);
 	slurm_free_msg(msg);
         print(log_feedback_agent, "\n[FEEDBACK_AGENT]: Exiting feedback_agent\n");
 	return NULL;

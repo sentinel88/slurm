@@ -99,6 +99,7 @@ static void	_job_queue_append(List job_queue, struct job_record *job_ptr,
 				  struct part_record *part_ptr, uint32_t priority);
 #ifdef INVASIC_SCHEDULING
 static void	_invasic_job_queue_append(List job_queue, struct job_record *job_ptr);
+extern int sort_job_queue3(void *x, void *y);
 #endif
 static void	_job_queue_rec_del(void *x);
 static bool	_job_runnable_test1(struct job_record *job_ptr,
@@ -179,7 +180,7 @@ static void _job_queue_rec_del(void *x)
 }
 
 #ifdef INVASIC_SCHEDULING
-void _invasive_job_queue_rec_del(void *x)
+void _invasic_job_queue_rec_del(void *x)
 {
 	xfree(x);
 }
@@ -1641,10 +1642,12 @@ extern int sort_job_queue2(void *x, void *y)
 	return -1;
 }
 
+#ifdef INVASIC_SCHEDULING
 extern int sort_job_queue3(void *x, void *y)
 {
 	return 1;
 }
+#endif
 
 /* Given a scheduled job, return a pointer to it batch_job_launch_msg_t data */
 extern batch_job_launch_msg_t *build_launch_job_msg(struct job_record *job_ptr,
@@ -3471,7 +3474,7 @@ extern List build_invasic_job_queue(bool clear_start, bool backfill, FILE *log_i
 
        // print(log_irm_agent, "Inside build_job_queue\n");
 
-        invasic_job_queue = list_create(_invasive_job_queue_rec_del);
+        invasic_job_queue = list_create(_invasic_job_queue_rec_del);
         job_iterator = list_iterator_create(job_list);
         while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
                   // print(log_irm_agent, "Inside loop\n");

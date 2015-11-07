@@ -743,7 +743,7 @@ static int _unpack_urgent_job_resp_msg(urgent_job_resp_msg_t **msg, Buf buffer,
 static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf buffer,
 				     uint16_t protocol_version);
 
-static void _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf buffer,
+static int _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf buffer,
 				     uint16_t protocol_version);
 
 
@@ -12324,6 +12324,11 @@ static void _pack_resource_offer_resp_msg(resource_offer_resp_msg_t *msg, Buf bu
         packstr(msg->error_msg, buffer);
 }
 
+static void slurm_invasic_job_queue_rec_del(void *x)
+{
+        xfree(x);
+}
+
 
 static int _unpack_resource_offer_resp_msg(resource_offer_resp_msg_t **msg, Buf buffer,
 				     uint16_t protocol_version)
@@ -12332,23 +12337,26 @@ static int _unpack_resource_offer_resp_msg(resource_offer_resp_msg_t **msg, Buf 
 #ifdef INVASIC_SCHEDULING
         uint32_t count = 0;
         ListIterator itr = NULL;
-        struct job_record *job_ptr = NULL;
+        struct forward_job_record *job_ptr = NULL;
+	int ret_val = 0;
 #endif
         xassert(msg != NULL);
 	*msg = xmalloc(sizeof(resource_offer_resp_msg_t));
 	safe_unpack16(&((*msg)->value), buffer);
 #ifdef INVASIC_SCHEDULING
+	(*msg)->map_jobs2offer = list_create(slurm_invasic_job_queue_rec_del);
 	safe_unpack32(&count, buffer);
 	if (count && count != NO_VAL) {
-		(*msg)->map_jobs2offer = list_create(_invasive_job_queue_rec_del);
                 while (count) {
-			job_ptr = (struct job_record *) xmalloc(sizeof(struct job_record));
+			job_ptr = (struct forward_job_record *) xmalloc(sizeof(struct forward_job_record));
                         // detail_ptr = (struct job_details *)xmalloc(sizeof(struct job_details)); Put this line of code in the unpack routine
-                        _unpack_map_jobs2offer_entry(job_ptr, buffer, protocol_version);
+                        ret_val = _unpack_map_jobs2offer_entry(job_ptr, buffer, protocol_version);
+			if (ret_val == SLURM_ERROR) 
+			   goto unpack_error;
 			list_append((*msg)->map_jobs2offer, job_ptr);
 			count--;
 		}
-                list_iterator_destroy(itr);
+                //list_iterator_destroy(itr);
         }
 #endif
         safe_unpack32(&((*msg)->error_code), buffer); 
@@ -12498,8 +12506,10 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	struct job_details *details = job_ptr->details;
 	pack16(job_ptr->cr_enabled, buffer);	
 	pack32(job_ptr->db_index, buffer);
+/*
 	packstr(details->acctg_freq, buffer);
-	packstr_array(details->argv, details->argc, buffer);
+	if (details->argv != NULL)
+	   packstr_array(details->argv, details->argc, buffer);
 	pack_time(details->begin_time, buffer);
 	packstr(details->ckpt_dir, buffer);
 	pack16(details->contiguous, buffer);			
@@ -12519,6 +12529,7 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	pack32(details->magic, buffer);
 	pack32(details->max_cpus, buffer);
 	pack32(details->max_nodes, buffer);
+//   Do not pack the below data structure mc_ptr as of now
 	pack16(details->mc_ptr->boards_per_node, buffer);
 	pack16(details->mc_ptr->sockets_per_board, buffer);
 	pack16(details->mc_ptr->sockets_per_node, buffer);
@@ -12527,7 +12538,7 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	pack16(details->mc_ptr->ntasks_per_board, buffer);
 	pack16(details->mc_ptr->ntasks_per_socket, buffer);
 	pack16(details->mc_ptr->ntasks_per_core, buffer);
-	pack16(details->mc_ptr->plane_size, buffer);
+	pack16(details->mc_ptr->plane_size, buffer);       
 	packstr(details->mem_bind, buffer);
 	pack16(details->mem_bind_type, buffer);
 	pack32(details->min_cpus, buffer);
@@ -12545,7 +12556,7 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	pack32(details->reserved_resources, buffer);
 	// We do not pack the bitmap of required nodes so the iHypervisor will set this to some default value. If need in the future this will be handled
 	// We do not pack this member called req_node_layout
-	packtime(details->preempt_start_time, buffer);
+	pack_time(details->preempt_start_time, buffer);
 	packstr(details->req_nodes, buffer);
 	pack16(details->requeue, buffer);
 	packstr(details->restart_dir, buffer);
@@ -12553,22 +12564,117 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	packstr(details->std_err, buffer);
 	packstr(details->std_in, buffer);
 	packstr(details->std_out, buffer);
-	packtime(details->submit_time, buffer);
+	pack_time(details->submit_time, buffer);
 	pack16(details->task_dist, buffer);
 	pack32(details->usable_nodes, buffer);
 	pack8(details->whole_node, buffer);
-	packstr(details->work_dir, buffer);
-	pack16(details->direct_set_prio, buffer);
-	pack32(details->job_id, buffer);
-	pack32(details->magic, buffer);
-	packstr(details->name, buffer);
-	pack32(details->priority, buffer);
-	pack32(details->requid, buffer);
-	packtime(details->time_limit, buffer);
-	packtime(details->time_min, buffer);
-	pack32(details->user_id, buffer);
-	packstr(details->wckey, buffer);
+	packstr(details->work_dir, buffer);  */
+	pack16(job_ptr->direct_set_prio, buffer);
+	pack32(job_ptr->job_id, buffer);
+	pack32(job_ptr->magic, buffer);
+	packstr(job_ptr->name, buffer);
+	pack32(job_ptr->priority, buffer);
+	pack32(job_ptr->requid, buffer);
+	pack32(job_ptr->time_limit, buffer);
+	pack32(job_ptr->time_min, buffer);
+	pack32(job_ptr->user_id, buffer);
+	packstr(job_ptr->wckey, buffer);
 }
+
+
+
+
+/* Similar to how a job_desc_msg_t is packed */
+static int _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf buffer,
+                                     uint16_t protocol_version)
+{
+	struct job_details *details = (struct job_details *)xmalloc(sizeof(struct job_details));
+	uint32_t uint32_tmp;
+	job_ptr->details = details;
+	safe_unpack16(&(job_ptr->cr_enabled), buffer);	
+	safe_unpack32(&(job_ptr->db_index), buffer);
+/*
+	safe_unpackstr_xmalloc(&(details->acctg_freq), &uint32_tmp, buffer);
+	safe_unpackstr_array(&(details->argv), &(details->argc), buffer);
+	safe_unpack_time(&(details->begin_time), buffer);
+	safe_unpackstr_xmalloc(&(details->ckpt_dir), &uint32_tmp, buffer);
+	safe_unpack16(&(details->contiguous), buffer);			
+	safe_unpack16(&(details->core_spec), buffer);
+	safe_unpackstr_xmalloc(&(details->cpu_bind), &uint32_tmp, buffer);
+	safe_unpack16(&(details->cpu_bind_type), buffer);
+	safe_unpack16(&(details->cpus_per_task), buffer);
+	// unpack here the dependency_list later or do not pack this parameter and at the receiver side, The iHypervisor will set this value to an empty list.
+	safe_unpackstr_xmalloc(&(details->dependency), &uint32_tmp, buffer);
+	safe_unpackstr_xmalloc(&(details->orig_dependency), &uint32_tmp, buffer);
+	safe_unpack16(&(details->env_cnt), buffer);	
+	// unpack supplemental environment variables so the receiver side should initialize this as NULL
+	details->exc_nodes = NULL;
+	details->exc_node_bitmap = NULL;
+	safe_unpack32(&(details->expanding_jobid), buffer);	
+	// unpack feature_list during later development stages. Currently iHypervisor will keep this as an empty list.
+	safe_unpackstr_xmalloc(&(details->features), &uint32_tmp, buffer);		
+	safe_unpack32(&(details->magic), buffer);
+	safe_unpack32(&(details->max_cpus), buffer);
+	safe_unpack32(&(details->max_nodes), buffer);
+//
+	safe_unpack16(&(details->mc_ptr->boards_per_node), buffer);
+	safe_unpack16(&(details->mc_ptr->sockets_per_board), buffer);
+	safe_unpack16(&(details->mc_ptr->sockets_per_node), buffer);
+	safe_unpack16(&(details->mc_ptr->cores_per_socket), buffer);
+	safe_unpack16(&(details->mc_ptr->threads_per_core), buffer);
+	safe_unpack16(&(details->mc_ptr->ntasks_per_board), buffer);
+	safe_unpack16(&(details->mc_ptr->ntasks_per_socket), buffer);
+	safe_unpack16(&(details->mc_ptr->ntasks_per_core), buffer);
+	safe_unpack16(&(details->mc_ptr->plane_size), buffer);          
+	safe_unpackstr_xmalloc(&(details->mem_bind), &uint32_tmp, buffer);
+	safe_unpack16(&(details->mem_bind_type), buffer);
+	safe_unpack32(&(details->min_cpus), buffer);
+	safe_unpack32(&(details->min_nodes), buffer);
+	safe_unpack16(&(details->nice), buffer);
+	safe_unpack16(&(details->ntasks_per_node), buffer);
+	safe_unpack32(&(details->num_tasks), buffer);
+	safe_unpack8(&(details->open_mode), buffer);
+	safe_unpack8(&(details->overcommit), buffer);
+	safe_unpack16(&(details->plane_size), buffer);
+	safe_unpack32(&(details->pn_min_cpus), buffer);
+	safe_unpack32(&(details->pn_min_memory), buffer);
+	safe_unpack32(&(details->pn_min_tmp_disk), buffer);
+	safe_unpack8(&(details->prolog_running), buffer);
+	safe_unpack32(&(details->reserved_resources), buffer);
+	details->req_node_bitmap = NULL;
+	details->req_node_layout = NULL;
+	// unpack the bitmap of required nodes so the iHypervisor will set this to some default value. If need in the future this will be handled
+	// unpack this member called req_node_layout
+	safe_unpack_time(&(details->preempt_start_time), buffer);
+	safe_unpackstr_xmalloc(&(details->req_nodes), &uint32_tmp, buffer);
+	safe_unpack16(&(details->requeue), buffer);
+	safe_unpackstr_xmalloc(&(details->restart_dir), &uint32_tmp, buffer);
+	safe_unpack8(&(details->share_res), buffer);
+	safe_unpackstr_xmalloc(&(details->std_err), &uint32_tmp, buffer);
+	safe_unpackstr_xmalloc(&(details->std_in), &uint32_tmp, buffer);
+	safe_unpackstr_xmalloc(&(details->std_out), &uint32_tmp, buffer);
+	safe_unpack_time(&(details->submit_time), buffer);
+	safe_unpack16(&(details->task_dist), buffer);
+	safe_unpack32(&(details->usable_nodes), buffer);
+	safe_unpack8(&(details->whole_node), buffer);
+	safe_unpackstr_xmalloc(&(details->work_dir), &uint32_tmp, buffer);   */
+	safe_unpack16(&(job_ptr->direct_set_prio), buffer);
+	safe_unpack32(&(job_ptr->job_id), buffer);
+	safe_unpack32(&(job_ptr->magic), buffer);
+	safe_unpackstr_xmalloc(&(job_ptr->name), &uint32_tmp, buffer);
+	safe_unpack32(&(job_ptr->priority), buffer);
+	safe_unpack32(&(job_ptr->requid), buffer);
+	safe_unpack32(&(job_ptr->time_limit), buffer);
+	safe_unpack32(&(job_ptr->time_min), buffer);
+	safe_unpack32(&(job_ptr->user_id), buffer);
+	safe_unpackstr_xmalloc(&(job_ptr->wckey), &uint32_tmp, buffer);
+
+	return SLURM_SUCCESS;
+unpack_error: xfree(details);
+	return SLURM_ERROR;
+}
+
+
 #endif
 
 

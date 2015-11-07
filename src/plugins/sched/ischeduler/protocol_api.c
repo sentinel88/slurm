@@ -27,6 +27,7 @@ extern pid_t getsid(pid_t pid);		/* missing from <unistd.h> */
 #include "src/common/slurm_protocol_pack.h"
 #include "src/common/xmalloc.h"
 #include "src/common/forward.h"
+#include "src/slurmctld/job_scheduler.h"
 #include "ischeduler.h"
 
 //#define MAX_NEGOTIATION_ATTEMPTS 5
@@ -941,14 +942,14 @@ process_resource_offer (resource_offer_msg_t *msg, uint16_t *buf_val, int *attem
         return 0;
 }
 
-int send_resource_offer_resp(slurm_msg_t *msg, char *buf) 
+int send_resource_offer_resp(slurm_msg_t *msg, char *buf, List map_jobs2offer) 
 {
         header_t header;
         int rc;
         resource_offer_resp_msg_t offer_resp_msg;
         slurm_msg_t resp_msg;
         Buf buffer;
-        char err_msg[256] = "Job queue is empty";
+        //char err_msg[256] = "Job queue is empty";
 #if defined (ISCHED_DEBUG) 
         print(log_irm_agent, "\nInside isched_send_irm_msg\n");
 #endif
@@ -973,6 +974,9 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
 
         offer_resp_msg.error_code = 0; 
         offer_resp_msg.error_msg = NULL;
+#ifdef INVASIC_SCHEDULING
+	offer_resp_msg.map_jobs2offer = NULL;
+#endif
 
 /* Be careful when using slurm_strerror to initialize the error msg data member of messages. This function returns a pointer into a statically
    allocated string array holding the string representations of these errors. Do not attempt slurm_xfree of the msg via slurm_free_.... call
@@ -981,7 +985,7 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
   
         if (*(uint16_t *)(buf) == 500) {
            offer_resp_msg.error_code = ESLURM_INVASIVE_JOB_QUEUE_EMPTY;
-           offer_resp_msg.error_msg = slurm_strerror(ESLURM_INVASIVE_JOB_QUEUE_EMPTY);
+           offer_resp_msg.error_msg = slurm_strerror(ESLURM_INVASIVE_JOB_QUEUE_EMPTY); //Cannot release this error_msg in free routines because this is a static memory storing error msgs for error codes whose address is returned to error_msg
 	#ifdef TESTING
 	   sprintf(str, "\nSENT %s-->%s\n", rpc_num2string(RESPONSE_RESOURCE_OFFER), offer_resp_msg.error_msg);
 	#endif
@@ -994,6 +998,9 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
         } else {
 	   offer_resp_msg.error_code = SLURM_SUCCESS;
 	   offer_resp_msg.error_msg = NULL;
+	#ifdef INVASIC_SCHEDULING
+	   offer_resp_msg.map_jobs2offer = map_jobs2offer;
+	#endif
 	#ifdef TESTING
 	   sprintf(str, "\nSENT %s-->SLURM_SUCCESS\n", rpc_num2string(RESPONSE_RESOURCE_OFFER));
 	#endif
@@ -1048,7 +1055,6 @@ int send_resource_offer_resp(slurm_msg_t *msg, char *buf)
 	#endif
            rc = SLURM_SUCCESS;
         }
-
         free_buf(buffer);
 #if defined (ISCHED_DEBUG) 
         print(log_irm_agent, "\nExiting isched_send_irm_msg\n");

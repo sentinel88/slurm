@@ -182,6 +182,8 @@ extern void sort_job_queue(List job_queue);
 
 extern void sort_invasic_job_queue(List job_queue);
 
+extern void _invasic_job_queue_rec_del(void *);
+
 /* Note this differs from the ListCmpF typedef since we want jobs sorted
  *	in order of decreasing priority */
 extern int sort_job_queue2(void *x, void *y);
