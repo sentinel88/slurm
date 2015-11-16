@@ -786,7 +786,9 @@ process_rsrc_offer_resp(resource_offer_resp_msg_t *resp, bool final_negotiation)
 	 sprintf(str, "Job ID: %d\n", forward_job_ptr->job_id);
          print(log_irm_agent, str);
       }
+      //list_iterator_destroy(map_iterator);
       //list_destroy(resp->map_jobs2offer);
+      //resp->map_jobs2offer = NULL;
    }
 #endif
    if (final_negotiation)

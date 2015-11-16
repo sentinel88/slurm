@@ -179,6 +179,32 @@ extern time_t last_node_update;		/* time of last node record update */
 extern uint16_t *cr_node_num_cores;
 extern uint32_t *cr_node_cores_offset;
 
+
+
+struct res_offer_entry {
+	uint32_t magic;			/* magic cookie for data integrity */
+	char *name;			/* name of the node. NULL==defunct */
+	char *node_hostname;		/* hostname of the node */
+	uint16_t cpus;			/* count of processors on the node */
+	uint16_t boards; 		/* count of boards configured */
+	uint16_t sockets;		/* number of sockets per node */
+	uint16_t cores;			/* number of cores per CPU */
+	char *cpu_spec_list;		/* node's specialized cpus */
+	uint16_t core_spec_cnt;		/* number of specialized cores on node*/
+	uint16_t threads;		/* number of threads per core */
+	uint32_t real_memory;		/* MB real memory on the node */
+	uint32_t mem_spec_limit;	/* MB memory limit for specialization */
+	uint32_t tmp_disk;		/* MB total disk in TMP_FS */
+	char *comm_name;		/* communications path name to node */
+	char *arch;			/* computer architecture */
+	char *os;			/* operating system now running */
+	uint16_t protocol_version;	/* Slurm version number */
+	char *version;			/* Slurm version */
+	bitstr_t *node_spec_bitmap;	/* node cpu specialization bitmap */
+};
+
+
+
 /*
  * bitmap2node_name_sortable - given a bitmap, build a list of comma
  *	separated node names. names may include regular expressions

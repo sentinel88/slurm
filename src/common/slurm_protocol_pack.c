@@ -12506,10 +12506,10 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	struct job_details *details = job_ptr->details;
 	pack16(job_ptr->cr_enabled, buffer);	
 	pack32(job_ptr->db_index, buffer);
-/*
+
 	packstr(details->acctg_freq, buffer);
-	if (details->argv != NULL)
-	   packstr_array(details->argv, details->argc, buffer);
+	/*if (details->argv != NULL)
+	   packstr_array(details->argv, details->argc, buffer); */
 	pack_time(details->begin_time, buffer);
 	packstr(details->ckpt_dir, buffer);
 	pack16(details->contiguous, buffer);			
@@ -12529,8 +12529,8 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	pack32(details->magic, buffer);
 	pack32(details->max_cpus, buffer);
 	pack32(details->max_nodes, buffer);
-//   Do not pack the below data structure mc_ptr as of now
-	pack16(details->mc_ptr->boards_per_node, buffer);
+//   Do not pack the below data structure mc_ptr as of now */
+	/*pack16(details->mc_ptr->boards_per_node, buffer);
 	pack16(details->mc_ptr->sockets_per_board, buffer);
 	pack16(details->mc_ptr->sockets_per_node, buffer);
 	pack16(details->mc_ptr->cores_per_socket, buffer);
@@ -12538,7 +12538,7 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	pack16(details->mc_ptr->ntasks_per_board, buffer);
 	pack16(details->mc_ptr->ntasks_per_socket, buffer);
 	pack16(details->mc_ptr->ntasks_per_core, buffer);
-	pack16(details->mc_ptr->plane_size, buffer);       
+	pack16(details->mc_ptr->plane_size, buffer);       */
 	packstr(details->mem_bind, buffer);
 	pack16(details->mem_bind_type, buffer);
 	pack32(details->min_cpus, buffer);
@@ -12552,7 +12552,7 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	pack32(details->pn_min_cpus, buffer);
 	pack32(details->pn_min_memory, buffer);
 	pack32(details->pn_min_tmp_disk, buffer);
-	pack32(details->prolog_running, buffer);
+	/*pack32(details->prolog_running, buffer);*/
 	pack32(details->reserved_resources, buffer);
 	// We do not pack the bitmap of required nodes so the iHypervisor will set this to some default value. If need in the future this will be handled
 	// We do not pack this member called req_node_layout
@@ -12568,7 +12568,7 @@ static void _pack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf b
 	pack16(details->task_dist, buffer);
 	pack32(details->usable_nodes, buffer);
 	pack8(details->whole_node, buffer);
-	packstr(details->work_dir, buffer);  */
+	packstr(details->work_dir, buffer);  
 	pack16(job_ptr->direct_set_prio, buffer);
 	pack32(job_ptr->job_id, buffer);
 	pack32(job_ptr->magic, buffer);
@@ -12593,9 +12593,9 @@ static int _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf 
 	job_ptr->details = details;
 	safe_unpack16(&(job_ptr->cr_enabled), buffer);	
 	safe_unpack32(&(job_ptr->db_index), buffer);
-/*
+
 	safe_unpackstr_xmalloc(&(details->acctg_freq), &uint32_tmp, buffer);
-	safe_unpackstr_array(&(details->argv), &(details->argc), buffer);
+	/*safe_unpackstr_array(&(details->argv), &(details->argc), buffer); */
 	safe_unpack_time(&(details->begin_time), buffer);
 	safe_unpackstr_xmalloc(&(details->ckpt_dir), &uint32_tmp, buffer);
 	safe_unpack16(&(details->contiguous), buffer);			
@@ -12615,9 +12615,10 @@ static int _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf 
 	safe_unpackstr_xmalloc(&(details->features), &uint32_tmp, buffer);		
 	safe_unpack32(&(details->magic), buffer);
 	safe_unpack32(&(details->max_cpus), buffer);
-	safe_unpack32(&(details->max_nodes), buffer);
+	safe_unpack32(&(details->max_nodes), buffer); 
+	details->mc_ptr = NULL;
 //
-	safe_unpack16(&(details->mc_ptr->boards_per_node), buffer);
+	/*safe_unpack16(&(details->mc_ptr->boards_per_node), buffer);
 	safe_unpack16(&(details->mc_ptr->sockets_per_board), buffer);
 	safe_unpack16(&(details->mc_ptr->sockets_per_node), buffer);
 	safe_unpack16(&(details->mc_ptr->cores_per_socket), buffer);
@@ -12625,9 +12626,9 @@ static int _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf 
 	safe_unpack16(&(details->mc_ptr->ntasks_per_board), buffer);
 	safe_unpack16(&(details->mc_ptr->ntasks_per_socket), buffer);
 	safe_unpack16(&(details->mc_ptr->ntasks_per_core), buffer);
-	safe_unpack16(&(details->mc_ptr->plane_size), buffer);          
+	safe_unpack16(&(details->mc_ptr->plane_size), buffer); */
 	safe_unpackstr_xmalloc(&(details->mem_bind), &uint32_tmp, buffer);
-	safe_unpack16(&(details->mem_bind_type), buffer);
+	safe_unpack16(&(details->mem_bind_type), buffer); 
 	safe_unpack32(&(details->min_cpus), buffer);
 	safe_unpack32(&(details->min_nodes), buffer);
 	safe_unpack16(&(details->nice), buffer);
@@ -12639,8 +12640,8 @@ static int _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf 
 	safe_unpack32(&(details->pn_min_cpus), buffer);
 	safe_unpack32(&(details->pn_min_memory), buffer);
 	safe_unpack32(&(details->pn_min_tmp_disk), buffer);
-	safe_unpack8(&(details->prolog_running), buffer);
-	safe_unpack32(&(details->reserved_resources), buffer);
+	/*safe_unpack8(&(details->prolog_running), buffer);*/
+	safe_unpack32(&(details->reserved_resources), buffer); 
 	details->req_node_bitmap = NULL;
 	details->req_node_layout = NULL;
 	// unpack the bitmap of required nodes so the iHypervisor will set this to some default value. If need in the future this will be handled
@@ -12657,7 +12658,7 @@ static int _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf 
 	safe_unpack16(&(details->task_dist), buffer);
 	safe_unpack32(&(details->usable_nodes), buffer);
 	safe_unpack8(&(details->whole_node), buffer);
-	safe_unpackstr_xmalloc(&(details->work_dir), &uint32_tmp, buffer);   */
+	safe_unpackstr_xmalloc(&(details->work_dir), &uint32_tmp, buffer);    
 	safe_unpack16(&(job_ptr->direct_set_prio), buffer);
 	safe_unpack32(&(job_ptr->job_id), buffer);
 	safe_unpack32(&(job_ptr->magic), buffer);

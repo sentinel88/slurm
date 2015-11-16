@@ -2837,8 +2837,22 @@ extern void slurm_free_resource_offer_msg(resource_offer_msg_t *msg)
 
 
 #ifdef INVASIC_SCHEDULING
-extern void slurm_free_map_jobs2offer_entry(struct forward_job_record *job_ptr) {
-	xfree(job_ptr->details);
+extern void slurm_free_map_jobs2offer_entry(struct forward_job_record *job_ptr)
+{
+	struct job_details *details = job_ptr->details;
+	xfree(details->acctg_freq);
+	xfree(details->ckpt_dir);
+	xfree(details->cpu_bind);
+	xfree(details->dependency);
+	xfree(details->orig_dependency);
+	xfree(details->features);
+	xfree(details->mem_bind);
+	xfree(details->req_nodes);
+	xfree(details->restart_dir);
+	xfree(details->std_err);
+	xfree(details->std_in);
+	xfree(details->std_out);
+	xfree(details->work_dir);
 /*
         packstr(details->acctg_freq, buffer);
         if (details->argv != NULL)
@@ -2902,6 +2916,7 @@ extern void slurm_free_map_jobs2offer_entry(struct forward_job_record *job_ptr) 
         pack32(details->usable_nodes, buffer);
         pack8(details->whole_node, buffer);
         packstr(details->work_dir, buffer);  */
+	xfree(job_ptr->details);
         xfree(job_ptr->name);
         xfree(job_ptr->wckey);
 }
@@ -2919,7 +2934,7 @@ extern void slurm_free_resource_offer_resp_msg(resource_offer_resp_msg_t *msg)
 	if (msg) {
 	   xfree(msg->error_msg); // Unable to release this memory as of now because error_msg in resource_offer_resp_msg_t holds the address of a static memory location where table entries are held for string equivalents of all possible error codes
      #ifdef INVASIC_SCHEDULING
-/*        if (msg->map_jobs2offer)
+        if (msg->map_jobs2offer) 
 	   count = list_count(msg->map_jobs2offer);
         if (count && count != NO_VAL) {
            itr = list_iterator_create(msg->map_jobs2offer);
@@ -2927,7 +2942,8 @@ extern void slurm_free_resource_offer_resp_msg(resource_offer_resp_msg_t *msg)
               slurm_free_map_jobs2offer_entry(job_ptr);
            list_iterator_destroy(itr);
         }
-	list_destroy(msg->map_jobs2offer);*/
+	if (msg->map_jobs2offer)
+	   list_destroy(msg->map_jobs2offer);
      #endif
            xfree(msg);
 	}

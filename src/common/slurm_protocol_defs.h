@@ -1051,6 +1051,9 @@ typedef struct {
         uint16_t value; /* info */
 	uint8_t negotiation; /* if negotiation is ongoing then this value is 1 else it becomes 0 to indicate ischeduler that previous negotiat
 				ion is over */
+   #ifdef INVASIC_SCHEDULING
+	List resource_offer;
+   #endif
         uint32_t error_code;    /* error code on failure */
         char   * error_msg;     /* error message on failure */
 } resource_offer_msg_t;

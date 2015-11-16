@@ -226,7 +226,7 @@ static void _copy_job_to_forward(struct forward_job_record *forward_job_ptr, str
 	forward_job_ptr->cr_enabled = job_ptr->cr_enabled;
 	forward_job_ptr->db_index = job_ptr->db_index;
 	forward_job_ptr->details = details;
-/*
+
 	details->acctg_freq = xstrdup(job_details_ptr->acctg_freq);
 	details->argc = job_details_ptr->argc;
 	details->argv = (char **) NULL;
@@ -283,7 +283,7 @@ static void _copy_job_to_forward(struct forward_job_record *forward_job_ptr, str
 	details->task_dist = job_details_ptr->task_dist;
 	details->usable_nodes = job_details_ptr->usable_nodes;
 	details->whole_node = job_details_ptr->whole_node;
-	details->work_dir = xstrdup(job_details_ptr->work_dir); */
+	details->work_dir = xstrdup(job_details_ptr->work_dir); 
 
 	forward_job_ptr->direct_set_prio = job_ptr->direct_set_prio;
 	forward_job_ptr->job_id = job_ptr->job_id;
@@ -515,15 +515,17 @@ extern void *irm_agent(void *args)
                 print(log_irm_agent, "[IRM_AGENT]: Sent back a response to the resource offer\n");
 #endif
 		// slurm_free_resource_offer_resp_msg(msg->data); Sender may not have to necesssarily release memory allocated to the protocol messages because usually it is statically allocated but the receive will always have to release memory as while unpacking these messages memory will be allocated. We need to free the list map_jobs2offer which was returned by the function schedule_invasic_jobs
-		if (map_jobs2offer)
+		if (map_jobs2offer) {
                    count = list_count(map_jobs2offer);
-        	if (count && count != NO_VAL) {
-           	   itr = list_iterator_create(map_jobs2offer);
-           	   while ((job_ptr = (struct forward_job_record *) list_next(itr)))
-                      slurm_free_map_jobs2offer_entry(job_ptr);
-           	   list_iterator_destroy(itr);
-        	   list_destroy(map_jobs2offer);
-        	}
+        	   if (count && count != NO_VAL) {
+           	      itr = list_iterator_create(map_jobs2offer);
+           	      while ((job_ptr = (struct forward_job_record *) list_next(itr)))
+                         slurm_free_map_jobs2offer_entry(job_ptr);
+           	      list_iterator_destroy(itr);
+        	      list_destroy(map_jobs2offer);
+		      map_jobs2offer = NULL;
+        	   }
+		}
 		count = 0;
 		
 	}
@@ -559,6 +561,8 @@ extern void *irm_agent(void *args)
         free(buf);
         slurm_free_msg(msg);
         close(fd);
+	if (map_jobs2offer)
+	   list_destroy(map_jobs2offer);
 	pthread_join(urgent_job_agent, NULL);
 	pthread_join(feedback_thread, NULL);
         print(log_irm_agent, "\n[IRM_AGENT]: Exiting irm_agent\n");

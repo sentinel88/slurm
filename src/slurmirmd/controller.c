@@ -335,6 +335,7 @@ int main(int argc, char *argv[])
 		   memcpy(&tc_offer, req, sizeof(resource_offer_msg_t));
 		#endif
 		   sleep(1);
+		   req->resource_offer = create_resource_offer();
                    ret_val = slurm_submit_resource_offer(client_fd, req, &resp);
 		   if (attempts == 0) attempts++;
                 } else {
@@ -386,6 +387,7 @@ int main(int argc, char *argv[])
 		   print(log_irm_agent, "\n=========================================================================================================================================\n\n");
 		#endif
              /*      xfree(resp.error_msg); */
+		   slurm_free_resource_offer_resp_msg(resp);
                    continue;
                 }        
 
@@ -399,6 +401,7 @@ int main(int argc, char *argv[])
                    ret_val = process_rsrc_offer_resp(resp, true);
 		   req->negotiation = 0;
                /*    xfree(resp.error_msg); */
+		   slurm_free_resource_offer_resp_msg(resp);
                    continue;
                 }
 
@@ -409,6 +412,7 @@ int main(int argc, char *argv[])
 		#endif
                    attempts++;
 		   req->negotiation = 1;
+		   //slurm_free_resource_offer_resp_msg(resp);
                 /*} else if (val == 1) {*/
 		} else if (resp->error_code == SLURM_SUCCESS) {
 		#ifdef IRM_DEBUG
@@ -436,6 +440,7 @@ int main(int argc, char *argv[])
                    attempts++;
 		   req->negotiation = 1;
                 }  
+		slurm_free_resource_offer_resp_msg(resp);
 	}
 
 /* Be careful when using slurm_strerror to initialize the error msg data member of messages. This function returns a pointer into a statically
@@ -445,7 +450,7 @@ int main(int argc, char *argv[])
 
 total_return:req->error_msg = NULL;
 	slurm_free_resource_offer_msg(req);
-	slurm_free_resource_offer_resp_msg(resp);  // May not be required. Can be removed later after sufficient testing
+	// slurm_free_resource_offer_resp_msg(resp);  //May not be required. Can be removed later after sufficient testing
         free(buf);
         close(client_fd);
         close(fd);

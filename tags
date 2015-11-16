@@ -7261,7 +7261,7 @@ _internal_setup	src/plugins/priority/multifactor/priority_multifactor.c	/^static
 _internal_setup_grid	src/smap/grid_functions.c	/^static void _internal_setup_grid(int level, uint16_t *coords)$/;"	f	file:
 _internal_step_complete	src/slurmctld/step_mgr.c	/^static void _internal_step_complete(struct job_record *job_ptr,$/;"	f	file:
 _invasic_job_queue_append	src/slurmctld/job_scheduler.c	/^void _invasic_job_queue_append(List job_queue, struct job_record *job_ptr)$/;"	f
-_invasive_job_queue_rec_del	src/slurmctld/job_scheduler.c	/^void _invasive_job_queue_rec_del(void *x)$/;"	f
+_invasic_job_queue_rec_del	src/slurmctld/job_scheduler.c	/^void _invasic_job_queue_rec_del(void *x)$/;"	f
 _io_create_file_datatype	src/plugins/acct_gather_profile/hdf5/hdf5_api.c	/^static hid_t _io_create_file_datatype(void)$/;"	f	file:
 _io_create_memory_datatype	src/plugins/acct_gather_profile/hdf5/hdf5_api.c	/^static hid_t _io_create_memory_datatype(void)$/;"	f	file:
 _io_dataset_size	src/plugins/acct_gather_profile/hdf5/hdf5_api.c	/^static int _io_dataset_size(void)$/;"	f	file:
@@ -9556,6 +9556,7 @@ _unpack_local_job	src/plugins/accounting_storage/mysql/as_mysql_archive.c	/^stat
 _unpack_local_resv	src/plugins/accounting_storage/mysql/as_mysql_archive.c	/^static int _unpack_local_resv(local_resv_t *object,$/;"	f	file:
 _unpack_local_step	src/plugins/accounting_storage/mysql/as_mysql_archive.c	/^static int _unpack_local_step(local_step_t *object,$/;"	f	file:
 _unpack_local_suspend	src/plugins/accounting_storage/mysql/as_mysql_archive.c	/^static int _unpack_local_suspend(local_suspend_t *object,$/;"	f	file:
+_unpack_map_jobs2offer_entry	src/common/slurm_protocol_pack.c	/^static int _unpack_map_jobs2offer_entry(struct forward_job_record *job_ptr, Buf buffer,$/;"	f	file:
 _unpack_msg_uid	src/common/slurm_protocol_api.c	/^static int _unpack_msg_uid(Buf buffer)$/;"	f	file:
 _unpack_negotiation_end_msg	src/common/slurm_protocol_pack.c	/^static int _unpack_negotiation_end_msg(negotiation_end_msg_t **msg, Buf buffer,$/;"	f	file:
 _unpack_negotiation_end_resp_msg	src/common/slurm_protocol_pack.c	/^static int _unpack_negotiation_end_resp_msg(negotiation_end_resp_msg_t **msg, Buf buffer,$/;"	f	file:
@@ -21760,7 +21761,7 @@ send_nodes_to_accounting	src/slurmctld/node_mgr.c	/^extern int send_nodes_to_acc
 send_recv_urgent_job	src/plugins/sched/ischeduler/protocol_api.c	/^send_recv_urgent_job(slurm_fd_t fd, slurm_msg_t *resp_msg)$/;"	f
 send_registration_msg	src/slurmd/slurmd/slurmd.c	/^send_registration_msg(uint32_t status, bool startup)$/;"	f
 send_reply	src/plugins/slurmctld/dynalloc/msg.c	/^extern void	send_reply(slurm_fd_t new_fd, char *response)$/;"	f
-send_resource_offer_resp	src/plugins/sched/ischeduler/protocol_api.c	/^int send_resource_offer_resp(slurm_msg_t *msg, char *buf) $/;"	f
+send_resource_offer_resp	src/plugins/sched/ischeduler/protocol_api.c	/^int send_resource_offer_resp(slurm_msg_t *msg, char *buf, List map_jobs2offer) $/;"	f
 send_result	testsuite/expect/driveregress.py	/^def send_result(htab):$/;"	f
 send_resvs_to_accounting	src/slurmctld/reservation.c	/^extern int send_resvs_to_accounting(void)$/;"	f
 send_rpc	src/sbcast/agent.c	/^extern void send_rpc(file_bcast_msg_t *bcast_msg,$/;"	f
@@ -22373,6 +22374,7 @@ slurm_free_launch_tasks_request_msg	src/common/slurm_protocol_defs.c	/^extern vo
 slurm_free_launch_tasks_response_msg	src/common/slurm_protocol_defs.c	/^extern void slurm_free_launch_tasks_response_msg($/;"	f
 slurm_free_license_info_msg	src/common/slurm_protocol_defs.c	/^slurm_free_license_info_msg(license_info_msg_t *msg)$/;"	f
 slurm_free_license_info_request_msg	src/common/slurm_protocol_defs.c	/^extern void slurm_free_license_info_request_msg(license_info_request_msg_t *msg)$/;"	f
+slurm_free_map_jobs2offer_entry	src/common/slurm_protocol_defs.c	/^extern void slurm_free_map_jobs2offer_entry(struct forward_job_record *job_ptr) {$/;"	f
 slurm_free_msg	src/common/slurm_protocol_api.c	/^extern void slurm_free_msg(slurm_msg_t * msg)$/;"	f
 slurm_free_msg_data	src/common/slurm_protocol_defs.c	/^extern int slurm_free_msg_data(slurm_msg_type_t type, void *data)$/;"	f
 slurm_free_negotiation_end_msg	src/common/slurm_protocol_defs.c	/^extern void slurm_free_negotiation_end_msg(negotiation_end_msg_t *msg)$/;"	f
@@ -22616,6 +22618,7 @@ slurm_init_update_block_msg	src/api/init_msg.c	/^void slurm_init_update_block_ms
 slurm_init_update_front_end_msg	src/api/init_msg.c	/^void slurm_init_update_front_end_msg (update_front_end_msg_t *$/;"	f
 slurm_init_update_node_msg	src/api/init_msg.c	/^void slurm_init_update_node_msg (update_node_msg_t * update_node_msg)$/;"	f
 slurm_init_update_step_msg	src/api/init_msg.c	/^extern void slurm_init_update_step_msg (step_update_request_msg_t * step_msg)$/;"	f
+slurm_invasic_job_queue_rec_del	src/common/slurm_protocol_pack.c	/^static void slurm_invasic_job_queue_rec_del(void *x)$/;"	f	file:
 slurm_io_header	src/common/io_hdr.h	/^typedef struct slurm_io_header {$/;"	s
 slurm_io_init_msg	src/common/io_hdr.h	/^struct slurm_io_init_msg {$/;"	s
 slurm_ipmi_conf	src/plugins/acct_gather_energy/ipmi/acct_gather_energy_ipmi.c	/^static slurm_ipmi_conf_t slurm_ipmi_conf;$/;"	v	file:
